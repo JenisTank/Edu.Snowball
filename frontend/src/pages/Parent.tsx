@@ -3,11 +3,11 @@
 // Playful light theme, mobile-first. Parents log in with their
 // registered phone + child's admission number. Installable PWA.
 // ─────────────────────────────────────────────────────────────
-import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  BellRing, CalendarDays, ChevronLeft, ChevronRight, GraduationCap,
-  IndianRupee, LogOut, Printer, Smile, Sun,
+  Bell, BellRing, CalendarDays, ChevronLeft, ChevronRight, FileText, GraduationCap,
+  Home, IndianRupee, LogOut, MessageSquare, Printer, Send, Smile, Sun, User, Wallet,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -159,7 +159,239 @@ function FeesCard({ childId }: { childId: string }) {
           ))}
         </div>
       )}
-      <p className="mt-3 text-center text-[10px] font-semibold text-stone-400">Online payment (UPI / Razorpay) activates at go-live — pay at your centre for now.</p>
+      {f.balance > 0 && <PayNow childId={childId} balance={f.balance} />}
+    </div>
+  );
+}
+
+// ───────────────────── Pay Now (Razorpay + UPI) ─────────────────────
+// Placeholder mode (no merchant keys yet): we still raise a real order and
+// show the UPI intent/QR, and the centre confirms the reference. The moment
+// RAZORPAY_KEY_ID is set on the server, the same button opens Razorpay
+// Checkout instead — no further change needed here.
+function PayNow({ childId, balance }: { childId: string; balance: number }) {
+  const qc = useQueryClient();
+  const [order, setOrder] = useState<any>(null);
+  const [err, setErr] = useState('');
+  const { data: cfg } = useQuery({ queryKey: ['pay-config'], queryFn: () => papi('/payments/config') });
+
+  const create = useMutation({
+    mutationFn: () => papi('/payments/order', { method: 'POST', body: JSON.stringify({ studentId: childId }) }),
+    onSuccess: (r: any) => {
+      setErr('');
+      setOrder(r);
+      if (r.live && (window as any).Razorpay) openCheckout(r);
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+
+  function openCheckout(r: any) {
+    const rz = new (window as any).Razorpay({
+      key: r.keyId,
+      order_id: r.order.providerOrderId,
+      amount: Number(r.order.amount) * 100,
+      currency: 'INR',
+      name: 'BumbleB Kidz',
+      description: `Fees · ${r.child.admissionNo}`,
+      prefill: {},
+      theme: { color: '#C8922A' },
+      handler: async (res: any) => {
+        await papi('/payments/verify', {
+          method: 'POST',
+          body: JSON.stringify({ orderId: r.order.id, razorpayPaymentId: res.razorpay_payment_id, razorpaySignature: res.razorpay_signature }),
+        });
+        qc.invalidateQueries({ queryKey: ['p-fees', childId] });
+        setOrder(null);
+      },
+    });
+    rz.open();
+  }
+
+  return (
+    <div className="mt-3 border-t border-amber-100 pt-3">
+      {err && <div className="mb-2 rounded-xl bg-rose-50 px-3 py-2 text-[11.5px] font-bold text-rose-600">{err}</div>}
+      {!order ? (
+        <>
+          <button className="btn-primary w-full py-2.5 text-[13px]" disabled={create.isPending} onClick={() => create.mutate()}>
+            <Wallet className="mr-1.5 inline h-4 w-4" />{create.isPending ? 'Preparing…' : `Pay ${inr(balance)} now`}
+          </button>
+          <p className="mt-2 text-center text-[10px] font-semibold text-stone-400">
+            {cfg?.live ? 'Secure payment by Razorpay · UPI, card, net-banking' : 'UPI payment available now · card/net-banking opens when the gateway goes live'}
+          </p>
+        </>
+      ) : (
+        <div className="rounded-2xl bg-cream-50 p-4 text-center">
+          <div className="text-[13px] font-extrabold">{inr(Number(order.order.amount))} · instalment {order.order.instalmentNo ?? 1}</div>
+          {order.order.upiUri ? (
+            <>
+              <img className="mx-auto my-3 h-40 w-40 rounded-xl bg-white p-2"
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(order.order.upiUri)}`} alt="UPI QR" />
+              <a className="btn-primary inline-block !py-2 text-[12.5px]" href={order.order.upiUri}>Open UPI app</a>
+              <div className="mt-2 font-mono text-[11px] font-bold text-stone-500">{cfg?.upiVpa}</div>
+            </>
+          ) : (
+            <p className="my-3 text-[12px] font-semibold text-stone-600">Please pay at the centre — online payment is being set up.</p>
+          )}
+          <p className="mt-2 text-[10.5px] font-semibold text-stone-500">{order.message ?? 'Your receipt appears here automatically once the payment is confirmed.'}</p>
+          <button className="btn-neo mt-2 !py-1.5 text-[11.5px]" onClick={() => setOrder(null)}>Done</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ───────────────────── My Child (parent-visible tabs only) ─────────────────────
+// Health / Infirmary / IEP / Child-Support-Log and Discovery Flight results are
+// internal records and are never returned by the parent API.
+function ProfileCard({ childId }: { childId: string }) {
+  const { data: p } = useQuery({ queryKey: ['p-profile', childId], queryFn: () => papi(`/parent/child/${childId}/profile`) });
+  if (!p) return <div className="card p-5 text-[13px] font-semibold text-stone-500">Loading profile…</div>;
+  const Row = ({ k, v }: { k: string; v: any }) => (
+    <div className="flex justify-between gap-3 border-b border-amber-50 py-1.5 text-[12.5px] last:border-0">
+      <span className="font-semibold text-stone-500">{k}</span><span className="text-right font-bold">{v ?? '—'}</span>
+    </div>
+  );
+  return (
+    <div className="card p-5">
+      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold"><User className="h-4 w-4 text-honey-700" /> My child</div>
+      <Row k="Name" v={`${p.firstName} ${p.lastName}`} />
+      <Row k="Admission no." v={p.admissionNo} />
+      <Row k="Date of birth" v={new Date(p.dob).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} />
+      <Row k="Programme" v={p.programme ? `${p.programme.name} (${p.programme.tierName})` : '—'} />
+      <Row k="Batch" v={p.batch ? `${p.batch.name} · ${p.batch.startTime}–${p.batch.endTime}` : '—'} />
+      <Row k="Centre" v={p.unit?.name} />
+      <Row k="Centre contact" v={p.unit?.phone} />
+      <Row k="Father" v={p.fatherName ? `${p.fatherName} · ${p.fatherPhone ?? ''}` : '—'} />
+      <Row k="Mother" v={p.motherName ? `${p.motherName} · ${p.motherPhone ?? ''}` : '—'} />
+      <Row k="Academic year" v={p.academicYear} />
+      {p.certificates?.length > 0 && (
+        <div className="mt-3">
+          <div className="mb-1 text-[10.5px] font-extrabold uppercase tracking-wide text-stone-400">Certificates</div>
+          {p.certificates.map((c: any) => (
+            <div key={c.id} className="flex items-center justify-between py-1 text-[12px]">
+              <span className="font-bold">{c.type}</span>
+              <span className="font-semibold text-stone-500">{c.serialNo}</span>
+              <button className="btn-neo-icon !h-7 !w-7" onClick={() => window.open(`/api/certificates/${c.id}/print`, '_blank')}><Printer className="h-3.5 w-3.5" /></button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ───────────────────── Documents vault ─────────────────────
+function DocumentsCard({ childId }: { childId: string }) {
+  const { data: docs = [] } = useQuery({ queryKey: ['p-docs', childId], queryFn: () => papi(`/parent/child/${childId}/documents`) });
+  return (
+    <div className="card p-5">
+      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold"><FileText className="h-4 w-4 text-honey-700" /> Documents</div>
+      {docs.length === 0 && <div className="py-4 text-center text-[12px] font-semibold text-stone-400">No documents shared yet. Your centre will add them here.</div>}
+      <div className="space-y-1.5">
+        {docs.map((d: any) => (
+          <button key={d.id} onClick={() => window.open(`/api/parent/document/${d.id}`, '_blank')}
+            className="flex w-full items-center gap-3 rounded-xl bg-cream-50 px-3 py-2.5 text-left transition hover:bg-cream-100">
+            <span className="text-lg">{d.mimeType?.startsWith('image/') ? '🖼️' : '📄'}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[12.5px] font-extrabold">{d.title}</span>
+              <span className="block text-[10.5px] font-semibold text-stone-500">{d.type.replace(/_/g, ' ').toLowerCase()} · {Math.max(1, Math.round(d.sizeBytes / 1024))} KB</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <p className="mt-3 text-center text-[10px] font-semibold text-stone-400">Opening a document needs your login — it is never public.</p>
+    </div>
+  );
+}
+
+// ───────────────────── Messages: talk to the Centre Head ─────────────────────
+function ThreadCard({ childId }: { childId: string }) {
+  const qc = useQueryClient();
+  const [text, setText] = useState('');
+  const { data: msgs = [] } = useQuery({ queryKey: ['p-thread', childId], queryFn: () => papi(`/parent/child/${childId}/thread`) });
+  const send = useMutation({
+    mutationFn: () => papi(`/parent/child/${childId}/thread`, { method: 'POST', body: JSON.stringify({ body: text }) }),
+    onSuccess: () => { setText(''); qc.invalidateQueries({ queryKey: ['p-thread', childId] }); },
+  });
+  return (
+    <div className="card p-5">
+      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold"><MessageSquare className="h-4 w-4 text-honey-700" /> Message the centre</div>
+      <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+        {msgs.length === 0 && <div className="py-4 text-center text-[12px] font-semibold text-stone-400">Say hello — your Centre Head will reply here.</div>}
+        {msgs.map((m: any) => (
+          <div key={m.id} className={cn('max-w-[85%] rounded-2xl px-3 py-2 text-[12.5px] font-semibold',
+            m.direction === 'PARENT_TO_CENTRE' ? 'ml-auto bg-honey-100 text-honey-900' : 'bg-stone-100 text-stone-700')}>
+            <div className="text-[10px] font-extrabold uppercase tracking-wide text-stone-400">{m.authorName}</div>
+            {m.body}
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <input className="input flex-1" placeholder="Type a message…" value={text}
+          onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && text.trim()) send.mutate(); }} />
+        <button className="btn-primary !px-3" disabled={!text.trim() || send.isPending} onClick={() => send.mutate()}><Send className="h-4 w-4" /></button>
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────── Push notifications toggle ─────────────────────
+const urlB64ToUint8 = (b64: string) => {
+  const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+};
+
+function PushToggle() {
+  const [state, setState] = useState<'unsupported' | 'off' | 'on' | 'busy'>('off');
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return setState('unsupported');
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = await reg?.pushManager.getSubscription();
+      setState(sub ? 'on' : 'off');
+    })();
+  }, []);
+
+  async function enable() {
+    setState('busy'); setMsg('');
+    try {
+      const { publicKey, enabled } = await papi('/parent/push/key');
+      if (!enabled) throw new Error('Notifications are not configured on the server yet');
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') throw new Error('Notifications were blocked in your browser settings');
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(publicKey) });
+      const j: any = sub.toJSON();
+      await papi('/parent/push/subscribe', { method: 'POST', body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys }) });
+      await papi('/parent/push/test', { method: 'POST' });
+      setState('on'); setMsg('Notifications are on — we just sent you a test 🔔');
+    } catch (e: any) { setState('off'); setMsg(e.message); }
+  }
+
+  async function disable() {
+    setState('busy');
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = await reg?.pushManager.getSubscription();
+    if (sub) { await papi('/parent/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) }); await sub.unsubscribe(); }
+    setState('off'); setMsg('');
+  }
+
+  if (state === 'unsupported') return null;
+  return (
+    <div className="card flex items-center gap-3 p-4">
+      <Bell className={cn('h-5 w-5', state === 'on' ? 'text-emerald-600' : 'text-stone-400')} />
+      <div className="min-w-0 flex-1">
+        <div className="text-[13px] font-extrabold">{state === 'on' ? 'Notifications are on' : 'Turn on notifications'}</div>
+        <div className="text-[11px] font-semibold text-stone-500">{msg || 'Absence alerts, fee reminders and school updates, straight to this device.'}</div>
+      </div>
+      <button className={state === 'on' ? 'btn-neo !py-1.5 text-[11.5px]' : 'btn-primary !py-1.5 text-[11.5px]'}
+        disabled={state === 'busy'} onClick={() => (state === 'on' ? disable() : enable())}>
+        {state === 'busy' ? '…' : state === 'on' ? 'Turn off' : 'Turn on'}
+      </button>
     </div>
   );
 }
@@ -206,6 +438,7 @@ function MessagesCard() {
 export default function ParentPortal() {
   const [authed, setAuthed] = useState(!!pstore.get());
   const [childId, setChildId] = useState('');
+  const [tab, setTab] = useState<'home' | 'child' | 'fees' | 'messages' | 'docs'>('home');
   const { data: kids = [], isError } = useQuery({
     queryKey: ['p-kids', authed],
     queryFn: () => papi('/parent/children'),
@@ -270,11 +503,32 @@ export default function ParentPortal() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <AttendanceCard childId={kid.id} />
-              <FeesCard childId={kid.id} />
+            {/* section tabs */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {([['home', 'Home', Home], ['child', 'My child', User], ['fees', 'Fees', IndianRupee],
+                 ['messages', 'Messages', MessageSquare], ['docs', 'Documents', FileText]] as const).map(([k, label, Icon]) => (
+                <button key={k} onClick={() => setTab(k as any)}
+                  className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-extrabold transition-all',
+                    tab === k ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow' : 'bg-white text-stone-500 ring-1 ring-stone-200')}>
+                  <Icon className="h-3.5 w-3.5" />{label}
+                </button>
+              ))}
             </div>
-            <MessagesCard />
+
+            {tab === 'home' && (
+              <>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <AttendanceCard childId={kid.id} />
+                  <FeesCard childId={kid.id} />
+                </div>
+                <PushToggle />
+                <MessagesCard />
+              </>
+            )}
+            {tab === 'child' && <ProfileCard childId={kid.id} />}
+            {tab === 'fees' && <FeesCard childId={kid.id} />}
+            {tab === 'messages' && <ThreadCard childId={kid.id} />}
+            {tab === 'docs' && <DocumentsCard childId={kid.id} />}
           </>
         )}
         <p className="pt-2 text-center text-[10px] font-semibold text-stone-400">BumbleB Kidz ERP · add this page to your home screen for the app experience 📲</p>

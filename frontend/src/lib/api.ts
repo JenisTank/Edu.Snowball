@@ -104,3 +104,19 @@ export const fmtINR = (n: number | string) =>
 
 export const fmtDate = (d: string | Date) =>
   new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+
+// Multipart upload (documents vault). Must NOT set Content-Type — the browser
+// adds the multipart boundary itself.
+export async function apiUpload<T = any>(path: string, form: FormData): Promise<T> {
+  const token = getToken();
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { ...(token ? { Authorization: `Bearer ${token}`, 'x-bb-token': token } : {}) },
+    body: form,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any)?.message || 'Upload failed');
+  return data as T;
+}

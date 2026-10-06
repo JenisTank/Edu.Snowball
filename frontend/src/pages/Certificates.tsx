@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { FileBadge, Lock, Printer, ShieldCheck } from 'lucide-react';
+import { CreditCard, FileBadge, Lock, Printer, ShieldCheck } from 'lucide-react';
 import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
@@ -16,10 +16,13 @@ export default function Certificates() {
   const [form, setForm] = useState<any>({ studentId: '', event: '', reason: '', noDuesConfirmed: false });
   const [err, setErr] = useState('');
   const [done, setDone] = useState<any>(null);
+  const [icards, setIcards] = useState(false);
+  const [icardBatch, setIcardBatch] = useState('');
 
   const { data: templates = [] } = useQuery({ queryKey: ['cert-templates'], queryFn: () => api('/certificates/templates') });
   const { data: issued = [], isLoading } = useQuery({ queryKey: ['certs'], queryFn: () => api('/certificates') });
   const { data: students = [] } = useQuery({ queryKey: ['students'], queryFn: () => api('/students') });
+  const { data: batches = [] } = useQuery({ queryKey: ['batches'], queryFn: () => api('/batches') });
 
   const issue = useMutation({
     mutationFn: () => api('/certificates/issue', { method: 'POST', body: JSON.stringify({ ...form, type: issuing.type }) }),
@@ -45,6 +48,11 @@ export default function Certificates() {
       <PageHeader
         title="Certificates" count={`${issued.length} issued`}
         subtitle="7 Head-Office-locked templates · serial-numbered · TC requires cleared fees + No-Dues confirmation"
+        action={
+          <button className="btn-neo" onClick={() => setIcards(true)}>
+            <CreditCard className="mr-1.5 inline h-3.5 w-3.5" />Print I-cards
+          </button>
+        }
       />
 
       {/* template gallery */}
@@ -120,6 +128,31 @@ export default function Certificates() {
               </div>
             </>
           )}
+        </Modal>
+      )}
+
+      {icards && (
+        <Modal title="🪪 I-card batch printing" onClose={() => setIcards(false)}>
+          <div className="space-y-3">
+            <Field label="Batch" hint="Leave on “All active students” to print the whole unit in one go.">
+              <select className="input" value={icardBatch} onChange={e => setIcardBatch(e.target.value)}>
+                <option value="">All active students</option>
+                {batches.map((b: any) => (
+                  <option key={b.id} value={b.id}>{b.unit?.code ? `${b.unit.code} · ` : ''}{b.name}</option>
+                ))}
+              </select>
+            </Field>
+            <div className="rounded-xl bg-honey-100 px-3 py-2 text-[11.5px] font-bold text-honey-800">
+              Opens a print-ready A4 sheet — 8 cards per page, with photo, admission number, batch and the emergency number.
+              Use your browser's “Save as PDF” for the card printer.
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button className="btn-neo" onClick={() => setIcards(false)}>Cancel</button>
+            <button className="btn-primary" onClick={() => { window.open(`/api/certificates/icards/print${icardBatch ? `?batchId=${icardBatch}` : ''}`, '_blank'); setIcards(false); }}>
+              <Printer className="mr-1.5 inline h-3.5 w-3.5" />Generate I-cards
+            </button>
+          </div>
         </Modal>
       )}
     </div>

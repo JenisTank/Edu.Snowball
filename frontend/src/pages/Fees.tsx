@@ -262,10 +262,87 @@ function RemindersTab() {
   );
 }
 
+
+// ───────────────────────── Online payments tab ─────────────────────────
+// Razorpay / UPI orders raised from the parent app. In placeholder mode (no
+// merchant keys yet) the office confirms the UPI reference here and the normal
+// receipt + ledger entry is created automatically.
+function OnlinePaymentsTab() {
+  const qc = useQueryClient();
+  const [confirming, setConfirming] = useState<any>(null);
+  const [reference, setReference] = useState('');
+  const [err, setErr] = useState('');
+  const { data: cfg } = useQuery({ queryKey: ['pay-config'], queryFn: () => api('/payments/config') });
+  const { data: orders = [], isLoading } = useQuery({ queryKey: ['payments'], queryFn: () => api('/payments') });
+
+  const confirm = useMutation({
+    mutationFn: () => api(`/payments/${confirming.id}/confirm`, { method: 'POST', body: JSON.stringify({ reference, mode: confirming.provider === 'UPI_QR' ? 'UPI' : 'RAZORPAY' }) }),
+    onSuccess: () => {
+      setConfirming(null); setReference('');
+      qc.invalidateQueries({ queryKey: ['payments'] });
+      qc.invalidateQueries({ queryKey: ['fee-ledger'] });
+      qc.invalidateQueries({ queryKey: ['fee-summary'] });
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const TONE: Record<string, any> = { PAID: 'green', CREATED: 'honey', PENDING: 'sky', FAILED: 'red', CANCELLED: 'stone', EXPIRED: 'stone' };
+  const cols: ColumnDef<any>[] = [
+    { accessorKey: 'createdAt', header: 'Raised', cell: ({ row }) => <span className="whitespace-nowrap text-[12px] font-semibold text-stone-600">{fmtDate(row.original.createdAt)}</span> },
+    { id: 'student', accessorFn: (r: any) => r.student ? `${r.student.firstName} ${r.student.lastName} ${r.student.admissionNo}` : '', header: 'Student',
+      cell: ({ row }) => <div><div className="font-bold">{row.original.student?.firstName} {row.original.student?.lastName}</div><div className="text-[11px] text-stone-500">{row.original.student?.admissionNo}</div></div> },
+    { accessorKey: 'amount', header: 'Amount', cell: ({ row }) => <span className="font-extrabold">{inr(Number(row.original.amount))}</span> },
+    { accessorKey: 'instalmentNo', header: 'Inst.', cell: ({ row }) => <span className="text-[12px] font-semibold text-stone-600">{row.original.instalmentNo ?? '—'}</span> },
+    { accessorKey: 'provider', header: 'Via', cell: ({ row }) => <span className="chip">{row.original.provider.replace('_', ' ')}</span> },
+    { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge tone={TONE[row.original.status]} dot>{row.original.status}</Badge> },
+    { id: 'act', header: '', cell: ({ row }) => row.original.status !== 'PAID' && row.original.status !== 'CANCELLED' ? (
+      <button className="btn-neo !py-1.5 text-[11.5px]" onClick={e => { e.stopPropagation(); setErr(''); setConfirming(row.original); }}>Confirm payment</button>
+    ) : <span className="text-[11.5px] font-semibold text-stone-400">{row.original.providerPaymentId ?? ''}</span> },
+  ];
+
+  return (
+    <div>
+      {cfg && (
+        <div className={cn('mb-3 rounded-xl px-3 py-2 text-[12px] font-bold',
+          cfg.live ? 'bg-emerald-50 text-emerald-700' : 'bg-honey-100 text-honey-800')}>
+          {cfg.live
+            ? 'Razorpay is LIVE — payments settle automatically from the gateway webhook.'
+            : `Placeholder mode — Razorpay merchant KYC pending. ${cfg.upiEnabled ? `Parents can pay by UPI to ${cfg.upiVpa}; confirm the reference here.` : 'Set UPI_VPA in .env to show parents a UPI QR.'}`}
+        </div>
+      )}
+      <DataTable columns={cols} data={orders} isLoading={isLoading} title="Online payment orders"
+        searchPlaceholder="Search student…" exportName="online-payments"
+        filterable={[{ id: 'status', label: 'Status' }, { id: 'provider', label: 'Via' }]} />
+
+      {confirming && (
+        <Modal title="✅ Confirm payment received" onClose={() => setConfirming(null)}>
+          {err && <ErrorNote msg={err} />}
+          <div className="space-y-3">
+            <div className="rounded-xl bg-cream-50 px-3 py-2.5 text-[12.5px] font-semibold">
+              <b>{confirming.student?.firstName} {confirming.student?.lastName}</b> · {inr(Number(confirming.amount))}
+              {confirming.instalmentNo ? ` · instalment ${confirming.instalmentNo}` : ''}
+            </div>
+            <Field label="Payment reference" hint="UPI transaction id / bank reference — printed on the receipt.">
+              <input className="input" value={reference} onChange={e => setReference(e.target.value)} placeholder="4312XXXXXX98" />
+            </Field>
+            <div className="rounded-xl bg-honey-100 px-3 py-2 text-[11.5px] font-bold text-honey-800">
+              This issues a numbered receipt, updates the ledger and notifies the parent. Only confirm after the money is in the account.
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button className="btn-neo" onClick={() => setConfirming(null)}>Cancel</button>
+            <button className="btn-primary" disabled={confirm.isPending} onClick={() => confirm.mutate()}>{confirm.isPending ? 'Confirming…' : 'Confirm & issue receipt'}</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 // ───────────────────────── Page ─────────────────────────
 export default function Fees() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<'ledger' | 'structures' | 'reminders'>('ledger');
+  const [tab, setTab] = useState<'ledger' | 'structures' | 'reminders' | 'online'>('ledger');
   const [selected, setSelected] = useState<any>(null);
 
   const { data: rows = [], isLoading } = useQuery({ queryKey: ['fee-ledger'], queryFn: () => api('/fees/ledger') });
@@ -292,7 +369,7 @@ export default function Fees() {
         subtitle="Dual ledger (preschool annual · evening monthly, never merged) · auto receipt numbering · sibling concessions · reminder queue"
         action={
           <div className="seg">
-            {(['ledger', 'structures', 'reminders'] as const).map(t => (
+            {(['ledger', 'structures', 'reminders', 'online'] as const).map(t => (
               <button key={t} className={cn('seg-item capitalize', tab === t && 'seg-item-active')} onClick={() => setTab(t)}>{t}</button>
             ))}
           </div>
@@ -319,6 +396,7 @@ export default function Fees() {
           onRowClick={(r: any) => setSelected(r)} />
       )}
       {tab === 'structures' && <StructuresTab />}
+      {tab === 'online' && <OnlinePaymentsTab />}
       {tab === 'reminders' && <RemindersTab />}
 
       {selected && <LedgerModal row={selected} onClose={() => setSelected(null)} />}

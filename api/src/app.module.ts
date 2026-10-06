@@ -13,8 +13,9 @@ import { CommsModule } from './modules/comms.controller';
 import { PaymentsModule } from './modules/payments.controller';
 import { DocumentsModule } from './modules/documents.controller';
 import { DpdpModule } from './modules/dpdp.controller';
+import { HealthModule } from './modules/health.controller';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule, PaymentsModule, DocumentsModule, DpdpModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule, PaymentsModule, DocumentsModule, DpdpModule, HealthModule],
 })
 export class AppModule {}

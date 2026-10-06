@@ -23,22 +23,48 @@ Classes in frontend/src/index.css: .card .btn-primary .btn-neo .input .chip .seg
 All tables = ONE shared TanStack DataTable component. ERP must stay programme-generic
 (will expand to full school up to 12th Std).
 
-## 🔲 PENDING — remaining build work (Slice 6/7 hardening)
+## ✅ DONE in this round (Slice 6/7 hardening)
 
-1. **Razorpay live**: order → webhook → auto receipt → ledger update; "Pay Now" button
-   in parent portal (placeholder note is already there). Blocked on merchant KYC.
-2. **WhatsApp BSP connect**: real dispatch via AiSensy/Interakt/Gupshup once keys exist
-   (`WA_BSP_KEY` in .env flips sandbox→live). Plus HO Template Management screen (B2)
-   and fallback chain app-push → WhatsApp → email.
-3. **Web-push notifications** in parent PWA (absence, fee reminders, announcements) —
-   currently in-app feed only.
-4. **Parent portal extras**: Documents vault, CH-reply messages model,
-   My Child parent-visible tabs (Health/Infirmary/IEP/Child Support Log must stay hidden).
-5. **I-card batch generation** (uses certificate/print pipeline).
-6. **DPDP hardening**: PII encryption at rest, consent-log wiring, retention config.
-7. **Production deploy**: domain + VPS, production docker-compose dress-rehearsal,
-   nightly DB backups, Sentry alerts, deploy guide.
-8. **Replace demo data with real data**: real fee structures, staff accounts, logo files.
+1. **Payments — placeholder, production-shaped**: `PaymentOrder` model, `/api/payments`
+   (config · order · verify · webhook · confirm · cancel). With no Razorpay keys the app
+   runs in placeholder mode: the parent gets a UPI intent + QR, the office confirms the
+   reference in Fees → Online, and the normal numbered receipt + ledger entry is created.
+   Adding `RAZORPAY_KEY_ID/SECRET/WEBHOOK_SECRET` flips it live with no code change.
+2. **HO Template Management (B2)** — Communication → Templates: edit HO-locked wording,
+   auto-extracted `{variables}`, live preview with sample data, DRAFT → SUBMITTED →
+   APPROVED workflow, approved BSP template name per code. Delivery chain
+   app push → WhatsApp → email; status reported per channel on dispatch.
+   *BSP connection itself is deliberately NOT done (founder task).*
+3. **Web push in the parent PWA** — VAPID keys, `push_subscriptions`, opt-in card in the
+   parent portal with a test notification, `push`/`notificationclick` handlers in `sw.js`.
+4. **Parent portal extras** — tabs Home / My Child / Fees / Messages / Documents.
+   Documents vault (staff-controlled visibility), two-way parent ↔ Centre Head thread,
+   Pay Now. Health/Infirmary/IEP/Child Support Log and Discovery Flight results are
+   never returned by the parent API.
+5. **I-card batch generation** — Certificates → Print I-cards: A4 sheet, 8 CR80 cards per
+   page, filterable by batch/unit.
+6. **DPDP hardening** — AES-256-GCM encryption at rest for blood group / allergies /
+   medical notes, consent register, configurable retention windows with dry-run purge,
+   per-child data export. Settings → Data Protection.
+7. **Deployment** — `api/Dockerfile`, `frontend/Dockerfile` + `nginx.conf`,
+   `docker-compose.prod.yml` (no host ports for db/redis, single loopback port, memory
+   and log caps — safe alongside the other projects on the VPS), `.env.example`,
+   `scripts/backup.sh` + `restore.sh`, `/api/health`, and **`docs/DEPLOYMENT.md`**.
+8. **Seed** — demo rows for all 6 new tables (templates, settings, consents, threads,
+   payment orders) plus encrypted medical fields. `api/prisma/seed.ts` is the single
+   source of demo data; real Postgres data simply replaces it.
+
+Verification: 28-step end-to-end API smoke test passes 28/28; `tsc --noEmit` clean on
+both api and frontend; `npm run build` clean on the frontend.
+
+## 🔲 PENDING
+
+1. **Razorpay live keys** — blocked on merchant KYC (founder).
+2. **WhatsApp BSP connect** — account + template approval (founder); the app flips to
+   live the moment `WA_BSP_KEY`/`WA_BSP_URL` are set.
+3. **Push to the VPS** — follow `docs/DEPLOYMENT.md`; needs the domain's DNS plus a
+   vhost in the server's existing reverse proxy.
+4. **Replace demo data with real data** — real fee structures, staff accounts, logo files.
 
 ## 🔮 Phase 2 backlog (schema already provisioned)
 18-tab student lifecycle · HR & dual payroll · Academic module (Yearly Goals/Big Rocks/
@@ -58,4 +84,7 @@ logo files · real fee structures per programme/unit · confirm reminder schedul
 - Parent demo: phone `+91 9100000000` + admission `BB-U1-2627-0001`
 - Gotchas: seed parent phones contain a space — strip `[\s-]` on both sides when comparing;
   Prisma model User has `fullName` (not name); Unit has NO `city` field;
-  api dev server has no file-watch (restart after edits).
+  api dev server has no file-watch (restart after edits);
+  NestJS route order — literal paths (`icards/print`) must be declared before `:id/...`.
+- Deployment: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`.
+  Back up `.env`: losing `PII_ENCRYPTION_KEY` makes encrypted medical fields unreadable.

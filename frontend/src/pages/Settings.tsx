@@ -503,6 +503,104 @@ function AuditTab() {
   );
 }
 
+
+// ───────────────────────── DPDP / Data protection tab ─────────────────────────
+// India's DPDP Act: sensitive fields encrypted at rest, consent logged per
+// purpose, and personal data retained only for a stated window.
+function DpdpTab() {
+  const qc = useQueryClient();
+  const [err, setErr] = useState('');
+  const [policy, setPolicy] = useState<Record<string, number> | null>(null);
+  const { data: status } = useQuery({ queryKey: ['dpdp-status'], queryFn: () => api('/dpdp/status') });
+  const { data: retention } = useQuery({ queryKey: ['dpdp-retention'], queryFn: () => api('/dpdp/retention') });
+  const { data: consents = [] } = useQuery({ queryKey: ['dpdp-consents'], queryFn: () => api('/dpdp/consents') });
+
+  const pol = policy ?? retention?.policy ?? {};
+  const savePolicy = useMutation({
+    mutationFn: () => api('/dpdp/retention', { method: 'POST', body: JSON.stringify({ policy: pol }) }),
+    onSuccess: () => { setPolicy(null); qc.invalidateQueries({ queryKey: ['dpdp-retention'] }); },
+    onError: (e: any) => setErr(e.message),
+  });
+  const backfill = useMutation({
+    mutationFn: () => api('/dpdp/encrypt-backfill', { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dpdp-status'] }),
+    onError: (e: any) => setErr(e.message),
+  });
+  const purge = useMutation({
+    mutationFn: (confirm: boolean) => api('/dpdp/retention/run', { method: 'POST', body: JSON.stringify({ confirm }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dpdp-retention'] }),
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const cCols: ColumnDef<any>[] = [
+    { accessorKey: 'grantedAt', header: 'Date', cell: ({ row }) => <span className="whitespace-nowrap text-[12px] font-semibold text-stone-600">{fmtDate(row.original.grantedAt ?? row.original.createdAt)}</span> },
+    { id: 'student', accessorFn: (r: any) => r.student ? `${r.student.firstName} ${r.student.lastName}` : '—', header: 'Student', cell: ({ getValue }) => <span className="font-bold">{getValue() as string}</span> },
+    { accessorKey: 'type', header: 'Purpose', cell: ({ row }) => <span className="chip">{row.original.type.replace(/_/g, ' ').toLowerCase()}</span> },
+    { id: 'given', accessorFn: (r: any) => (r.granted ? 'granted' : 'withdrawn'), header: 'State', cell: ({ row }) => <Badge tone={row.original.granted ? 'green' : 'red'} dot>{row.original.granted ? 'GRANTED' : 'WITHDRAWN'}</Badge> },
+    { accessorKey: 'channel', header: 'Captured via', cell: ({ row }) => <span className="text-[12px] font-semibold text-stone-500">{row.original.channel ?? '—'}</span> },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {err && <p className="rounded-xl bg-rose-100/70 px-3 py-2 text-xs font-semibold text-rose-600">{err}</p>}
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="card p-4">
+          <div className="text-[11px] font-extrabold uppercase tracking-wide text-stone-500">Encryption at rest</div>
+          <div className="mt-1 text-[15px] font-extrabold">{status?.encryption?.configured ? 'AES-256-GCM active' : 'Key not set'}</div>
+          <p className="mt-1 text-[11.5px] font-semibold text-stone-500">
+            Blood group, allergies and medical notes · {status?.encryption?.recordsWithPII ?? 0} record(s) hold sensitive data,
+            {' '}{status?.encryption?.encrypted ?? 0} encrypted.
+          </p>
+          {status?.encryption?.configured && (status?.encryption?.plaintext ?? 0) > 0 && (
+            <button className="btn-neo mt-2 !py-1.5 text-[11.5px]" disabled={backfill.isPending} onClick={() => backfill.mutate()}>
+              {backfill.isPending ? 'Encrypting…' : `Encrypt ${status.encryption.plaintext} legacy record(s)`}
+            </button>
+          )}
+        </div>
+        <div className="card p-4">
+          <div className="text-[11px] font-extrabold uppercase tracking-wide text-stone-500">Consent register</div>
+          <div className="mt-1 text-[15px] font-extrabold">{status?.consents?.total ?? 0} entries</div>
+          <p className="mt-1 text-[11.5px] font-semibold text-stone-500">{status?.consents?.granted ?? 0} granted · {status?.consents?.withdrawn ?? 0} withdrawn</p>
+        </div>
+        <div className="card p-4">
+          <div className="text-[11px] font-extrabold uppercase tracking-wide text-stone-500">Data Protection Officer</div>
+          <div className="mt-1 text-[15px] font-extrabold">{status?.dpo?.name ?? 'Founder'}</div>
+          <p className="mt-1 text-[11.5px] font-semibold text-stone-500">{status?.dpo?.email ?? '—'}</p>
+        </div>
+      </div>
+
+      <div className="card p-5">
+        <div className="font-heading text-[15px] font-extrabold">Retention windows</div>
+        <p className="mb-3 text-[11.5px] font-semibold text-stone-500">How long each kind of personal data is kept before it is purged. Days.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {Object.entries(pol).map(([k, v]) => (
+            <Field key={k} label={k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase())}>
+              <input className="input" type="number" min={30} value={v as number}
+                onChange={e => setPolicy({ ...pol, [k]: Number(e.target.value) } as any)} />
+            </Field>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button className="btn-primary !py-1.5 text-[12px]" disabled={!policy || savePolicy.isPending} onClick={() => savePolicy.mutate()}>Save policy</button>
+          <button className="btn-neo !py-1.5 text-[12px]" disabled={purge.isPending} onClick={() => purge.mutate(false)}>Preview purge (dry run)</button>
+          <button className="btn-neo !py-1.5 text-[12px] !text-rose-600" disabled={purge.isPending}
+            onClick={() => { if (window.confirm('Permanently delete all records beyond their retention window?')) purge.mutate(true); }}>Run purge</button>
+        </div>
+        {purge.data && (
+          <div className="mt-3 rounded-xl bg-cream-50 px-3 py-2 text-[12px] font-bold text-stone-600">
+            {purge.data.dryRun ? 'Dry run — nothing deleted. ' : 'Purge complete. '}
+            {Object.entries(purge.data.counts ?? {}).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+          </div>
+        )}
+      </div>
+
+      <DataTable columns={cCols} data={consents} title="Consent log" searchPlaceholder="Search student…"
+        exportName="consent-log" filterable={[{ id: 'type', label: 'Purpose' }, { id: 'given', label: 'State' }]} />
+    </div>
+  );
+}
+
 // ───────────────────────── My Account tab ─────────────────────────
 function AccountTab() {
   const { user } = useAuth();
@@ -548,7 +646,7 @@ export default function SettingsPage() {
 
   const tabs = [
     ...(isAdmin || isCH ? [{ id: 'team', label: 'Team' }, { id: 'batches', label: 'Batches' }] : []),
-    ...(isAdmin ? [{ id: 'units', label: 'Units' }, { id: 'areas', label: 'Areas' }, { id: 'programmes', label: 'Programmes' }, { id: 'audit', label: 'Audit Log' }] : []),
+    ...(isAdmin ? [{ id: 'units', label: 'Units' }, { id: 'areas', label: 'Areas' }, { id: 'programmes', label: 'Programmes' }, { id: 'audit', label: 'Audit Log' }, { id: 'dpdp', label: 'Data Protection' }] : []),
     { id: 'account', label: 'My Account' },
   ];
   const [tab, setTab] = useState(tabs[0].id);
@@ -571,6 +669,7 @@ export default function SettingsPage() {
       {tab === 'areas' && <AreasTab />}
       {tab === 'programmes' && <ProgrammesTab />}
       {tab === 'audit' && <AuditTab />}
+      {tab === 'dpdp' && <DpdpTab />}
       {tab === 'account' && <AccountTab />}
     </div>
   );

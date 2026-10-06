@@ -1,0 +1,70 @@
+# ── BumbleB Kidz ERP · production overlay ───────────────────────────
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# The VPS already runs other live projects, so this overlay:
+#   • publishes NOTHING on the host except one configurable port
+#     (BB_HTTP_PORT, default 8080) for the existing reverse proxy to hit;
+#   • keeps Postgres and Redis on an internal network only — no host ports,
+#     so they cannot clash with a Postgres/Redis already running on the box;
+#   • names the project's containers/volumes with a bumbleb- prefix;
+#   • caps memory so a runaway container cannot starve the other projects.
+services:
+  db:
+    container_name: bumbleb-db
+    ports: !override []          # never expose 5432 on the host
+    shm_size: 256mb
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backups:/backups
+
+  redis:
+    container_name: bumbleb-redis
+    ports: !override []          # never expose 6379 on the host
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction"]
+    deploy:
+      resources:
+        limits:
+          memory: 192m
+
+  api:
+    container_name: bumbleb-api
+    build:
+      context: ./api
+    ports: !override []          # reached only through the frontend's nginx
+    env_file: [.env]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://bumbleb:${DB_PASSWORD:?set DB_PASSWORD in .env}@db:5432/bumblebkidz_erp
+      REDIS_URL: redis://redis:6379
+      STORAGE_DIR: /app/storage
+    volumes:
+      - storage:/app/storage
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+    logging: &logging
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  frontend:
+    container_name: bumbleb-web
+    build:
+      context: ./frontend
+    ports: !override
+      # Bind to loopback only: the VPS's existing nginx/Traefik terminates TLS
+      # for the domain and proxies to this port. Change BB_HTTP_PORT if 8080
+      # is already taken by another project.
+      - "127.0.0.1:${BB_HTTP_PORT:-8080}:80"
+    deploy:
+      resources:
+        limits:
+          memory: 192m
+    logging: *logging
+
+volumes:
+  storage:

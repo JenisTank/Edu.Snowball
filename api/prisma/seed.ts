@@ -3,6 +3,9 @@
 import { PrismaClient, UserRole, LeadStage, InquiryChannel, InstalmentPlan, PaymentMode, AttendanceStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { prismaOptions } from '../src/prisma-options';
+import { DEFAULT_TEMPLATES, extractVariables } from '../src/modules/notify';
+import { DEFAULT_RETENTION } from '../src/modules/dpdp.controller';
+import { encryptPII } from '../src/common/pii';
 
 const prisma = new PrismaClient(prismaOptions());
 const AY = '2026-27';
@@ -13,6 +16,12 @@ async function main() {
   // ── wipe (dev only) ──
   await prisma.auditLog.deleteMany();
   await prisma.consentLog.deleteMany();
+  await prisma.parentMessage.deleteMany();
+  await prisma.document.deleteMany();
+  await prisma.paymentOrder.deleteMany();
+  await prisma.pushSubscription.deleteMany();
+  await prisma.messageTemplate.deleteMany();
+  await prisma.systemSetting.deleteMany();
   await prisma.feeTransaction.deleteMany();
   await prisma.feeStructure.deleteMany();
   await prisma.attendanceRecord.deleteMany();
@@ -105,6 +114,9 @@ async function main() {
   const lastNames = ['Patel', 'Shah', 'Mehta', 'Joshi', 'Trivedi', 'Dave', 'Vyas', 'Bhatt', 'Raval', 'Thakkar', 'Gandhi', 'Desai', 'Kotak', 'Pandya'];
   const areasList = ['Saraswati Nagar', 'Kalawad Road', 'Tirupati Nagar', 'Nirmala Road', 'Jivraj Park', 'University Road'];
 
+  const BLOOD_GROUPS = ['O+', 'A+', 'B+', 'AB+', 'O-', 'A-'];
+  const ALLERGIES = ['Peanuts', 'Dust', 'Lactose', 'Pollen'];
+
   let serial = 0;
   const students: any[] = [];
   for (let i = 0; i < 42; i++) {
@@ -129,24 +141,30 @@ async function main() {
         instalmentPlan: ([InstalmentPlan.PLAN_A, InstalmentPlan.PLAN_B, InstalmentPlan.PLAN_C] as const)[i % 3],
         academicYear: AY,
         siblingGroup: i % 10 === 9 ? `FAM-${Math.floor(i / 10)}` : null,
+        // Sensitive health data — encrypted at rest when PII_ENCRYPTION_KEY is set.
+        bloodGroup: encryptPII(BLOOD_GROUPS[i % BLOOD_GROUPS.length]),
+        allergies: i % 7 === 0 ? encryptPII(ALLERGIES[i % ALLERGIES.length]) : null,
+        medicalNotes: i % 11 === 0 ? encryptPII('Carries an inhaler; centre keeps a spare in the infirmary cupboard.') : null,
       },
     });
     students.push(s);
   }
 
   // ── Fee transactions (first instalments collected for ~70%) ──
-  let receiptSerial = 0;
+  // Receipt numbers follow the live format from receipts.ts: BB-<unit>-RCPT-<AY>-NNNN,
+  // counted per unit so nextReceiptNo() continues the series cleanly.
+  const receiptSerial: Record<string, number> = { U1: 0, U2: 0, U3: 0 };
   for (const s of students) {
     if (Math.random() < 0.7) {
-      receiptSerial++;
       const fee = feeDefs.find(f => progs[f.prog].id === s.programmeId)!;
       const unitCode = s.unitId === u1.id ? 'U1' : s.unitId === u2.id ? 'U2' : 'U3';
+      const n = ++receiptSerial[unitCode];
       await prisma.feeTransaction.create({
         data: {
           studentId: s.id, unitId: s.unitId, amount: Math.round(fee.total * 0.4),
-          paymentMode: ([PaymentMode.CASH, PaymentMode.UPI, PaymentMode.RAZORPAY, PaymentMode.CHEQUE] as const)[receiptSerial % 4],
-          paymentDate: new Date(2026, 5, 1 + (receiptSerial % 28)), instalmentNo: 1,
-          receiptNo: `BB-${unitCode}-RCPT-${String(receiptSerial).padStart(5, '0')}`,
+          paymentMode: ([PaymentMode.CASH, PaymentMode.UPI, PaymentMode.RAZORPAY, PaymentMode.CHEQUE] as const)[n % 4],
+          paymentDate: new Date(2026, 5, 1 + (n % 28)), instalmentNo: 1,
+          receiptNo: `BB-${unitCode}-RCPT-2627-${String(n).padStart(4, '0')}`,
         },
       });
     }
@@ -191,7 +209,97 @@ async function main() {
     });
   }
 
-  console.log('✅ Seed complete: 3 units, 5 programmes, 8 batches, 8 users, 42 students, 16 leads');
+
+  // ═══════════ Slice 6/7 demo data ═══════════
+
+  // ── HO message templates (B2) — built-in wording, pre-approved for the demo ──
+  for (const [code, t] of Object.entries(DEFAULT_TEMPLATES)) {
+    await prisma.messageTemplate.create({
+      data: {
+        code, name: t.name, category: t.category, body: t.body,
+        variables: extractVariables(t.body),
+        // Only the two highest-volume ones are "approved" so the screen shows
+        // every state a template can be in.
+        status: ['ABSENCE_ALERT', 'FEE_REMINDER'].includes(code) ? 'APPROVED'
+          : code === 'RECEIPT' ? 'SUBMITTED' : 'DRAFT',
+        bspName: ['ABSENCE_ALERT', 'FEE_REMINDER'].includes(code) ? `bb_${code.toLowerCase()}_v1` : null,
+        locked: true,
+      },
+    });
+  }
+
+  // ── System settings (reminder schedule, DPDP retention, toggles) ──
+  await prisma.systemSetting.createMany({
+    data: [
+      { key: 'dpdp.retention', value: DEFAULT_RETENTION as any, description: 'DPDP retention windows in days' },
+      { key: 'fees.reminderDays', value: [-7, -1, 3, 7] as any, description: 'Days relative to the due date on which reminders fire' },
+      { key: 'attendance.lockMinutes', value: 30 as any, description: 'Minutes after class start when attendance locks' },
+      { key: 'payments.online', value: { enabled: true, placeholder: true } as any, description: 'Online payment toggle — placeholder until Razorpay KYC clears' },
+      { key: 'comms.dispatch', value: { push: true, whatsapp: false, email: false } as any, description: 'Which delivery channels are switched on' },
+    ],
+  });
+
+  // ── Consent log (DPDP) — captured on the admission form ──
+  const CONSENTS = ['ADMISSION_FORM', 'DATA_PROCESSING', 'PHOTO_VIDEO', 'WHATSAPP_UPDATES', 'MEDICAL_EMERGENCY'];
+  for (const [i, s] of students.entries()) {
+    for (const type of CONSENTS) {
+      // A few families decline photo/video — the app must honour that.
+      const granted = !(type === 'PHOTO_VIDEO' && i % 9 === 0);
+      await prisma.consentLog.create({
+        data: { studentId: s.id, consentType: type, granted, grantedBy: s.fatherName, grantedAt: s.admissionDate },
+      });
+    }
+  }
+
+  // ── Parent ↔ Centre Head threads (3 families) ──
+  const threadSeed = [
+    ['Good morning, {child} has a mild fever today so we are keeping her home. Please mark the absence.', 'Thank you for informing us. Wishing her a quick recovery — we have noted the absence for today.'],
+    ['Can we change the pickup person to her grandfather from next Monday?', 'Noted. Please share his photo and ID at reception once, and we will update the authorised pickup list.'],
+    ['Is the annual day on the 14th or the 15th? The circular shows both.', 'Apologies for the confusion — it is Saturday the 15th, 5 pm at the Unit 1 hall. A corrected circular is on its way.'],
+  ];
+  for (const [i, pair] of threadSeed.entries()) {
+    const s = students[i * 4];
+    await prisma.parentMessage.create({
+      data: {
+        studentId: s.id, unitId: s.unitId, direction: 'PARENT_TO_CENTRE',
+        body: pair[0].replace('{child}', s.firstName), authorName: s.fatherName,
+        createdAt: new Date(Date.now() - (3 - i) * 86400000),
+      },
+    });
+    // The last thread is left unanswered so the staff inbox shows an unread badge.
+    if (i < 2) {
+      await prisma.parentMessage.create({
+        data: {
+          studentId: s.id, unitId: s.unitId, direction: 'CENTRE_TO_PARENT',
+          body: pair[1], authorName: 'Centre Head', readAt: new Date(),
+          createdAt: new Date(Date.now() - (3 - i) * 86400000 + 3600000),
+        },
+      });
+    }
+  }
+
+  // ── Online payment orders (placeholder mode) ──
+  const upi = (amt: number, note: string) =>
+    `upi://pay?pa=${process.env.UPI_VPA ?? 'bumblebkidz@okicici'}&pn=BumbleB%20Kidz&am=${amt.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
+  for (const [i, s] of students.slice(0, 5).entries()) {
+    const amount = [12600, 9800, 15400, 12600, 7200][i];
+    const paid = i < 2;
+    await prisma.paymentOrder.create({
+      data: {
+        studentId: s.id, unitId: s.unitId, amount, instalmentNo: 2,
+        provider: 'UPI_QR', placeholder: true,
+        status: paid ? 'PAID' : i === 4 ? 'CANCELLED' : 'CREATED',
+        upiUri: upi(amount, `BumbleB fees ${s.admissionNo}`),
+        notes: `BumbleB fees ${s.admissionNo}`,
+        providerPaymentId: paid ? `UPI${430000000000 + i}` : null,
+        paidAt: paid ? new Date(Date.now() - i * 86400000) : null,
+        createdAt: new Date(Date.now() - (i + 1) * 86400000),
+      },
+    });
+  }
+
+  console.log('✅ Seed complete: 3 units, 5 programmes, 8 batches, 8 users, 42 students, 16 leads,');
+  console.log('   7 message templates, 5 system settings, 210 consent entries, 3 parent threads, 5 payment orders');
   console.log('🔑 All demo logins use password: bumbleb123');
 }
 
