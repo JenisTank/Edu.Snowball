@@ -1,0 +1,24 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+frontend/dist/
+api/dist/
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# runtime / local data
+*.log
+.DS_Store
+pgdata/
+uploads/
+storage/
+
+# prisma local artifacts
+api/prisma/*.db
