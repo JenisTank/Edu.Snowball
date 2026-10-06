@@ -63,5 +63,10 @@ phone `+91 9100000000` + admission no `BB-U1-2627-0001`.
 - BumbleB rating scale (Brilliant/Buzzing/Blooming/Growing/Budding) — never numeric grades.
 
 ## Docs
-- `docs/` — code plan, specification, SOPs
-- Slice progress: see `BumbleB_ERP_Code_Plan.md` (workspace root)
+All project documentation lives in `docs/`:
+- `docs/HANDOVER.md` — **read this first** in any new work session (status, pending work, gotchas)
+- `docs/ERP Specification.txt` — source of truth for requirements
+- `docs/BumbleB_ERP_Code_Plan.md` — locked stack + 8-slice build order
+- `docs/BumbleB_ERP_Architecture.md` — system architecture
+
+The parent portal is not a separate app — see `parent-app/README.md`.
