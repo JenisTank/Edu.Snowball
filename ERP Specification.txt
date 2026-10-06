@@ -1,0 +1,1929 @@
+BumbleB Kidz ERP — Complete Specification
+Document version: Session 2.1 (April 2026) Status: Master requirements document for developer handoff and cross-session continuity Modules mapped: 27 across 3layers and 4 phases Specs complete: 24 of 27 modules
+Session 2.1 changes from Session 2:
+•	Module 12 Parent Communication fully spec'd (separate companion file:
+•	Attendance lock rule revised from hardcoded 8:30 AM to clas	rs + 30 minutes (dynamic per class)
+•	HR Overtime rule revised: no OT paid without pre-approval from next-in-hierarchy
+•	Inventory: 15,000 petty cash float per Unit (CH-held, HO-configurable); STU/BAG removed; vendor pre-approval reduced to specific items only
+•	Business Context open questions A1, A2, A4, AS resolved; A3 remains open
+•	Features & Technical open questions B1-B4 and El-E3 all resolved
+•	HR open question OT2 resolved; OT1 (overtime rate multiplier) remains open
+•	Inventory open questions INV1, INV3, INV4 resolved; INV2 remains open
+•	Module 9 (Timetable & Academic Planning) absorbed into Module 10 (Academic Module)
+
+ 
+Companion files:
+•
+ 
+
+
+—Modulel2spec(38MCQsreso1ved,4
+ 
+cross-Q rules, full entity/workflow/permissions/integration/reports)
+•	umbl e	P0 S0Ps v	— Seven PO SOPs written separately
+
+
+
+Table of Contents
+Foundation
+1.	Business Structure & Unit Overview
+2.	Brand & Design System
+3.	Programme Tiers & Level Colours
+4.	Full ERP Module Map (27 modules)
+
+Phase 1 — Admission Drive Ready S. Centralised Admission Hub 6. Admission Management (6- Stage Flow) 7. Student Attendance (rule revised in Session 2.1) 8. Fee Collection & Management
+ 
+Phase 2 — Operational Modules 9. Student Lifecycle & Profile (18 tabs) 10. HR & Payroll Management (OT rule revised in Session 2.1) 11. Inventory Management (petty cash, BAG, vendor scope revised in Session 2.1) 12. Academic Module — Yearly Goals Big Rocks Calendar -
+Log Plan
+(Module 12 Parent Communication — see companion hle)
+System-Wide 13. SOP Library (29 SOPs) 14. Open Questions Register (Session 2.1 resolutions applied) 15. ERP Video Analysis — Saraswati System
+
+
+Section 1 Business Structure & Unit Overview
+Legal entities, unit structure, and key relationships.
+
+LegalEntities
+
+Entity	Used on	Notes
+Nestleap Foundation	AcademiC, HR, operational documents	Never display on publiC-facing BumbleB Kidz materials
+Nestleap Learning Pvt. Ltd.	Inventory, supply chain documents only	Use only when expliCitly requested
+BumbleB Kidz	All public-facing materials,	The brand — trademarked logo, as-is, no
+	branding	modification
+
+
+The 3 Units — Current Status
+
+Unit	Type	Premises	Status	Programmes	Experience Sessions
+Unit	Company-	Saraswati campus	Operational	PlayHouse-K2 + Grades	No (as of
+1	owned,		(Saraswati	1-2 (Gujarati & English	now)
+	leased		umbrella)	medium). Morning + afternoon shifts. Own admission team.	
+Unit	Company-	1 Tirupati Nagar, Nr.	BumbleB	Todd Care-It2 +	Yes
+2	owned,	K.I4. Physiotherapy	flagship demo	Evening ActiVity Centre	
+	leased	College, Nirmala
+Road, Rajkot	— most
+developed		
+ 
+Unit	Type	Premises	Status	Programmes	Experience Sessions
+Unit 3	Company- oWned,	Rajkot Public School building, Jivraj Park	In development	TBD	Yes
+	leased	Main Road			
+Future distinction: Company-owned units vs franchise units will be built as a separate layer when franchise module is scoped. For now all 3 units are treated identically in the ERP. Franchise-specific features (mandatory vs optional) will be discussed module by module when that phase begins.
+
+Key People
+
+Person	Role	ERP Relevance
+Admin	Founder Decision-maker	Founder access — all modules, all units
+Developer	ERP developer	Builds and maintains BumbleB ERP
+Priyank	CA Legal	Franchise T&C, DPDP compliance, financial audit access
+FA Falguni	Academic lead	Curriculum, record book, activity log management
+Meena	Training & resources	EduGrowth Matrix integration
+
+Unit Contact Details — Public Facing
+
+	Unit 2 (Flagship)	Unlt3	Central Hub
+(Admissions)
+Address	1 Tirupati Nagar, Nr. K.IN. Physiotherapy	Rajkot Public School	—
+	College, Nirmala Road, Rajkot	building, Jivraj Park	
+		Main Road	
+Phone	+91 1234567890 (unit ops)	Own number (unit ops)	1 dedicated  admission line (WhatsApp-
+			enabled)
+Email	bumblebkidz‹Tgmail.com	Own email	—
+Website	bumblebwebsite.com		
+ 
+Unit 2(Flagship)	Unlt3
+
+
+Calendly	calendly.com/bumblebkidz/new-meeting	Own link
+ 
+CentralHub (Admissions)
+ 
+
+ 
+
+Admission number rule: Only the central hub admission number is published on marketing materials, website, social media, and campaigns. Unit numbers are for internal ops and existing parent communication — not advertised for admissions.
+
+
+Section 2• Brand & Design System
+Fixed rules — apply to all ERP outputs, documents, and templates.
+
+Typography — Fixed, Never Replace
+•	Headers: Nunito, weight 600-900
+•	Body: DM Sans, weight 300-700
+•	Both sourced via Google Fonts
+•	No serif or hard-edged font substitutes
+•	Min body/UI text: 12px
+•	Min absolute (tags, stamps): 10px
+•	Preferred body: 13-14px
+
+Brand Palette
+•	Primary: Black + White
+•	Accent: Golden Brown (	C8922A )
+•	Secondary: Sky Blue (	4B ED0 )
+•	Pastels only — never flashy or neon
+
+Logo Rules
+•	BumbleB Itidz logo — trademarked
+•	Use as-is — no modification, no recolouring
+•	Appears on all ERP-generated documents
+•	Never use Nestleap entities on public materials
+•	Primary variant: white background
+•	Dark variant: dark background
+ 
+Document Rules
+•	Page setup: A4
+•	Print forms: blank lines only — no placeholder text
+•	Email: always plain ilml a	o	links — never encoded
+•	Content fills full page — no free space at bottom
+•	All HTML includes	edia p r n	CSS
+
+BumbleB Assessment Rating Scale
+
+Rating	Symbol	Replaces	Rationale
+Brilliant		Numeric	Prevents parent score comparisons. Child's growth is celebrated
+		grade	individually, not ranked.
+Buzzing	p	Numeric	
+		grade	
+Blooming		Numeric	
+		grade	
+Growing		Numeric grade	
+Budding		Numeric	
+		grade	
+
+
+
+
+Section 3 • Programme Tiers — Fixed Reference
+Never change these names, ages, or colours.
+ 
+Programme	Tier Name	Age
+Range	Level
+Colour	Batches
+Todd Care	Baby Bees	1.5-2.5
+yrs	Yellow shades	Morning: 10:00-11:30 AM - Evening: 5:30-7:00 PM (planned — WIP)
+PlayHouse	Beginner	2.5-3.5	Baby Pink	Morning
+	Bees	yrs		
+Preii	Busy Bees	3.5-4.5	Baby Blue	Morning
+		yrs		
+Kl	Blooming Bees	4.5-5.5
+yrs	Baby Purple	Morning
+K2	Brilliant	5.5-6.5	Green	Morning
+	Bees	yrs		
+
+
+Todd Care evening shift: Moving Todd Care to 5:30-7:00 PM evening slot is under active consideration. Not yet confirmed. ERP must treat this as a configurable shift in shift master — not hardcoded. No implementation action until Admin confirms.
+
+
+Section 4 • FullERP Module Map
+27 modules across 3 layers and 4 phases.
+
+Layer 1 — Unit Operations (Modules 1-17)
+
+#	Module	Summary
+1	Centralised	One receptionist, one admission number, routing logic to 3 units Walk-in
+	Admission Hub	handled by unit admin directly
+2	Lead & Inquiry	9-stage pipeline   Lead sc-oring   WhatsApp + Calendly auto-trigger   Replaces
+	Management (First Buzz CRM)	Vercel temp CRM
+3	Admission &	Registration	Discovery Flight	Confirmation	Add to Class Sibling
+	Enrolment	concession-   Seat tracker
+	Management	
+ 
+Module	Summary
+
+ 
+4	Discovery Flight Screening
+ 
+Grade-wise template-s
+Internal-only visibility
+ 
+EP/GP/SP/NPJND coding - Centre Head approva-l
+ 
+
+ 
+
+ 
+5	Student Lifecycle
+Management
+ 
+18-tab student profile Grade transition-s Readiness Report
+ 
+TC Graduation Certificate - School
+ 
+
+ 
+
+ 
+6	Student Attendance
+ 
+Present/Absent once at arrival Default a-bsent
+ 
+Loch at   class  s	t+   30
+ 
+(dyn-amic) Auto WhatsApp on absence - Escalation logic
+
+7	Fee Collection & Management	3 instalment-plans .Joining-window logic - Evening monthly fee - Receipt WhatsAp-p PDF  Razorpay/UPI o- nline  14 report types
+8	HR & Staff	Morning salaried + Evening hourly engines Leave OT (pre-approval
+	Management	required) - Security deposit - Guest log 6 user roles
+9	(absorbed Into	Timetable & Academic Planning content moved into Academic Module
+	Ivlodule 10)	
+10	Academic Module	Yearly Goals (AD-authored)	Big Rocks (monthly, AD)	Calendar (Unit,
+	— 4 sub-modules	CH-approved)	Log Plan (weekly, AD master + Unit overlay) Daily Plan as
+		derived- view Hierarchical outcome taxonomy Full spec in Section 12
+11	Inventory	8 categories SKU coding T5,000 petty cash float per Unit (CH-held-) PRF
+	Management	PO	GRN flow Student issue linked to fee 10 reports
+12	Parent	App-first (post-familiarization), WhatsApp-only (pre-familiarization), email
+	Communication	for receipts-/certs 38 MCQs res-olved CH-owned reply with AD escalation
+		See companion file Bumble B_Nodu l e_12_ Par en t_Commun icat i on . md
+		
+13	PTM Management	Scheduling - Parent atten-dance Physical form u-pload Teacher-notes
+		Student-wise + Class-wise view
+14	Student Certificates	7 certificate types - I-card batch generation - Auto-populated from student
+	& Documents	- data HO-locked templates
+1S	Evening Activity
+Centre	External student registration - Session attendance Monthly fee Todd Care
+evening (pending)
+16	Inward Outward Register	All official correspondence logged ' Audit trail for franchise compliance
+17	Analytics & Founder Dashboard	Real-time cards Unit-wise * consolidated Admission funnel Revenue
+Capacity Staff summary
+ 
+Layer 2 — Franchisor Control (Modules 18-23)
+
+#	Module	Summary
+18	Franchise Management	Onboarding-   Agreement trackin-g  Territor-y  Compliance status
+		Centre performance dashboard
+19	Central AcademiC
+Governance	Curriculum master Discovery Flight template master - Academic audit Version control
+20	Training & SOP	SOP library Staff certification tra-cking Non-compliance alerts
+	Compliance	Compliance scoring
+21	Central Inventory &	SKU master (HO only-) Opening stock per new unit - PO management
+	Supply Chain	- Hit register Asset register
+22	Royalty & Financial	Fee structure master (HO-locked) Unit-wise collection Royalty
+	Oversight	calculation Benchmarking
+23	Marketing & Lead	Campaign tagging - Lead source analysis - Cost per admission -
+	Intelligence	Conversion benchmarking
+
+
+Layer 3 — AI & Intelligence (Modules 24-27)
+
+#	Module	Summary
+24	BuzzPortfolio Integration	Worksheet evaluatio-n API Dual Signal Proc-essor Progress reports School Readiness Report at K2. BuzzPortfolio is a separate product, this is the Integration layer.
+25	BuzzSheet	Prompt-based AI generation Grade-locked templates Centre Head
+	(Worksheet	approval - Regional layer. BuzzSheet is a separate product, this is the
+	Generator)	integration layer.
+26	EduGrowth Matrix	49-module staff development tracking Teacher growth reports BumbleB
+	Integration	is pilot client. EduGrowth Matrix is a standalone SaaS; this is the
+		Integration layer.
+27	PrediCtive Analytics & Forecasting	Admission forecasting Revenue projection - Fee default risk Attrition risk
+Compliance alerts
+
+Phase Rollout
+ 
+Phase	Modules	Focus
+Phase 1	1, 2, 3, 4, 6, 7 (core)	Admission drive ready before launch (June 2026 — Unit 1)
+Phase 2	5, 8, 10, 11, 12, 13, 14, 15, 24, 25	Full operational capability
+Phase 3	16, 17, 18, 19, 20, 21, 22, 23	Franchisor control + governance
+Phase 4	26, 27	AI, forecasting, scale intelligence
+
+
+Data Protection (DPDP): Runs across all modules — not a standalone module. Child data encryption, role-based access, consent tracking, audit logs, and data retention policies are embedded system-wide. Priyank to confirm PT applicability on hourly evening staff and DPDP compliance requirements.
+
+
+Section 5 • Centralised Admission Hub
+One number One receptionist   Routes to 3 units.
+
+Confirmed Rules
+
+ 
+Decision
+
+Phone lines
+
+
+Who handles remote
+inquiries
+
+Routing logic
+
+Post-routing ownership Experience Sessions Public contact details Reporting
+After-hours
+ 
+Confirmed Answer
+
+1 dedicated admission line (can expand to 2). WhatsApp-enabled on same number/s.
+
+1 central receptionist handles all incoming
+
+
+Combination of parent's area/preference * programme availability at unit
+
+Lead transfers to unit — unit counsellor/admin owns it from there Unit-specific, decided case by case — not a fixed per-unit feature Each unit has separate address, phone, email displayed distinctly Separate funnel per unit — viewable individually and consolidated
+Manual callback when receptionist returns — no automated fallback for now
+ 
+
+ 
+ 
+Declslon
+
+Walk-in at unit
+ 
+Confirmed Answer
+
+Unit's own admin fills First Buzz form — auto-assigned to that unit, no routing step
+ 
+
+ 
+Admission line vs unit	Only central hub number published on marketing. Unit numbers for
+numbers	ops/existing parents only.
+
+
+Inquiry Flow
+Parent contacts	Central Hub (Reception st)	r t uzz orm	Rout ng sugge tion	Receptionis confirms	Lead	Un t		Un	p peline
+
+Routing Engine Loglc
+1.	Step1: Cheek parent's area	map to nearest unit (Area master: locality	unit)
+2.	Step 2: Check programme availability at suggested unit. If seats available	confirm suggestion. If no seats	suggest next nearest unit with seats.
+3.	Step 3: Check parent preference. If stated	override area suggestion. If preferred unit has no seats	flag to receptionist.
+4.	Step 4: Receptionist confirms routing with parent	lead locked to unit.
+5.	Step5: Unit counsellor auto-notified via WhatsApp + ERP alert.
+
+Two Versions of First Buzz Form
+Version A — Hub Form (Remote inquiry)
+•	All standard fields
+•	Parent's area locality
+•	Parent's unit preference (U1/U2/U3/No preference)
+•	System-suggested unit (auto-calculated)
+•	Assigned unit (receptionist confirms or overrides)
+•	Routing notes (mandatory if override)
+•	Experience session interest toggle
+•	Inquiry channel: Call WhatsApp Website Social Event Referral
+
+VerBsion	— Walk-in Form (Unit admin fills)
+
+•	Same standard fields
+•	Assigned unit = auto from admin's login — not editable
+•	No routing fields shown
+ 
+•	Source = Walk-in (pre-filled, editable)
+•	No routing suggestion needed
+•	Feeds into same inquiry database as Version A
+
+Area Master — for Developer
+Locality	Unit mapping table, HO-maintained. Fields: Locality/Area name Pincode  Suggested
+unit (U1/U-2/U3) Configurable at HO (can update as catchment changes). Receptionist sees
+suggestion but can always override. No hard lock. Simple lookup table — not an algorithm.
+
+Re-Routing (Centre Head Receptionist only)
+
+ 
+Field Original unit New unit Reason Approved by
+Parent informed
+
+Date of re-route
+ 
+Notes
+
+Auto
+
+Dropdown — Centre Head or receptionist only
+
+Text — mandatory Centre Head lookup Yes/No toggle
+Auto
+ 
+
+ 
+
+
+Rule: Unit counsellors cannot re-route. Only Centre Head or central receptionist with mandatory reason logged. Full re-route history maintained — never deleted.
+
+Reporting — Dual View
+Founder HO View (Consolidated)
+•	Total inquiries by unit source programme
+•	Routing distribution % per unit
+•	Conversion rate per unit (inquiry	admitted)
+•	Stage-wise funnel — all 3 units combined + individual
+•	Lead source effectiveness
+•	Unrouted pending leads
+•	Experience session attendance per unit
+•	Average inquiry-to-admission days per unit
+
+Centre Head View (Unit-only)
+ 
+•	Same metrics filtered to own unit only
+•	Cannot see other units' data
+
+Receptionist View
+•	All incoming inquiries + routing status
+•	Callback queue
+•	No financial data
+•	No other units' internal data
+
+
+
+Section b• Admission Management — O-Stage Flow
+From inquiry confirmation to class register, plus TC and graduation exit paths.
+1	1rst	uzz		2	Re  i	t ra  ion	3	i scovery	h	4	C  n  i rmat  on	5	dd to   Class  +  6.	Exit j
+
+Stage 2 — Admission Registration
+
+ 
+Fleld
+
+Enquiry Number
+
+Father's Mother’s Full Name Father's Mother’s Mobile Parent education + occupation Annual income
+Programme Confirmed Joining Date Instalment Plan
+ 
+Notes
+
+Auto-linked from Stage 1
+
+
+
+
+
+
+Optional
+
+Locked to age-eligible options
+
+Drives fee instalment schedule
+
+A (3) B (2)  C (Full) — auto-suggested from joining month
+ 
+Discovery Flight appointment	Date scheduled
+
+Admission Docket No	Physical file reference
+
+
+
+Stage 3 — Discovery Flight Screening
+ 
+Screening Spec
+•	Grade-wise templates: PlayHouse / PreK IU	I€2
+•	Performance codes: EP GP SP NP ND
+•	Auto-summary generated per child
+•	Recommendation: Ready / Ready with Support / Alternate Level
+•	Alternate level suggestion if recommendation changes programme
+•	Centre Head approval before Stage 4
+•	Strictly internal — never visible in parent portal
+
+Screening Hit Protocol
+•	Hit pulled from storeroom morning of session
+•	Checklist run — all items present and in good condition
+•	Init returned to storeroom immediately after
+•	Any damage/loss reported to Centre Head same day
+•	Replacement request raised to HO
+•	No SCR items repurposed for classroom use
+
+Stage 4+5 — Confirmation + Add to Class
+1.	Auto Admission No generated: BB-U[n]-[Year]-[Serial]
+2.	Batch Section assigned at confirmation
+3.	Confirmation letter PDF auto-generated + sent to parent via app + WhatsApp
+4.	Orientation date set
+5.	"Add to Class" button — triggers simultaneous activation: attendance register fee ledge-r parent portal - BuzzPortfolio profile
+
+Special Rules
+Rule	Detail
+
+Sibling	HO-approved uniform rate. System detects existing active student from same family concession	(match on parent mobile or parent  name). Auto-applied — no unit-level override. Rate
+change by HO only, cascades to all units from next instalment.
+
+ 
+Admission
+number format
+ 
+BB-UI-[Year]-[Serial] — sequential per unit
+ 
+
+ 
+ 
+Rule	Detail
+
+Inquiry number	BB-UI-INQ-[Year]-[Serial] format
+ 
+
+Exit Paths
+Path A — Transfer Certificate (Mid-year)
+•	Outstanding fees must be cleared before TC issued
+•	TC Number auto-generated (sequential per type per unit)
+•	Centre Head sign-off required
+•	TC PDF stored in child Documents vault
+•	Auto-sent to parent via app + WhatsApp (TC issued message is manual push per Module 12
+•	Student status	Inactive
+•	No Dues Certificate auto-generated before TC
+
+Path B — Graduation Certificate (K2 Year-end)
+•	Branded certificate with ceremony name + date printed
+•	Batch-printable for full It2 cohort
+•	School Readiness Report: BuzzPortfolio generates	ERP stores in Documents vault
+•	Trigger:"Generate School Readiness Report" button on K2 profile at year-end
+•	Report handed over in person at PTM only (per Module 12 Q36)
+•	Continuing students auto-promoted to next programme for new academic year
+•	Exiting students	status Graduated
+
+Certificate Template Library (HO-loc1‹ed)
+
+Template	Code	Trigger	Print
+Fee Receipt	TMPL-FEE-001	Every fee collection	A4 single + WhatsApp PDF
+Admission Confirmation Letter	TMPL-ADM-001	On confirmation	A4 letterhead + WhatsApp
+Transfer Certificate	TMPL—TC—001	Mid—year exit	A4 — original + copy
+Graduation Certificate	TMPL-GRD-001	If2 year-end	A4 landscape — premium
+Bonafide Certificate	TMPL-BON-001	On request	A4 letterhead
+ 
+Template
+
+No Dues Certificate
+
+Fee Statement
+ 
+Code	Trigger	Print
+
+TMPL-NDC-001	Required before TC	A4 letterhead TMPL-FST-001	On request   annual	A4 PDF
+ 
+
+ 
+
+
+Section 7• Student Attendance
+Daily attendance marking, absence notification, and escalation logic.
+
+Confirmed Rules
+
+ 
+Rule
+
+Marking method
+
+Default state
+
+
+Attendance lock rule (Session 2.1 revision)
+
+
+Morning
+programmes (IU, K2)
+Todd Cafe morning Todd Care evening
+(when activated)
+
+Evening Activity Centre
+Attendance lock
+behaviour
+
+Todd Care shift master
+ 
+Confirmed detail
+
+Present Absent — marked once at arrival. No period-wise or zone-wise tracking.
+
+Absent. Teacher actively marks Present for each child who has arrived. Prevents accidental "all present" submission.
+
+, computed dynamically per class. Each class master row carries s ar t ti	e ; attendance lock and absence- notification times are computed from this. No hardcoded times in engine.
+Glass start 8.00 AM	attendance lock 8:30 AM
+
+
+Class start 10:00 AM	attendance lock 10‹30 AM
+
+Class start 5:30 PM	attendance lock 6:00 PM
+
+
+Class start 4:45 PM	attendance lock 5:15 PM
+
+
+Locked after submission. Corrections need Centre Head override with reason logged.
+
+Currently same Present/Absent model as morning. Planned shift to evening (5:30-7:00 PM) — pending confirmation. Developer: shift master configurable, not hardcoded.
+ 
+
+ 
+
+
+Absence Notification Flow
+ 
+Per Module 12 (Parent Communication) Q8: absence WhatsApp/app message fires at attendance lock time + 30 minutes (so 30-minute buffer for teacher to correct attendance).
+For It1/K2 (class start 8:00 AM): attendance lock 8:30 AM	absence message fires 9:00 AM. For Todd Care morning (class start 10:00 AM): attendance lock 10:30 AM	absence message fires 11:00 AM.
+1.	Teacher marks attendance and submits by attendance lock time
+2.	System checks each absent child against Leave Application — if approved leave exists, no action
+3.	If no approved leave: app push + WhatsApp (per channel rules in Module 12) auto-sent to parent at lock time + 30 min
+4.	If no parent response by lock time + 2 hours — admin makes direct call to primary contact
+s.	Call outcome logged in Leave Application tab
+6.	If teacher has not submitted by attendance lock time — Centre Head auto-notified by system
+7.	3+ consecutive days absent without communication O Centre Head escalation — personal call to family
+
+Leave Protocol
+
+Leave type	How submitted	Who approves	Required documentation
+Planned leave	Parent via portal/app or informs admin by 7:30 AM	Admin logs in Leave Application	None for short leave
+3+ day absence — illness	Parent calls WhatsApp	Centre Head notified	Doctor's note on return
+3+ day absence —
+personal	Parent calls WhatsApp	Centre Head notified	Parent written note
+
+
+
+
+Section 8 • Fee Collection & Management
+Instalment engine, evening monthly fee, receipt, reports.
+ 
+Instalment Plans — Joining Window Logic
+
+Joining Window	Plan A (3 Inst.)	Plan B (2 Inst.)	Plan C (Full payment)
+June 1 - Aug 31	Join date ' Sep 1 ' Dec 1	Join date ' Dec 1	Join date
+Sep 1 - Nov 30	Join date Dec 1	Join date Dec 1	Join date
+Dec 1 onwards	Join date only	Join date only	Join date only
+
+Instalment rules: First instalment always due on joining date. Subsequent instalments on standard calendar dates (Sep 1, Dec 1). Calendar dates configurable at HO level per academic year — not hardcoded. Plan locked at admission. Change requires Centre Head approval.
+
+Online Payment
+•	Razorpay UPI for online fee payment (per Module 12 B3 resolution).
+•	Payment captured	auto-fires payment received message + receipt PDF to parent (Module
+12 Q7).
+•	Manualcollect-and-record (cash/cheque) remains as fallback.
+
+Evening Activity Centre Fee
+Rule	Detail
+
+Billing cycle	Monthly — collected at start of each month
+
+Enrolment start	Always 1st of the next calendar month. No mid-month joining. No pro-rata.
+
+
+ 
+Ledger Receipt Reporting
+ 
+Separate from preschool fee ledger — never merged. Both visible in child fee tab.
+
+Separate receipt from preschool receipt
+
+Evening programme revenue reportable independently from preschool revenue
+ 
+
+
+Fee Collection Screen — Key Fields
+Left Panel— Fee Structure
+•	Term-wise: Instalment	Fee Head Amount Due / Paid Discount Remaining
+•	Total row auto-calculated
+•	Paid History button	chronological payment log
+ 
+Right Panel — Collection Entry
+•	Student info auto-loaded
+•	Particulars Amount Collection Amount
+ 
+•	Remarks Discount (requires app-roval)
+•	Grand Total (auto)
+ 
+Fine
+ 
+•	Payment Mode: Cash / Cheque UPI / POS Razorpay
+•	Receipt Date (defaults today)
+•	Cheque/Transaction reference (conditional)
+•	Bank Name + Branch (if cheque)
+
+
+ 
+Receipt Spec
+Element Print Digital Storage
+ 
+
+
+Detail
+
+Single copy, A4
+
+PDF auto-sent to parent via app + WhatsApp on Save
+
+PDF stored in child Documents vault
+ 
+Content
+ 
+- Logo
+ 
+Unit name + ad- dress
+ 
+Receipt No (auto, sequential) Admissi-on No
+ 
+Child
+ 
+name Programme Batch - Term Particulars + Amount Amount in words
+Payment by Authorised Signature
+
+
+ 
+Disclaimer
+
+
+Cancellation/Refund
+ 
+"This is a computer generated receipt" - "Subject to realisation of cheque" (if cheque)
+
+Requires Centre Head approval. Cancellation receipt auto-generated.
+ 
+
+ 
+
+
+Fee Reports — 14 Types
+PO — Before Launch
+•	Daily Collection Report
+•	Outstanding Fees Report
+•	Fee Status per Student
+•	Day Book
+
+PI — First Month
+•	Monthly Collection Report
+ 
+•	Unit-wise Fees Report (HO consolidated)
+•	Payment Mode Report
+•	Discount & Concession Report
+•	Cancellation & Refund Log
+•	Fee Structure Master
+•	Programme-wise Revenue
+
+P2 — Accounting
+•	Head—wise Summary
+•	Additional Add-on Fees Report
+•	Accounting Export (Tally CA)
+
+Fee Reminder Schedule
+Default schedule (per Module 12 Q13, pending FA review):
+•	T-S days: due reminder (Transactional)
+•	T-0: due date (Essential)
+•	T+3 days: overdue (Essential)
+•	T+7 days: overdue + CH personal call(Essentia1)
+
+
+
+Section 9 • Student Lifecycle & Profile
+18-tab student profile — all fields confirmed.
+
+18-Tab Profile Structure
+
+#	Tab	Key fields / content	Visibility
+1	Student
+Information	Name, DOB, gender, admission no, programme, batch, joining date, address, area	Staff + Parent (own child)
+2	Family History	Father/Mothef full name, mobile, email, occupation, education, annual income, emergency contact	Staff + Parent
+3	Siblings Details	Sibling at BumbleB flag — triggers sibling concession
+detection	Staff + Parent
+ 
+Tab	Key fields / content	Visibility
+4	Parent Feedback &	Two-way message log, title, message, reply, status	Staff * Parent
+Queries	(Open/Resolved/Escalated)	
+5	Infirmary	Medical case, doctor name/contact, open date,	Staff only
+	complaint, symptoms, disease, treatments, closure,	
+	health centre	
+6	Vaccination	Vaccination records upload	Staff + Parent
+7	Height & Weight	Periodic growth log: height (cm), weight (kg), date,
+recorded by	Staff + Parent
+8	Health & Medical	Blood group, allergies, medical conditions, special needs,	Staft only
+	medical history, certificates	(sensitive)
+9	Documents Vault	All uploaded files: admission form, birth cert, photo, ID	Staff. Parent sees
+	proof, medical cert, consent forms, screening sheet, TC,	own child‘s non-
+	graduation cert, school readiness report	sensitive docs.
+10	Fees Details	Dual ledger (preschool + evening). Full fee history,	StaIT + Parent
+	receipts, outstanding.	(own)
+11	TC Information	TC number, leaving date, reason, last day, outstanding	Staff only
+	cleared flag, TC PDF	
+12	Attendance	Month-wise: Present Absent / Total Working Days /	Staff + Parent
+	Attendance H . Annual total.	(own)
+13	Parent	Two-way logged comms. Gujarati/Hindi/English.	Staff + Parent
+Communication	Created at, reply, reply by, reply on. (Per Module 12 — in!!	(own)
+	thread model)	
+14	Leave Application	Title, message, files, apply date, from/to date, reply, reply	Staff + Parent
+	on, reply by, status	(own)
+15	Anecdotal	Renamed: Child Support Log. Date, observation, flagged	Internal only —
+Remarks	by, Centre Head notified, follow-up action	Teacher + Centre
+		Head
+16	IEP	Active flag, concern area (tags), strategies, support plan,	Internal only —
+	review date	Teacher + Centre
+		Head
+
+ 
+#	Tab
+
+17	Home Plan
+ 
+Key fields / content	Vlslbility
+
+All areas: Language & Literacy, Math & Cognitive, Motor	Staff * Parent Skills, Socio-Emotional, Creative. Set by, date, parent	(own) acknowledged flag.
+ 
+
+ 
+18	Worksheets /	Worksheet log per child. BuzzPortfolio API link. Dua1	Staff + Parent
+BuzzPortfolio	signal outputs. Rating scale results.	(summary only)
+
+
+Grade Sheet Assessment Weightage — Confirmed
+Record Book: 50% Class Teacher Judgement & Observation: 30% Team Leader: 20%
+15-20 activities assessed per report card term. Linked to Periodic Record + Observation Book.
+
+PTM Protocol — Confirmed
+Physical PTM form filled and signed by parent/s present, scanned, and uploaded to ERP. Teacher's notes are supplementary (optional). Teacher view available in two modes: Student- wise and Class-wise.
+
+
+Section 10• HR	& Payroll Management
+Two separate engines — morning salaried and evening hourly.
+
+Shift Master — Confirmed
+
+Sh1ft	Staff	Timing	Working Min	Half-day
+Threshold	OT Threshold
+Morning	All teaching	7:00 AM - 2:00	420	270 min present	Beyond 4:15 PM
+Standard	staff	PM			
+Morning Variant	All teaching staff	7:10 AM - 2:10 PM	420	270 min present	Beyond 4:15 PM
+Todd Care	Todd Care	7:30 AM - 1:30	360	240 min present	Beyond 1:30 PM
+	stall	PM			end
+Evening	Evening staff	4:45 PM - 7:15	150	105 min present	Beyond 7:15 PM
+Centre		PM			
+ 
+All denominators pulled from shift master at payroll run time — nothing hardcoded in engine.
+Shifts configurable per staff per unit.
+
+Morning Payroll Engine — 10-Step Automated Run
+1.	Pull attendance + punch records for the month
+2.	Apply shift rules o calculate late minutes per staff
+3.	Apply forgiveness (2/month)	net penalties calculated 0.35% of monthly salary per instance from 3rd onwards
+4.	Deduction = Late min x (Salary + 31 + shift minutes)
+s. Pull approved leave	identify LWP days
+6.	Pull monthly variable (additions and deductions): + Other allowance + Extra salary/arrear + Travel alloWance + Last month adjustment — Loan/advance — Security deposit — Other deductions — AB penalty (Salary	0.35a x instances)
+7.	Auto-apply PT: gross > 112,000	deduct 12O0
+8.	Net Payable = Base — LWP — Deductions + Allowances
+9.	Generate payslip per staff member
+10.	Centre Head approves	payroll locked for editing
+
+Late Bracket Rules
+
+ 
+Late duration
+
+1-30 minutes
+
+31—60 minutes
+
+61-120 minutes
+
+120+ minutes Forgiveness
+ 
+Penalty
+
+0.35a of monthly salary per instance (from 3rd occurrence)
+
+1	hour deduction
+
+2	hour deduction
+
+4 hour deduction
+
+2 instances per month — 3rd onwards penalised
+ 
+
+
+Evening Payroll Engine — Hourly Rate
+Completely separate from morning engine.
+•	Earnings = (Minutes actually worked + h0)	Hourly Rate
+•	Deduction for short attendance = Short minutes	(Hourly Rate :— 60)
+•	No security deposit. No NACH. Monthly sum of all session earnings disbursed.
+•	PT applicability on hourly staff if earnings cross t12,000/month — Priyank to confirm.
+ 
+Leave Management
+
+Leave type	Allowance per month	Beyondllmlt
+Casual Leave (CL)	1	Converts to LWP
+Sick Leave (SL)	1	Converts to LWP
+Privileged Leave (PL)	1	Converts to LWP
+AB (Absent, not approved)	0	LWP deduction + 0.35a penalty both applied
+
+Approval chain: Staff O Reporting Head	Centre Head. Auto-reminder to HODs at cutoff — 2 days. Unapproved leaves auto-flagged as LWP at cutoff.
+
+Overtime — Confirmed Rules (Session 2.1revision)
+Pre-approval required. No overtime is paid unless explicitly approved by the next-in-hierarchy before the OT is worked. This replaces the previous "approval beyond threshold time" model.
+New entity:  o	auo   s on
+
+•	au h id, s ciddate, expe ed 1nu es,reason approved by(next-in-
+hierarchy staff id), app roved at , sta us (requested approved  rejected)
+
+Payroll engine rule: OT minutes captured by punch records are counted toward payroll only if’a matching   ot   autho r   sat i on row exists with stat u   = approved   and the punch date matches the authorisation date.
+
+Shift	Standard
+end	OT Trigger
+(clock)	Approval Requirement
+Morning	2:00	2:10	Beyond 4:15 PM	Next-in-hierarchy pre-approval, recorded in
+stafT	PM			ot authorisat on
+Todd Care	1:30 PM	Beyond 1:30 PM	Next-in-hierarchy pre-approval
+Evening
+staff	7‹15 PM	Beyond 7:15 PM	Next-in-hierarchy pre-approval
+
+Approved OT	added to monthly variable. Unapproved punch beyond shift end	recorded but zero compensation. OT rate multiplier — open (OTI): Same per-minute as regular hours, or premium (1.25 / 1.5x)? To be locked before first payroll run.
+ 
+Security Deposit — Morning Staff Only
+Field	Notes
+
+Applicability	Morning staff only. Evening staff: not applicable.
+
+
+ 
+Collection Deduction Status Return Tracking
+ 
+At onboarding. Cheque   Cash   UPI.
+
+From salary in instalments if agreed — fed into Monthly Variable
+
+Held Returned J Forfeited
+
+On full & final settlement. Centre Head authorisation required.
+
+Separate from payroll — holding record only
+ 
+
+
+Guest Engagement Log
+Guest lecturers — voluntary or gift-compensated. Not on payroll.
+Log fields: Guest Name Session Date Topic Activity Compensation Type (Voluntary/Gift) -
+ 
+Gift Description (e.g. "Hamper t-500") audit trail only.
+ 
+Authorised By (Centre H-  ead)
+ 
+Remarks. Maintained for
+ 
+
+ 
+
+
+Section 11 • Inventory Management
+8-category system SITU coding Procurement floW 10 SOPs.
+
+SKU Code Format
+
+
+Example: BB U1 CLS	A	ooi = BumbleB Unit 1 Classroom Manipulatives Item 001.
+New SItUs created by HO only. No unit can create or retire SKUs.
+
+8 Categories
+
+#	Code	Category	Type	Procurement Authority
+1	INF	Infrastructure Assets	Capex — Fixed	HO only
+2	EQP	Play Equipment	Capex — Fixed	HO only
+ 
+#	Code	Category	Type	Procurement Authority
+3	CLS	Classroom Resources	Opex Tracked	HO preferred approved vendor
+4	SCR	Screening Kit (Discovery	Controlled — HO Supply	HO only — no substitution
+		Flight)	Only	
+5	STU	Student Inventory	Revenue Linked	HO supply — resold to parents
+		(Saleable)		
+6	MKT	Marketing & Branding	Opex — Bfand Controlled	HO branded local print with HO sign-off
+7	ADM	Adrriin & Office	Opex — Local	Centre Head approves
+8	SFT	Safety & Hygiene	Opex — Monthly	Centre Head approves
+
+STU Sub-categories (Session 2.1 revision)
+
+ 
+Sub-category
+
+STU/UNI
+(Uniforms)
+ 
+Status
+
+Active. Opening stock — sizing TBD.
+ 
+
+ 
+STU/BAG (Bags)		Removed. Children bring theif owR bags — variation in colours and styles is encouraged.
+
+
+Petty Cash Float — Company-Owned Units (Session 2.1, INV1 resolved)
+
+ 
+Rule
+
+Float amount Default Configurability
+ 
+Detail
+
+15,000 per Unit issued to Gentre Head for daily routine purchases T5,000 across all company-owned units
+Per-Untt configurable, but editable at HO level only — not by CH
+ 
+Above float per transaction	Full purchase approval flow (PRF O PO	GRN)
+
+Franchise units	Float to be set per franchise agreement (deferred to franchise module)
+
+
+
+Schema: (unit settings . petty   cash   11oat   field with HO-only edit permission.
+ 
+Vendor Approval Scope (Session 2.1, INV4 resolved)
+Vendor pre-approval applies only to a small specific list of Items (list to be defined). For everything else, HO offers vendor suggestions (advisory list), not approvals. Removes the prior "Rajkot vendor list pre-approval" requirement for ADM and SFT broadly.
+Schema: item-master row carries	en o r app roval re ui red boolean. When true only approved vendors can fulfil; when		alse , Unit picks any vendor With HO advisory list shown as suggestions.
+
+Procurement Flow
+PR rai ed	0 /	approves	P0 generated	Vendor d spatche	RN	thin 48
+ 
+
+ 
+For Centre Head purchases within the 15,000 petty cash float per transaction: no PRF/PO needed; receipt logged in petty cash ledger and reconciled monthly with HO.
+
+SOP Segments
+Franchisor (HO) — F-01 to F-07
+•	F-01: SKU master catalogue management
+•	F-02: Opening stock per new unit launch
+•	F-03: Supply chain for INF/EQP/SCR/STU
+•	F-04: Screening hit perpetual register
+•	F-05: Branded inventory control
+•	F-06: Quarterly audit + annual inspection
+•	F-07: Fixed asset depreciation + disposal
+
+Unit — C-01 to C-10
+•	C-01: Storeroom organisation + SITU labelling
+•	C-02: Purchase Request Form (PRF) procedure
+•	C-03: Goods Receipt Note (GRN) process
+•	C-04: Classroom issue (teacher sign-off)
+•	C-05: Student item issuance (fee-linked)
+•	C-06: Screening kit usage checklist
+•	C-07: Reorder management (4-week buffer)
+•	C-08: Monthly + Quarterly stock count
+•	C-09: Disposal + write-off procedure
+•	C-10: Safety + hygiene stock protocol
+ 
+ 
+
+Section 12 Aeademie Module
+Yearly Goals	Big Rocks	Calendar	Log Plan 4 sub-modules covering full year-to-day curriculum delivery.
+Authorship model: The Academic Module follOWS a strict HO-down planning hierarchy. Yearly Goals, Big Rocks, and Log Plan Master are all authored by the Academic Director (HO). Centre Heads (CH) approve unit-level adaptations. Teachers propose date shifts and detail additions only — they do not author content. This protects franchise consistency while letting each Unit breathe within its own calendar.
+
+Planning Hierarchy
+
+Level	What lt capturer	Author	Cadence
+Yearly	Per grade per AY: end-of-year	Academic Director (HO)	Annual carry-
+Goals	outcomes per area (e.g.,"By end of		forward with diff and
+	K2, child reads CVCC words		per-goal confirm
+	fluently"), with success indicators and priority		
+Big Rocks	Monthly curricular non-negotiables	Academic Director (HO)	Annual maste-r
+	— topics each grade must		published before AY
+	encounter that month, across all		CH approves Unit
+	curricular areas		overlay
+Calendar	Per-Unit working/non-working	CH/Coordinator (Unit)	Annual CH-
+	days, holidays, events,		approved-   auto-locks
+	programme/shift availability per		at AY start
+	day		
+Log Plan	Week-level area • weekday grid:	Academic Director (HO)	Rolling per term —
+Master	weekly objective + activities +		Jun-Sep, Oct-Dec,
+	materials * outcome tags		Jan-Apr
+Log Plan	Auto-inherited from Master -	Teacher proposes CH	Weekly
+Unit	Teacher proposes date shifts and	approves/acknowledges	acknowledged in CH-
+Overlay	structured detail additions		Teacher discussion
+Dally Plan	Derlved view of Log Plan Unit	Teacher (delivery only)	Daily
+	Overlay activities filtered to one		
+ 
+Level	What It captures
+date ' Teacher marks done + adds delivery notes
+
+Sub-Module 1— Yearly Goals
+ 
+Author	Cadence
+ 
+
+Item	Specification
+
+
+ 
+Entity
+ 
+year-goal
+ 
+keyed by grade + AY * area-_code
+ 
+fields: goa1_text, success_indicators
+ 
+(array), priority (P1/P2/P3), medium scope (shared language specific), medium (en/gu/NULL), carried_from_goal_id
+Authoring	Per-grade outcome list, area-tagged, links to Big Rocks topics. At AY rollover: side-by- screen (AD)	side diff with previous year; per-goal confirm/edit gate before goals carry forward.
+ 
+Visibility	AD: edit CH: view - Teacher: view (own grade) - Parent: filtered summary surface
+
+Linkage		Each big	roc k top c carries paren	year   y goa	d (FK) — full upward trace from any activity to its yearly goal
+ 
+
+
+Sub-Module 2 — Big Rocks (Monthly)
+
+ 
+Item Scope
+
+Entities
+ 
+Specification
+
+PreK, IU, It2 only Todd Care • PlayHouse use Log Plan directly (no Big Rocks layer) — see open question ACA-LP-1
+
+bi		rock	as er (per grade per AY)	bi	roc	area (8-10 per grade, e.g., Ll- Phonics, L2-SightWords, L3-Projects, MAT, PMT, GRM, LST, RDG, SPIN, WRT, FM, GM) b ig	roc k top	c (per area per month, with i		pend ng flag)
+ 
+bi	roc k	ove r ay (per Unit p-er AY)
+row, only created when CH re-times)
+ 
+bi	roc k un	top c (override
+ 
+
+ 
+
+ 
+Medium handling (ACA-BR-4)
+
+
+Topic deactivation (ACA-BR-2)
+ 
+= 'shared' or 'language_specific'.Language areas duplicate per medium (en/gu); Math, Pre-Math, Fine Motor, Gross Motor, etc. carry one shared topic set used by both mediums. UI tabs: "Common" + "Language (en)" + "Language (gu)" at multi-medium Units.
+is a state machine:  active o deactivation requested (CH submits with mandatory reason)	deactivated (AD approves)
+ 
+
+ 
+ 
+Item
+
+Months covered (ACA- BR-3)
+Workflow
+
+
+Master version
+ 
+Specification
+
+All grades span 11 months: June—April (PreK and It2 source materials end at March; April added per Admin's lock-in)
+
+
+d ra t (		)	su bmit te d	app r oved ( C	set	)	to c ked (au to on AY asir	)	After lock, only AD can authorise edits, with audit trail
+If’AD revises HO master mid-year, existing approved Unit overlays stay frozen on
+ 
+freeze (ACA- BR-5)
+ 
+moaste  r   ve version.
+ 
+n  p n ned  CH gets notification and choice to re-approve to new
+ 
+
+ 
+
+ 
+Pre-conditions for approval
+
+K2 LSRW areas (ACA—BR—6)
+ 
+Calendar published  with working days Every area has *1 topic per month (or topic
+explicitly marked is	pen	n	) CH digitally signed
+
+Listening Reading Speaking Writing Skills femain month-distributed in current entity model — not modelled as separate continuous strands
+ 
+
+ 
+
+ 
+Reports
+ 
+R-ACA-BR-01 Cover-age H
+ 
+R-ACA-BR-02 Topic Migration Log R-ACA-BR-03
+ 
+Approval-Audit
+ 
+R-ACA-BR-04 Mid-year Overrid-e Log
+ 
+CH-signed PDF export
+ 
+
+ 
+
+Seed data ready (PreK/K1/K2): Topic content collated from Unit 0 source files, structured as Python dict, ready to convert to JSON/CSV for dev environment. PreIl source = 2024-25 (FA team to confirm 2025-26 update). K1 Dec-April content missing in source — flagged for FA to provide. 112 = complete for 2025-26.
+
+Sub-Module 3 — Calendar
+
+ 
+Item
+
+Entities
+ 
+Specification
+
+ho l i day	as te r (chain catalogue, AD-published)	acade ic ca enda r (per
+ 
+Unit p-er AY)	a enda r day (one row per date, with day	pe	is	wo rk ing
+ 
+is ha	day, shi ts active
+ 
+epdrsogra
+ 
+act ve)- a endar event
+ 
+
+ 
+Day types	instruct on, ho i ay na onal holiday re onal
+holiday rel	ous ,cueestival	ebrat on , p annin  day
+parent meet ng, exam day, ield trip , eekend o		(summer_breakj aca ion break, wea her closure, sa urday s a	only
+ 
+
+ 
+Shift programme flag (ACA-CAL-1*2)
+ 
+Single Unit calendar with per-day   s hi	tatve  array (morning   afternoon       evening) and pro rammes act	ve array (TC PH PreK IU If2). Handles Unit 1's morning + afternoon shifts and Todd Care evening batch on the same calendar.
+ 
+
+ 
+ 
+Item
+
+AY start date
+(ACA—CAL—3)
+
+
+Saturday
+ 
+Spectflcatlon
+
+Unit-flexible. HO publishes a recommended start date annually via
+Unit sets actual start in
+
+
+Saturday = student-off by default, working day for teachers with shorter hours. Day
+ 
+convention
+ 
+type  satu rday   sta	on   y   Per-day rms s a	h ou
+ 
+over r de . Exact Saturday
+ 
+(ACA-CAL-4)
+
+
+Saturday— replacement (ACA-CAL-5)
+
+Vacation windows (ACA- CAL-6)
+
+Working-day
+computation
+
+
+
+Pre-conditions for approval
+ 
+teacher-hour policy is owned by HR Manual Section 2 (working-hours policy) — Calendar reads whatever HR sets.
+When a weekday holiday lands in a week, CH may flip that Saturday from
+sa u rday s a	on	to ins	ruc ion for students. CH-level edit, mandatory
+reason, audit-logged.
+
+HO sets chain-wide vacation windows (e.g., Diwali break, summer break) via
+. Unit cannot override.
+
+
+
+for BR coverage 0.5 for instructional-hours. Auto-recomputes on Calendar edit. Surfaced read-only in Big Rocks UI.
+
+Every date from ay_start to ay_end has a row AY total instruction days	chain minimum (configurable, suggest 200) Every month has working days assigned
+ 
+
+ 
+
+ 
+Workflow
+ 
+
+Unit edits = CH only; chain-wide edits = AD only. Both audit-logged.
+ 
+.Post-1ock:
+ 
+
+ 
+Reports	R-ACA-CAL-01 Working Days per Month-   R-ACA-CAL-02 Holiday & Event List
+ 
+(parent-ready-)
+ 
+R-ACA-CAL-03 Calendar Variance Repor-t
+ 
+R-ACA-CAL-04 Mid-year
+ 
+Edit Lo-g R-ACA-CAL-05 Cross-Unit Comparison - Annual Calendar PDF export
+
+
+Sub-Module 4 — Log Plan (and Daily Plan view)
+
+ 
+Item
+
+Authorship correction
+ 
+Specification
+
+Log Plan Master is authored byAD at HO level, not by educators at Unit level.
+Teachers propose date shifts and detailadditions; CH approves modifications.
+ 
+
+ 
+Master entities   lo	p	ine r  (per grade per AY per term per week)
+lo	planbe r   en   ry  (area x week: week1y_objective, summary,
+parent big rock topic ids)	lo	plan maste r a t   v ty	(target day index,
+ 
+Item
+ 
+Specification
+activity_master_id or custom_text, duration_min, materials, outcome_tags, is	re u red boolean)
+ 
+
+ 
+
+ 
+Unit overlay entities
+ 
+
+week, with
+ 
+(per Unit per grade per section per medium per
+ 
+(only created when teacher modifies)
+
+
+ 
+Sections (ACA-LP- 4)
+
+
+Activity Master
+
+
+
+Outcome taxonomy
+ 
+Independent overlay pef section.  section	d is mandatory on
+o	plan un	ove rlay , not nullable. Each section's teacher owns their own overlay.
+
+Chain-controlled library curated by HO Curriculum Lead (FA). Teachers can propose new activities; HO curates monthly into the bank. Teachers cannot inject directly.
+
+Hierarchical, 3 levels:	u   come   doma   n	o   tcve rand	utc    me
+ 
+(ACA-LP-7)
+ 
+Mirrors EduGrowth Matrix D1—D6. Replaces flat cuuet schema between Academic Module and EduGrowth Matrix.
+ 
+a s array. Shared
+ 
+
+ 
+
+ 
+Master cadence
+(ACA-LP-9)
+
+
+Modification types
+ 
+Rolling per term: June-September, October-December, January-April. AD publishes each term's Log Plan Master before that term begins, incorporating early-year learnings illto later weeks.
+
+date shi t wi t h i n Wee k — re-order across weekdays; unrestricted, auto-
+ 
+(ACA-LP-10)
+ 
+approved on C-H ack
+ 
+da e s h i	t  ac r oss	ee ks — requires CH explicit
+ 
+permission + reason - de ail	ad d i	ion — structured fields only
+ac   ivi	y de er red — only on i	r	u i	a alse activities
+
+
+ 
+Detail addition payload (ACA-LP- 11)
+
+Workflow
+ 
+Structured JSON: ext ra	ate r ia	s ,  c hild   spec	c  n otes
+us o	exa p le	p rep o bse rva	ons . Free-text not supported — keeps detail patterns mineable for activity-master refinement.
+Pre-week (T-7): Overlay auto-created from Master  Teacher reviews	if no mods, status stays  au   o   i nhe r	ed  ;if mods exist	eace	ropo sed		CH reviews modifications only (not master content)		ch ap p r oved (mods
+ 
+present) or oicl h ac k n
+ 
+ed ed (no mods) Week start
+ 
+- ive
+ 
+Week end
+ 
+o-c ked	Archived after 30 flays
+
+ 
+Acknowledgment cadence (ACA-LP-
+ 
+Teacher discusses every weekly Log Plan with CH, even if no modifications.
+Unmodified weeks require CH acknowledgment but not approval
+ 
+13)
+ 
+(mcho  ac
+ 
+le	ed state). Modified weel‹s require explicit ch app roved  .
+ 
+
+ 
+ 
+Item
+
+Mid-year master revision
+
+
+Daily Plan
+
+
+
+
+
+Reports
+ 
+Specification
+
+Same as Big Rocks: existing approved overlays stay frozen on
+mas te r ver	on p n ned ; CH notified with choice to re-approve to new version.
+
+Derived view, not a separate editable layer. Pivot of log	plan u	o e rlay
+activities filtered to a single date. Teacher capability: mark done
+( l o	p lan	ac	v i ty	s done ) + add delivery notes. Cannot reorder, replace, or skip activities at day-of — must use within-week date shift on the Log Plan (auto-approved on CH ack).
+
+R-ACA-LP-01 BR Coverage (master vs delivery) R-ACA-LP-02 Plan vs Delivery (planned • is_done) R-ACA-LP-03 Modification Cadence R-ACA-LP-04
+ 
+Materials Forecast (Friday	inventory) R-ACA-LP-05 Mid-week Edit Lo-g R-
+ACA-LP-06 Activity Library Usage R-ACA-LP-07 Outcome Coverage R-ACA- LP-09 Modification Hot-Spots Weekly PDF export with educator + CH signatures Daily Plan PDF for tomorrow's printable
+
+Permissions Matrix (fullmodule)
+
+Role	Yearly Goals	BigRoeks	Calendar	LogPlan Master	IJnltoverlay	Daily Done- Marking
+Academic	author	author	view	author	view all	view
+Director (HO)						
+Curriculum	propose	propose	view	propose	view all	view
+Lead (HO, FA)						
+Centre Head
+(Unit)	view	timeline tweak +	approve	view	approve
+ack	view
+		approve				
+
+ 
+Coordinator	view	edit-draft (Unit)
+ 
+draft	view	propose on	view
+teacher's
+behalf
+ 
+
+ 
+
+ 
+Teacher
+ 
+view	view (own	view (own	view	propose date	mark
+grade)	grade)	shifts + add	done
+details
+ 
+
+ 
+ 
+Role
+ 
+Yearly	BlgRocks	Calendar	LogPlan	IJnltoverlay	Daily
+Goals	Master	Done-
+Marking
+ 
+
+ 
+
+ 
+Parent
+ 
+summary
+ 
+filtered events + closures
+ 
+summary surface
+ 
+
+ 
+
+Integration Points
+
+ 
+Connected to	Direction
+
+BuzzSheet (Module	doWnstream
+ 
+What flows
+
+Topic text + outcomes from	og plan	en ry feed
+ 
+
+25)		worl‹sheet generation prompt context
+BuzzPortfolio (Module 24)	downstream	Outcome taxonomy maps to portfolio evaluation signals (Child Signal + Hive Signal)
+EduGrowth Matrix	downstream	Submission timeliness, plan adherence, activity diversity,
+(Module 26)		outcome coverage feed D1 (Pedagogy) signal-s Shared 3-level
+		outcome taxonomy
+Inventory (Module
+11)	downstream	R-ACA-LP-04 Materials Forecast triggers low-stock alerts; aggregated upcoming-week materials sent Friday
+Attendance (Module	sibling	Day-of-week present-children list cross-references
+6)		log_p1an_act iv i ty . i s_done
+		
+Fee Module (Module
+
+ 	downstream	Calendar working days inform instalment due-date inference
+HR Payroll (Module	doWnstream	Calendar provides staft working-day reference; hourly evening
+8)		staff days; Saturday teacher hours from HR Manual
+Parent	downstream	Sunday weekly preview + Friday weekly recap auto-drafted from
+Communication		(log_p1an_oas te r_en t ry . sumoar y - Calendar closures auto-
+(Module 12)		notified
+Curriculum Brochure	downstream	Parent-facing summary auto-generates from area	month grid
+		(Big Rocks)
+Centre Head	downstream	Coverage % + pending approvals widget
+Dashboard (Module		
+17)		
+ 
+Rollout Notes
+
+ 
+Item
+
+Preii K1 K2 Big Rocks + Log Plan rollout
+ 
+Status
+
+Ready to build (subject to FA confirmation of PreK 2025-26 content + K1 Dec-April content)
+ 
+
+ 
+Todd Care +	Held — depends on TC/PH curriculum bank structure (open QACA-LP-1).
+PlayHouse Log Plan	Needs FAs input + Unit 0 reference once shared. rollout
+
+ 
+Saturday teacher hours
+Outcome taxonomy alignment
+ 
+Carry-over from HR Manual Section 2 (working-hours policy). Calendar module is complete; reads whatever HR sets.
+
+Shared between Academic Module and EduGrowth Matrix — brief alignment pass needed when EduGrowth tech brief is taken up. Not a blocker for academic module dev start.
+ 
+
+ 
+
+
+
+
+Section 13 SOP Library — All 29 Identified
+7 PO SOPs fully written in companion document	umbl e	P0 S0Ps v1 .
+
+PO — Before Day 1 (7 SOPs 7 written)
+
+ 
+Code	Title
+ 
+Owne-r
+ 
+Frequenc-y
+ 
+Status
+ 
+
+ 
+SOP—HR—02	User Role & Access Matrix	Developer + HO - Before launch-	Written
+
+SOP-COM-02	Parent Communication Trigger Protocol	Admin Event-based	Written
+
+
+ 
+SOP-STU-01	Student Absence Reporting Protocol SOP-HR-01	Staff Absence & Proxy Cover Protocol SOP-ATT-01	Daily Attendance Protocol
+ 
+Teacher Admin Daily		Written Admin Any absenc-e-	Written Teacher - Every school day -		Written
+ 
+SOP-RPT-02	Teacher-Parent Communication Protocol	Teacher Ongoing	Written
+
+SOP-DOC-01	BumbleB Document Template Library	Developer + HO - Setup	Written
+
+ 
+P1 — First Month (20 SOPs)
+
+Code	Tltle	O-wner   Frequency
+SOP-COM-01	Class Photo Upload Protocol	A-dmin Weekly
+SOP-COM-03	Internal Staff Communication Protocol	All Staff
+SOP-COM-04	Email vs WhatsApp Usage Policy	Centre Head
+SOP—STU—02	Student Infirmary Recording Protocol	Te-acher Incident
+SOP-STU-03	Student I-Card Issuance & Replacement	Admin
+SOP-ADM-01	PTM Recording Protocol	Admin Post-PTM
+SOP-OPS-01	Inward Outward Register Protocol	Admin Daily
+SOP—OPS—02	Procurement Protocol (PRF to PO)	Centre Head
+SOP-OPS-03	Centre Readiness Audit Checklist	- HO Pre-launch
+SOP-DOC-02	Certificate Issuance Protocol	Admin On request
+SOP-ACA-01	Activity Schedule Upload Protocol	Centre Head Weekly
+SOP-ACA-02	Class Teacher Assignment Protocol	Centre Head Term-start
+SOP-ACA-03	Zone Rotation Timetable Protocol	Centre-Head Weekly
+SOP-ACA-04	Teacher Daily Diary Protocol	Teacher Daily
+SOP-ACA-05	Child Support Log Protocol	Teacher Incident
+SOP-ACA-06	WeeklyActivity Plan Submission	Te-acher Friday
+SOP-ACA-07	Home Plan Assignment Log Protocol	Teacher
+SOPHR03	Roll Number Assignment Protocol	Centre Head Year-start
+SOP-RPT-01	Progress Report Generation Protocol	Centre Head Term-end
+SOP-RPT-03	Missing Document Follow-up Protocol	Admin Weekly
+ 
+P2 — Franchise Phase (2 SOPs)
+Code	Tltle
+
+SOP-ADM-02	Inter-Unit Student Transfer Protocol
+
+SOP-HR-04	Inter-Unit Teacher Transfer Protocol
+ 
+
+
+Owner
+
+Centre Head ' Franchise
+
+HO Franchise
+ 
+
+ 
+
+
+
+
+Section 14 • Open Questions Register
+All unresolved items — carry into next session. Resolved items from Session 2.1 are documented inline in their respective sections.
+
+HR Module
+Code	Status	Question Note
+
+OT1	Open	Overtime rate — same as regular per-minute/hour rate, or a premium multiplier (e.g. 1.2sx 1.5 )? To be locked before first payroll run.
+ 
+OT2	Resolved	Pre-appfOVal from next-in-hierarchy required for all OT. No threshold-based
+ 
+(Session 2.1)	auto-OT. ouor
+ 
+au h
+ 
+sa	on entity captures pre-approval; payroll counts OT
+ 
+only if matching approval row exists. Documented in Section 10.
+
+
+
+Inventory Module
+
+ 
+Code	Status
+
+INV1	Resolved
+(Session 2.1)
+
+INV2	Open
+
+
+
+INV3	Resolved
+(Session 2.1)
+
+INV4	Resolved
+(Session 2.1)
+ 
+Question / Note
+
+T5,000 petty cash float per Unit issued to CH for daily routines. Per-Unit configurable, HO-only editable. Documented in Section 11.
+
+Reorder quantities per CLS sub-category. Basis unclear (programme strength x per-child ratio"?) — Admin's earlier answer was incomplete. To be locked when Unit 1 class strength confirmed.
+
+STU/BAG removed (children bring own bags). STU/UNI sizing —opening stock TBD. Documented in Section 11.
+
+Vendor pre-approval applies only to a small specific list of items (list to be defined). For everything else, HO offers vendor suggestions, not approvals.
+ 
+Code	Status
+
+
+
+Business Context
+
+Code	Status
+
+A1	Resolved
+(Session 2.1)
+
+A2		Resolved (Session 2.1)
+A3	Open
+
+
+A4	Resolved
+(Session 2.1)
+
+AS	Resolved
+(Session 2.1)
+ 
+Question Note
+Documented in Section 11.
+
+
+
+
+Question J Note
+
+Unit 1 staff: 3 aayabens, 3 teachers, 1 Centre Head. More to be recruited in coming month.
+
+Launch month: ,lune (aligns with academic year start).
+
+
+What does ERP success lool‹ like at end of Year 1? (specific measurable outcomes) — held, will revisit closer to launch.
+
+Vercel CRM is fully replaced by ERP, not a feeder.
+
+
+No Gujarat-specific regulatory requirements beyond DPDP.
+ 
+
+ 
+
+
+Features & Technical (all resolved Session 2.1)
+
+Code	Status	Resolution
+B1		Parent portal: web login + mobile app (both). Mobile-first UX, Web parity. App is
+	Resolved	primary channel for parent communication post-familiarization.
+B2		Developer configures WhatsApp Business API. Admin adds templates via admin UI in
+	Resolved	ERP. Template Management screen owned by HO admin.
+B3	
+Resolved	Razorpay UPI for online fee payment. Receipt auto-issued on success. Manual collect-and-record remains as fallback.
+B4	
+Resolved	BuzzSheet (Worksheet Builder) is a separate entity that integrates with ERP via API
+— not an ERP module. Module 25 is the integration layer; product sits outside. Same
+		model as BuzzPortfolio (Module 24) and EduGrowth Matrix (Module 26).
+E1		Tech stack: Developer's call.
+	Resolved	
+ 
+Code	Status	Resolution
+
+ 
+E2
+Resolved
+
+ES
+Resolved
+ 
+Hosting: Developer's call.
+
+
+No phase budget ceiling set yet.
+ 
+
+ 
+
+Academic Module — Open Items
+All other Academic Module open questions (ACA-BR-1 through 6, ACA-CAL-1 through 6, ACA- LP-2/3/4/7/8/9/10/11/12/13) were resolved during Session 2 and are documented inline in Section
+12. Items below remain open.
+
+
+Code	Status	Question / Note
+ACA-		Todd Care * PlayHouse curriculum bank structure — areas differ from Prelt/K1/K2
+LP-1	Open	(sensory, motor, language exposure, music, f’ree-play). Needs FA's input + Unit 0
+		reference. Blocker for TCJPH Log Plan rollout. PreK/I11/K2 rollout can proceed
+		independently.
+ACA-		Saturday teacher working-hours policy (exact start/end times, lunch, half-day
+CAL-4	Open	Saturday rules) — to be locked in HR Manual Section 2 (working-hours policy). Calendar module reads whatever HR sets; not a Calendar-spec decision.
+ACA—		Hierarchical outcome taxonomy alignment between Academic Module and
+OUT-1	Open	EduGrowth Matrix — three-level structure locked (domain	strand	outcome,
+mirroring D1-D6); concfete strand and outcome rows to be authored when
+		EduGrowth tech brief is taken up.
+ACA-		PreI4 Big Rocks source - 2024-25 in current seed data; FA team to confirm/provide
+SEED-1	Open	2025-26 update.
+ACA-		K1 Big Rocks source PDF only contains June-November detail. December-April
+SEED-2	Open	content missing — flagged for FA team to provide before AY rollout.
+
+
+Parent Communication — Open Items (from Module 12 spec)
+Code	Status	Question Note
+
+PC-1	Open	Fee reminder schedule default (T-5 T-0  T+3 T+7) applied; Admin to review with
+FA.
+
+ 
+Code	Status	Question J Note
+PC-2		Template flxed-vs-flexible master 11st — drafted alongside Module 14 (Certificates
+	Deferred	& Documents) spec round.
+PC-S		WhatsApp BSP vs Meta direct — Developer's call. No ERP-spec impact.
+	Deferred	
+PC-4		PTM-related triggers (invite, RSVP, reminder, summary) — to Module 13 (PTM)
+	Deferred	spec round.
+PC-5	
+Deferred	Module 14 certificate-ready triggers — to Module 14 spec round.
+PC-6		SMS as tertiary fallback (post-WhatsApp 24h failure) — recommended for Phase 3;
+	Deferred	not in Phase 1 scope.
+PC-7		Cost reconciliation automation (BSP/Meta API integration) — Phase 3; manual
+	Deferred	upload in Phase 1.
+
+Pending Confirmations (not questions — actions needed)
+
+ 
+Note
+
+NOTE
+
+
+NOTE
+
+
+NOTE
+
+
+NOTE
+
+NOTE
+ 
+Detatl
+
+Todd Care evening shift (S.30-7:00 PM) — confirm if/when this transition happens. Developer to keep shift master configurable.
+
+PT applicability on hourly evening staff if monthly earnings exceed t12,000 — Priyank to
+confirm.
+
+Unit 1 and Unit 3 contact numbers, emails, Calendly links — to be set up and shared with Developer before ERP launch.
+Central hub admission phone number —to be procured and shared with Developer.
+
+STU/UNI opening stock sizing ratio for Rajkot — to be determined before opening stock procurement.
+ 
+
+ 
+
+
+
+
+Section 15 ERP Video Analysis — Saraswati System
+Parts 1& 2 reviewed. Usage gaps and BumbleB design decisions extracted.
+ 
+Module Usage at Saraswati — Summary
+
+Module / Screen	Saraswati Usage	BumbleB Dectston
+Fees Collect +	Actively	Adopt + enhance with instalment logic, WhatsApp
+Cancel/Refund	used	receipt, Razorpay/UPI
+Admission flow (Inq9uiry	Active	Adopt + add Discovery Flight + Hub routing
+Confirmation)		
+Student Search Edit	Active	Adopt — streamlined for BumbleB fields
+Student Attendance	Active	Adopt — add default-absent logic + app/WhatsApp auto-
+		notification (dynamic lock time)
+Class Teacher Assignment	Active	Adopt — per programme/batch
+Template Management	4 templates	Rebuild all 7 templates fresh with BumbleB branding
+(Certificates)	active	
+Bonafide TC Certificate	Working	Adopt — BumbleB branded versions
+generation		
+Student I-Card (batch	Available	Adopt with SOP for issuance + replacement
+generation)		
+Photo/Video Gallery	Empty —	Adopt with SOP-COM-01 (weekly upload protocol) + CH
+	unused	approval flow per Module 12 Q11
+Leave Application	Empty —	Adopt with SOP-STU-01 (absence reporting)
+(student)	unused	
+PTM Attended Status	X Empty —	Adopt with SOP-ADM-01 (PTM recording protocol)
+	unused	
+Proxy Management	X Empty —
+unused	Adopt with SOP-HR-01 (staff absence + proxy)
+Timetable	X Blank	Adapt as zone rotation schedule (not period-based) — SOP-ACA-03. Absorbed into Module 10 Academic
+		Module.
+Lesson Plan Report	X Empty —	Adopt as weekly Log Plan — Module 10 Sub-module 4
+	unused	
+ 
+Module / Screen
+
+
+Discipline module
+ 
+Saraswati
+Usage
+
+Zero entries
+ 
+BumbleB Decision
+
+
+Rename to Child Support Log. Internal observation only
+ 
+
+		— SOP-ACA-05
+Student Infirmary	X Empty	Adopt with SOP-STU-02
+Inventory (all modules)	Empty —	Adopt fully — with 8-category BumbleB structure + 17
+	unused	SOP segments + Z5,000 petty cash float
+SMS Parent	Available, ad	Adopt —full Module 12 spec (app—first, WhatsApp
+Communication	hoc	fallback, all comms logged)
+Result Templates (HPC	Active	Replace with BuzzPortfolio output + BumbleB rating
+etc.)		scale
+Student Transfer (cross-	Available	Adopt for franchise inter-unit transfers — SOP-ADM-02
+unit)		
+LMS Academic Activity	Butterfly	Replace with BuzzPortfolio + EduGrowth Matrix — no
+	Lab vendor	third-pafty LMS
+Transport module	Active	Not required for BumbleB Phase 1-2
+(buses)
+
+
+ 
+User management (164		No role users all "Admin")	separation
+ 
+Strict 6-role matrix from Day 1 — SOP-HR-02
+ 
+
+ 
+
+Key Design Decisions from Video Analysts
+Default = Absent (Attendance) Saraswati defaults all students to Present. BumbleB flips this — default Absent, teacher actively marks Present. Prevents accidental all-present submission.
+Child safety driven.
+No Admin profile sharing (Users) Saraswati has 164 users all marked "Admin" — no role differentiation. BumbleB enforces 6 distinct roles from Day 1. Every person has own login. Shared accounts = DPDP violation.
+Discipline	Child Support Log Saraswati's Discipline module: zero entries — pedagogically wrong for a preschool. BumbleB reframes as internal observation log. Support, not punishment. Never visible to parents.
+No third-party LMS Saraswati embeds Butterfly Lab vendor inside ERP. BumbleB's AI layer is BuzzPortfolio + EduGrowth Matrix — both proprietary. No external LMS vendor integrated.
+ 
+App-first parent communication Saraswati's parent comms are SMS-based and ad hoc. BumbleB's app is the primary channel post-familiarization, with WhatsApp as fallback. Every parent is trained at familiarization day to use the app — see Module 12 spec (companion file).
+
+
+End   of document. Companion:	. text session
+pickups (TteIIy’s cally: Module 13 (PTM), Module 17(founder Dashboard), Module IS (Evening
+Activ‹£y Centre), or HR J\Yanua/ Section 2/Saturday teacher/tours — feeds ACA-CAT-4).
