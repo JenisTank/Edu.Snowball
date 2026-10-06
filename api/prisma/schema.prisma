@@ -122,6 +122,7 @@ model Unit {
   attendanceRecords AttendanceRecord[]
   discoveryFlights  DiscoveryFlight[]
   areaMappings      AreaMaster[]
+  paymentOrders     PaymentOrder[]
 
   @@map("units")
 }
@@ -304,6 +305,9 @@ model Student {
   discoveryFlights  DiscoveryFlight[]
   messageLogs       MessageLog[]
   certificates      Certificate[]
+  paymentOrders     PaymentOrder[]
+  documents         Document[]
+  parentMessages    ParentMessage[]
 
   @@map("students")
 }
@@ -464,4 +468,162 @@ model ConsentLog {
   grantedAt   DateTime @default(now()) @map("granted_at")
 
   @@map("consent_log")
+}
+
+// ═══════════════════════ SLICE 6/7 HARDENING ═══════════════════════
+
+enum PaymentProvider {
+  RAZORPAY
+  UPI_QR
+  MANUAL
+}
+
+enum PaymentOrderStatus {
+  CREATED // order generated, parent has not paid yet
+  PENDING // provider reported an in-flight payment
+  PAID    // confirmed → fee transaction + receipt created
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+// Online payment attempts (Razorpay / UPI). A PaymentOrder is the parent-side
+// intent; once confirmed it creates exactly one FeeTransaction (the receipt).
+// Until the merchant account is live the provider runs in PLACEHOLDER mode:
+// orders are created and shown to the parent, but settlement is manual.
+model PaymentOrder {
+  id               String             @id @default(uuid()) @db.Uuid
+  studentId        String             @map("student_id") @db.Uuid
+  unitId           String             @map("unit_id") @db.Uuid
+  ledgerType       LedgerType         @default(PRESCHOOL) @map("ledger_type")
+  amount           Decimal            @db.Decimal(10, 2)
+  instalmentNo     Int?               @map("instalment_no")
+  provider         PaymentProvider    @default(RAZORPAY)
+  status           PaymentOrderStatus @default(CREATED)
+  placeholder      Boolean            @default(true) // true until live keys are configured
+  providerOrderId  String?            @unique @map("provider_order_id")
+  providerPaymentId String?           @map("provider_payment_id")
+  providerSignature String?           @map("provider_signature")
+  upiUri           String?            @map("upi_uri")
+  notes            String?
+  failureReason    String?            @map("failure_reason")
+  feeTransactionId String?            @unique @map("fee_transaction_id") @db.Uuid
+  createdById      String?            @map("created_by_id") @db.Uuid
+  createdAt        DateTime           @default(now()) @map("created_at")
+  paidAt           DateTime?          @map("paid_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@index([studentId])
+  @@index([status])
+  @@map("payment_orders")
+}
+
+enum DocumentVisibility {
+  PARENT // visible in the parent portal vault
+  STAFF  // internal only — never exposed through /api/parent
+}
+
+// Child document vault — birth certificate, Aadhaar, photos, issued PDFs.
+// Files live on disk (STORAGE_DIR); the row carries the metadata + ACL.
+model Document {
+  id           String             @id @default(uuid()) @db.Uuid
+  studentId    String             @map("student_id") @db.Uuid
+  unitId       String             @map("unit_id") @db.Uuid
+  type         String // BIRTH_CERTIFICATE | AADHAAR | PHOTO | MEDICAL | RECEIPT | CERTIFICATE | OTHER
+  title        String
+  fileName     String             @map("file_name")
+  mimeType     String             @map("mime_type")
+  sizeBytes    Int                @map("size_bytes")
+  storageKey   String             @map("storage_key") // path under STORAGE_DIR
+  visibility   DocumentVisibility @default(STAFF)
+  uploadedById String?            @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime           @default(now()) @map("created_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([studentId])
+  @@map("documents")
+}
+
+enum MessageDirection {
+  PARENT_TO_CENTRE
+  CENTRE_TO_PARENT
+}
+
+// Two-way parent ↔ Centre Head thread (one thread per child).
+model ParentMessage {
+  id         String           @id @default(uuid()) @db.Uuid
+  studentId  String           @map("student_id") @db.Uuid
+  unitId     String           @map("unit_id") @db.Uuid
+  direction  MessageDirection
+  body       String
+  authorName String           @map("author_name")
+  authorId   String?          @map("author_id") @db.Uuid // staff user when CENTRE_TO_PARENT
+  readAt     DateTime?        @map("read_at")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([studentId, createdAt])
+  @@map("parent_messages")
+}
+
+// Web-push subscriptions from the parent PWA (keyed by parent phone).
+model PushSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  phone     String // normalised parent phone (no spaces/dashes)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?  @map("user_agent")
+  lastUsedAt DateTime? @map("last_used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([phone])
+  @@map("push_subscriptions")
+}
+
+enum TemplateStatus {
+  DRAFT
+  SUBMITTED // sent to the BSP / Meta for approval
+  APPROVED
+  REJECTED
+}
+
+// HO Template Management (spec B2). Message wording is owned by Head Office;
+// units consume templates, they never write them. `bspName` maps a template to
+// the approved WhatsApp template once the BSP account is live.
+model MessageTemplate {
+  id          String         @id @default(uuid()) @db.Uuid
+  code        String         @unique // ABSENCE_ALERT | FEE_REMINDER | RECEIPT | ANNOUNCEMENT | …
+  name        String
+  category    String         @default("UTILITY") // UTILITY | MARKETING | SERVICE
+  channel     String         @default("WHATSAPP") // WHATSAPP | PUSH | EMAIL
+  language    String         @default("en")
+  body        String // uses {variable} placeholders
+  variables   Json? // ["child","date"] — derived from body, stored for the BSP payload
+  status      TemplateStatus @default(DRAFT)
+  bspName     String?        @map("bsp_name") // approved template name at the BSP
+  locked      Boolean        @default(true) // HO-locked wording
+  isActive    Boolean        @default(true) @map("is_active")
+  updatedById String?        @map("updated_by_id") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  @@map("message_templates")
+}
+
+// Key/value system configuration — reminder schedule, retention windows,
+// payment + dispatch toggles. HO-editable, audited like everything else.
+model SystemSetting {
+  key         String   @id
+  value       Json
+  description String?
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
 }

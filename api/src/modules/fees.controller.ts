@@ -5,6 +5,8 @@ import {
 import { AuthGuard, Roles, unitScope, HO_ROLES } from '../auth/auth';
 import { PrismaService } from '../prisma.service';
 import { AuditService } from './admin.controller';
+import { issueReceipt } from './receipts';
+import { notifyParent } from './notify';
 
 const AY = '2026-27';
 const AY_SHORT = '2627';
@@ -117,7 +119,7 @@ export class FeesController {
     });
     const structures = await this.prisma.feeStructure.findMany({ where: { academicYear: AY } });
     const sMap = new Map(structures.map(f => [`${f.unitId}:${f.programmeId}`, f]));
-    const rows = [];
+    const rows: any[] = [];
     for (const s of students) {
       const structure = sMap.get(`${s.unitId}:${s.programmeId}`);
       const led = await this.studentLedger(s, structure, s.feeTransactions);
@@ -140,12 +142,12 @@ export class FeesController {
     });
     if (!s) throw new NotFoundException('Student not found');
     if (!HO_ROLES.includes(req.user.role) && req.user.unitId !== s.unitId) throw new ForbiddenException('Cross-unit access denied');
-    const structure = await this.prisma.feeStructure.findUnique({
+    const structure = s.programmeId ? await this.prisma.feeStructure.findUnique({
       where: { unitId_programmeId_academicYear: { unitId: s.unitId, programmeId: s.programmeId, academicYear: AY } },
-    });
+    }) : null;
     const led = await this.studentLedger(s, structure, s.feeTransactions);
     return {
-      student: { id: s.id, admissionNo: s.admissionNo, name: `${s.firstName} ${s.lastName}`, unit: s.unit, programme: s.programme.name, sibling: !!s.siblingGroup },
+      student: { id: s.id, admissionNo: s.admissionNo, name: `${s.firstName} ${s.lastName}`, unit: s.unit, programme: s.programme?.name ?? '', sibling: !!s.siblingGroup },
       ledger: led,
       receipts: s.feeTransactions.map(t => ({
         id: t.id, receiptNo: t.receiptNo, amount: num(t.amount), mode: t.paymentMode,
@@ -164,32 +166,24 @@ export class FeesController {
     if (!s) throw new NotFoundException('Student not found');
     if (!HO_ROLES.includes(req.user.role) && req.user.unitId !== s.unitId) throw new ForbiddenException('Cross-unit access denied');
 
-    // Receipt serial: BB-U?-RCPT-2627-NNNN (per unit, sequential, never reused)
-    const prefix = `BB-${s.unit.code}-RCPT-${AY_SHORT}-`;
-    const last = await this.prisma.feeTransaction.findFirst({ where: { receiptNo: { startsWith: prefix } }, orderBy: { receiptNo: 'desc' } });
-    const serial = last ? parseInt(last.receiptNo.slice(prefix.length), 10) + 1 : 1;
-    const receiptNo = `${prefix}${String(serial).padStart(4, '0')}`;
-
-    const txn = await this.prisma.feeTransaction.create({
-      data: {
-        studentId: s.id, unitId: s.unitId,
-        ledgerType: (b.ledgerType as any) ?? 'PRESCHOOL', // dual ledger — never merged
-        amount: b.amount, discount: b.discount ?? 0, fine: b.fine ?? 0,
-        paymentMode: b.paymentMode as any, reference: b.reference ?? null,
-        paymentDate: new Date(b.paymentDate ?? new Date().toISOString().slice(0, 10)),
-        instalmentNo: b.instalmentNo ?? null, receiptNo, remarks: b.remarks ?? null,
-        collectedById: req.user.sub,
-      },
+    // Receipt serial is minted by the shared issuer (see modules/receipts.ts)
+    // so counter collections and online payments share one sequence per unit.
+    const txn = await issueReceipt(this.prisma, {
+      studentId: s.id, unitId: s.unitId, unitCode: s.unit.code,
+      ledgerType: b.ledgerType ?? 'PRESCHOOL', // dual ledger — never merged
+      amount: b.amount, discount: b.discount ?? 0, fine: b.fine ?? 0,
+      paymentMode: b.paymentMode, reference: b.reference ?? null,
+      paymentDate: b.paymentDate, instalmentNo: b.instalmentNo ?? null,
+      remarks: b.remarks ?? null, collectedById: req.user.sub,
     });
+    const receiptNo = txn.receiptNo;
     await this.audit.log(req, 'fee_transactions', txn.id, 'CREATE', null, txn);
     // Receipt → parent WhatsApp (BSP live in Slice 7; queued now)
     const phone = s.fatherPhone || s.motherPhone;
     if (phone) {
-      await this.prisma.messageLog.create({
-        data: {
-          type: 'RECEIPT', recipient: phone, studentId: s.id, unitId: s.unitId,
-          payload: { receiptNo, amount: b.amount, child: `${s.firstName} ${s.lastName}` },
-        },
+      await notifyParent(this.prisma, {
+        type: 'RECEIPT', recipient: phone, studentId: s.id, unitId: s.unitId,
+        payload: { receiptNo, amount: b.amount, child: `${s.firstName} ${s.lastName}` },
       });
     }
     return txn;
@@ -244,7 +238,7 @@ export class FeesController {
       <div class="rno"><span>RECEIPT NO</span><b>${t.receiptNo}</b></div></div>
       <table>
       ${row('Student', `${s.firstName} ${s.lastName} (${s.admissionNo})`)}
-      ${row('Programme', s.programme.name)}
+      ${row('Programme', s.programme?.name ?? '—')}
       ${row('Academic Year', AY)}
       ${row('Ledger', t.ledgerType === 'EVENING' ? 'Evening Centre (monthly)' : 'Preschool (annual)')}
       ${row('Instalment', t.instalmentNo ? `Instalment ${t.instalmentNo}` : '—')}
@@ -303,11 +297,9 @@ export class FeesController {
         const student = await this.prisma.student.findUnique({ where: { id: r.id }, select: { fatherPhone: true, motherPhone: true, unitId: true } });
         const phone = student?.fatherPhone || student?.motherPhone;
         if (!phone) continue;
-        await this.prisma.messageLog.create({
-          data: {
-            type: 'FEE_REMINDER', recipient: phone, studentId: r.id, unitId: student!.unitId,
-            payload: { stage, instalmentNo: inst.no, amountDue: inst.amount - inst.paid, dueDate: inst.dueDate, child: r.name },
-          },
+        await notifyParent(this.prisma, {
+          type: 'FEE_REMINDER', recipient: phone, studentId: r.id, unitId: student!.unitId,
+          payload: { stage, instalmentNo: inst.no, amountDue: inst.amount - inst.paid, dueDate: inst.dueDate, child: r.name },
         });
         queued++;
       }

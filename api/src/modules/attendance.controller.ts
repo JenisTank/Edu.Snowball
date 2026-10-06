@@ -51,7 +51,7 @@ export class AttendanceController {
       locked: now > lockAt,
       // DEFAULT = ABSENT (child-safety rule): unmarked students are absent
       roster: students.map(s => {
-        const r = recMap.get(s.id);
+        const r: any = recMap.get(s.id);
         return {
           ...s,
           status: r?.status ?? 'ABSENT',

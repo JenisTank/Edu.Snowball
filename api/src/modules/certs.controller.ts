@@ -56,6 +56,7 @@ export class CertificatesController {
 
     // ── TC gate (spec): fees fully cleared + explicit No-Dues confirmation ──
     if (b.type === 'TC') {
+      if (!s.programmeId) throw new BadRequestException('Assign a programme before issuing a TC');
       const structure = await this.prisma.feeStructure.findUnique({
         where: { unitId_programmeId_academicYear: { unitId: s.unitId, programmeId: s.programmeId, academicYear: AY } },
       });
@@ -85,6 +86,75 @@ export class CertificatesController {
     return cert;
   }
 
+  // ─────────────── I-card batch generation (Slice 7) ───────────────
+  // Reuses the certificate print pipeline: an A4 sheet of CR80-sized cards,
+  // 8 per page, ready for the browser's "Save as PDF" / card printer.
+  @Get('icards/print')
+  @Header('Content-Type', 'text/html')
+  async icards(@Req() req: any, @Query('batchId') batchId?: string, @Query('unitId') unitId?: string, @Query('studentIds') studentIds?: string) {
+    const ids = (studentIds ?? '').split(',').map(x => x.trim()).filter(Boolean);
+    const where: any = ids.length
+      ? { id: { in: ids }, ...unitScope(req.user, unitId) }
+      : { status: 'ACTIVE', ...(batchId ? { batchId } : {}), ...unitScope(req.user, unitId) };
+    const students = await this.prisma.student.findMany({
+      where,
+      include: { programme: true, batch: true, unit: true },
+      orderBy: [{ batchId: 'asc' }, { firstName: 'asc' }],
+      take: 400,
+    });
+    if (!students.length) throw new NotFoundException('No students match this selection');
+
+    const esc = (v: any) => String(v ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' } as any)[c]);
+    const cards = students.map(s => {
+      const initials = `${s.firstName?.[0] ?? ''}${s.lastName?.[0] ?? ''}`.toUpperCase();
+      const emergency = s.fatherPhone || s.motherPhone || '—';
+      return `<div class="card">
+        <div class="top"><span class="bee">🐝</span><div><div class="brand">BumbleB Kidz</div><div class="unit">${esc(s.unit.name)}</div></div></div>
+        <div class="mid">
+          <div class="photo">${s.photoUrl ? `<img src="${esc(s.photoUrl)}" alt="">` : esc(initials)}</div>
+          <div class="who">
+            <div class="name">${esc(s.firstName)} ${esc(s.lastName)}</div>
+            <div class="prog" style="color:${esc(s.programme?.levelColour ?? '#8A6410')}">${esc(s.programme?.name ?? '')}</div>
+            <div class="row"><b>ID</b> ${esc(s.admissionNo)}</div>
+            <div class="row"><b>Batch</b> ${esc(s.batch?.name ?? '—')}</div>
+            <div class="row"><b>Call</b> ${esc(emergency)}</div>
+          </div>
+        </div>
+        <div class="foot"><span>AY ${AY}</span><span>If found, please call ${esc(s.unit.phone ?? emergency)}</span></div>
+      </div>`;
+    }).join('');
+
+    return `<!doctype html><html><head><meta charset="utf-8"><title>I-cards (${students.length})</title><style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:'DM Sans',Nunito,system-ui,sans-serif;background:#f5f5f4;padding:16px;color:#1F1B13}
+      .bar{max-width:820px;margin:0 auto 14px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700}
+      .bar button{margin-left:auto;background:#C8922A;color:#fff;border:0;border-radius:10px;padding:8px 16px;font-weight:800;cursor:pointer}
+      .sheet{max-width:820px;margin:0 auto;display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+      .card{height:230px;border-radius:14px;padding:12px;color:#1F1B13;display:flex;flex-direction:column;
+        background:linear-gradient(145deg,#F8EDCD,#EBDBAC);border:1.5px solid #DCA93C;break-inside:avoid}
+      .top{display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(200,146,42,.45);padding-bottom:7px}
+      .bee{font-size:20px}
+      .brand{font-weight:800;font-size:14px;color:#8A6410;line-height:1.1}
+      .unit{font-size:9.5px;font-weight:700;color:#6b5a2e;text-transform:uppercase;letter-spacing:.06em}
+      .mid{display:flex;gap:10px;padding:10px 0;flex:1}
+      .photo{width:68px;height:82px;border-radius:9px;background:#fff;border:1.5px solid #DCA93C;display:grid;place-items:center;
+        font-weight:800;font-size:22px;color:#C8922A;overflow:hidden;flex:0 0 auto}
+      .photo img{width:100%;height:100%;object-fit:cover}
+      .who{min-width:0;flex:1}
+      .name{font-weight:800;font-size:15px;line-height:1.2}
+      .prog{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin:1px 0 5px}
+      .row{font-size:10.5px;font-weight:600;color:#44403c;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .row b{display:inline-block;width:34px;color:#78716c;font-weight:800}
+      .foot{display:flex;justify-content:space-between;font-size:8.5px;font-weight:700;color:#6b5a2e;
+        border-top:1px solid rgba(200,146,42,.45);padding-top:6px}
+      @page{size:A4;margin:10mm}
+      @media print{body{background:#fff;padding:0}.bar{display:none}.sheet{max-width:none;gap:6mm}}
+    </style></head><body>
+      <div class="bar"><span>🐝 ${students.length} I-card${students.length > 1 ? 's' : ''} ready — 8 per A4 sheet</span><button onclick="window.print()">Print / Save as PDF</button></div>
+      <div class="sheet">${cards}</div>
+    </body></html>`;
+  }
+
   // ── Printable certificate ──
   @Get(':id/print')
   @Header('Content-Type', 'text/html')
@@ -100,7 +170,7 @@ export class CertificatesController {
     const child = `${s.firstName} ${s.lastName}`;
     const body = tpl.body
       .replaceAll('{child}', child).replaceAll('{admissionNo}', s.admissionNo)
-      .replaceAll('{programme}', s.programme.name).replaceAll('{unit}', s.unit.name)
+      .replaceAll('{programme}', s.programme?.name ?? '').replaceAll('{unit}', s.unit.name)
       .replaceAll('{ay}', AY).replaceAll('{event}', p.event ?? 'the school event')
       .replaceAll('{reason}', p.reason ?? 'their wonderful spirit')
       .replaceAll('{date}', new Date(c.issuedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }));
@@ -136,6 +206,7 @@ export class CertificatesController {
       <div class="serial">${c.serialNo} · verify at erp.bumblebkidz.com</div>
     </div></div><script>setTimeout(()=>window.print&&window.print(),400)</script></body></html>`;
   }
+
 }
 
 @Module({ controllers: [CertificatesController], providers: [PrismaService, AuditService] })

@@ -2,8 +2,9 @@
 // 3 units · 5 programmes · batches · 8 users (all roles) · 42 students · 16 leads
 import { PrismaClient, UserRole, LeadStage, InquiryChannel, InstalmentPlan, PaymentMode, AttendanceStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { prismaOptions } from '../src/prisma-options';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient(prismaOptions());
 const AY = '2026-27';
 
 async function main() {

@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query, Req, UseGuards, Module } from '@nestjs/common';
 import { AuthGuard, unitScope, HO_ROLES } from '../auth/auth';
 import { PrismaService } from '../prisma.service';
+import { decryptStudentPII, decryptStudents } from '../common/pii';
 
 // ─────────────────────────── UNITS ───────────────────────────
 @Controller('units')
@@ -50,8 +51,9 @@ export class StudentsController {
   constructor(private prisma: PrismaService) {}
 
   @Get()
-  list(@Req() req: any, @Query('unitId') unitId?: string) {
-    return this.prisma.student.findMany({
+  async list(@Req() req: any, @Query('unitId') unitId?: string) {
+    // PII (blood group / allergies / medical notes) is stored encrypted — see common/pii.ts
+    return decryptStudents(await this.prisma.student.findMany({
       where: unitScope(req.user, unitId),
       include: {
         programme: { select: { name: true, tierName: true, levelColour: true } },
@@ -59,15 +61,15 @@ export class StudentsController {
         unit: { select: { code: true, name: true } },
       },
       orderBy: { admissionNo: 'asc' },
-    });
+    }));
   }
 
   @Get(':id')
-  one(@Req() req: any, @Param('id') id: string) {
-    return this.prisma.student.findFirst({
+  async one(@Req() req: any, @Param('id') id: string) {
+    return decryptStudentPII(await this.prisma.student.findFirst({
       where: { id, ...unitScope(req.user) },
       include: { programme: true, batch: true, unit: true, feeTransactions: { orderBy: { paymentDate: 'desc' } } },
-    });
+    }));
   }
 }
 

@@ -9,12 +9,16 @@ import { PrismaService } from '../prisma.service';
 const ADMIN_ROLES = ['FOUNDER', 'ACADEMIC_DIR'];
 const UNIT_MANAGED_ROLES = ['COORDINATOR', 'TEACHER', 'RECEPTIONIST']; // roles a Centre Head may manage
 
+// CREATE is accepted as an alias of INSERT — both spellings exist in the
+// codebase and mean the same thing in the audit trail.
+export type AuditAction = 'INSERT' | 'CREATE' | 'UPDATE' | 'DELETE';
+
 // ─────────────────────────── AUDIT SERVICE (Rule 3: every mutation logged) ───────────────────────────
 @Injectable()
 export class AuditService {
   constructor(private prisma: PrismaService) {}
 
-  async log(req: any, tableName: string, recordId: string, action: 'INSERT' | 'UPDATE' | 'DELETE', oldData: any, newData: any) {
+  async log(req: any, tableName: string, recordId: string, action: AuditAction, oldData: any, newData: any) {
     const scrub = (o: any) => {
       if (!o) return o;
       const c = { ...o };

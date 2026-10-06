@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard, Roles, unitScope, HO_ROLES } from '../auth/auth';
 import { PrismaService } from '../prisma.service';
+import { encryptPII } from '../common/pii';
 import { AuditService } from './admin.controller';
 
 const AY = '2026-27';
@@ -79,7 +80,8 @@ export class AdmissionsController {
         fatherName: fatherName || null, fatherPhone: fatherPhone || null,
         motherName: motherName || null, motherPhone: motherPhone || null,
         addressArea: addressArea || lead.areaLocality,
-        bloodGroup: bloodGroup || null, allergies: allergies || null,
+        // sensitive fields are encrypted at rest (DPDP) — see common/pii.ts
+        bloodGroup: encryptPII(bloodGroup || null), allergies: encryptPII(allergies || null),
         programmeId, academicYear: AY,
         instalmentPlan: suggestPlan(),
         siblingGroup, leadId: lead.id,

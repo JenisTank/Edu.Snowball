@@ -6,8 +6,24 @@
 import { Queue, Worker } from 'bullmq';
 import { PrismaClient } from '@prisma/client';
 
-const connection = { url: process.env.REDIS_URL || 'redis://localhost:6379' } as any;
+const connection = {
+  url: process.env.REDIS_URL || 'redis://localhost:6379',
+  // Fail fast instead of retrying forever when Redis is not running: the ERP
+  // stays fully usable without it, only the background jobs pause.
+  maxRetriesPerRequest: null,
+  retryStrategy: (times: number) => (times > 10 ? null : Math.min(times * 1000, 10_000)),
+} as any;
+
+// One warning instead of an endless ECONNREFUSED stack-trace loop.
+let redisWarned = false;
+function onRedisError(err: any) {
+  if (redisWarned) return;
+  redisWarned = true;
+  console.warn(`⚠️ Redis unavailable (${err?.code ?? err?.message}) — background jobs are paused. The API works normally; start Redis to resume absence scans and reminders.`);
+}
+
 export const bbQueue = new Queue('bb-jobs', { connection });
+bbQueue.on('error', onRedisError);
 
 export function startWorker(prisma: PrismaClient) {
   const worker = new Worker('bb-jobs', async (job) => {
@@ -81,5 +97,6 @@ export function startWorker(prisma: PrismaClient) {
     }
   }, { connection });
   worker.on('failed', (job, err) => console.error(`⚠️ job ${job?.name} failed:`, err.message));
+  worker.on('error', onRedisError);
   return worker;
 }
