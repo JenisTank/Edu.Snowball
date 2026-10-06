@@ -1,0 +1,467 @@
+// BumbleB Kidz ERP — Prisma Schema v1 (Phase 1 scope)
+// Source of truth: BumbleB Kidz ERP Complete Specification, Session 2.1
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── ENUMS ───────────────────────────
+
+enum UserRole {
+  FOUNDER
+  ACADEMIC_DIR
+  CURRICULUM_LEAD
+  CENTRE_HEAD
+  COORDINATOR
+  TEACHER
+  RECEPTIONIST
+}
+
+enum UnitType {
+  COMPANY_OWNED
+  FRANCHISE
+}
+
+enum UnitStatus {
+  ACTIVE
+  DEVELOPMENT
+  INACTIVE
+}
+
+enum LeadStage {
+  NEW_INQUIRY
+  FIRST_BUZZ
+  ROUTING
+  EXPERIENCE_SESSION
+  DISCOVERY_FLIGHT
+  OFFER
+  CONFIRMATION
+  ENROLLED
+  LOST
+}
+
+enum InquiryChannel {
+  CALL
+  WHATSAPP
+  WEBSITE
+  SOCIAL
+  EVENT
+  REFERRAL
+  WALK_IN
+}
+
+enum StudentStatus {
+  REGISTERED // Stage-2 registration done, admission not yet confirmed
+  ACTIVE
+  TC_ISSUED
+  GRADUATED
+  WITHDRAWN
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+}
+
+enum ScreeningResult {
+  EP
+  GP
+  SP
+  NP
+  ND
+}
+
+enum InstalmentPlan {
+  PLAN_A // 3 instalments
+  PLAN_B // 2 instalments
+  PLAN_C // full payment
+}
+
+enum PaymentMode {
+  CASH
+  CHEQUE
+  UPI
+  POS
+  RAZORPAY
+  NEFT
+}
+
+enum LedgerType {
+  PRESCHOOL
+  EVENING
+}
+
+// ─────────────────────────── FOUNDATION ───────────────────────────
+
+model Unit {
+  id        String     @id @default(uuid()) @db.Uuid
+  code      String     @unique // U1 | U2 | U3
+  name      String
+  type      UnitType   @default(COMPANY_OWNED)
+  address   String?
+  phone     String? // internal ops number only — never advertised
+  email     String?
+  website   String?
+  status    UnitStatus @default(ACTIVE)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  settings          UnitSettings?
+  users             User[]
+  batches           Batch[]
+  students          Student[]
+  leadsAssigned     Lead[]        @relation("AssignedUnit")
+  leadsSuggested    Lead[]        @relation("SuggestedUnit")
+  feeStructures     FeeStructure[]
+  feeTransactions   FeeTransaction[]
+  attendanceRecords AttendanceRecord[]
+  discoveryFlights  DiscoveryFlight[]
+  areaMappings      AreaMaster[]
+
+  @@map("units")
+}
+
+model UnitSettings {
+  unitId          String  @id @map("unit_id") @db.Uuid
+  pettyCashFloat  Decimal @default(5000.00) @map("petty_cash_float") @db.Decimal(10, 2) // HO-edit only
+  admissionNumber String? @map("admission_number") // published central hub number only
+  calendlyLink    String? @map("calendly_link")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  unit Unit @relation(fields: [unitId], references: [id])
+
+  @@map("unit_settings")
+}
+
+model Programme {
+  id          String  @id @default(uuid()) @db.Uuid
+  code        String  @unique // TODD_CARE | PLAYHOUSE | PREK | K1 | K2
+  name        String // fixed — never modify
+  tierName    String  @map("tier_name") // Baby Bees, Beginner Bees…
+  ageMin      Decimal @map("age_min") @db.Decimal(4, 1)
+  ageMax      Decimal @map("age_max") @db.Decimal(4, 1)
+  levelColour String  @map("level_colour")
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  batches  Batch[]
+  students Student[]
+  leads    Lead[]
+  feeStructures FeeStructure[]
+
+  @@map("programmes")
+}
+
+model Batch {
+  id           String   @id @default(uuid()) @db.Uuid
+  unitId       String   @map("unit_id") @db.Uuid
+  programmeId  String   @map("programme_id") @db.Uuid
+  name         String // "K1 Morning Gujarati"
+  medium       String? // gujarati | english
+  shift        String // morning | afternoon | evening
+  startTime    String   @map("start_time") // "08:00" — drives attendance lock
+  endTime      String?  @map("end_time")
+  capacity     Int
+  academicYear String   @map("academic_year") // "2026-27"
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  unit      Unit      @relation(fields: [unitId], references: [id])
+  programme Programme @relation(fields: [programmeId], references: [id])
+  students  Student[]
+  attendanceRecords AttendanceRecord[]
+
+  @@map("batches")
+}
+
+// ─────────────────────────── USERS & AUTH ───────────────────────────
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  fullName     String   @map("full_name")
+  phone        String?
+  role         UserRole
+  unitId       String?  @map("unit_id") @db.Uuid // null = HO-level (Founder, AD, Curriculum Lead)
+  isActive     Boolean  @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  unit Unit? @relation(fields: [unitId], references: [id])
+
+  auditLogs AuditLog[]
+  leadActivities LeadActivity[]
+
+  @@map("users")
+}
+
+// ─────────────────────────── LEADS (FIRST BUZZ CRM) ───────────────────────────
+
+model AreaMaster {
+  id              String  @id @default(uuid()) @db.Uuid
+  locality        String
+  pincode         String?
+  suggestedUnitId String  @map("suggested_unit_id") @db.Uuid
+  isActive        Boolean @default(true) @map("is_active")
+
+  suggestedUnit Unit @relation(fields: [suggestedUnitId], references: [id])
+
+  @@map("area_master")
+}
+
+model Lead {
+  id                 String         @id @default(uuid()) @db.Uuid
+  inquiryNo          String         @unique @map("inquiry_no") // BB-U1-INQ-2627-0001
+  stage              LeadStage      @default(NEW_INQUIRY)
+  parentName         String         @map("parent_name")
+  parentPhone        String         @map("parent_phone")
+  parentEmail        String?        @map("parent_email")
+  childName          String?        @map("child_name")
+  childDob           DateTime?      @map("child_dob") @db.Date
+  programmeInterestId String?       @map("programme_interest_id") @db.Uuid
+  areaLocality       String?        @map("area_locality")
+  preferredUnit      String?        @map("preferred_unit") // U1 | U2 | U3 | NO_PREFERENCE
+  suggestedUnitId    String?        @map("suggested_unit_id") @db.Uuid
+  assignedUnitId     String?        @map("assigned_unit_id") @db.Uuid
+  routingNotes       String?        @map("routing_notes") // mandatory if override
+  inquiryChannel     InquiryChannel @default(CALL) @map("inquiry_channel")
+  experienceInterest Boolean        @default(false) @map("experience_interest")
+  leadScore          Int            @default(0) @map("lead_score")
+  sourceCampaign     String?        @map("source_campaign")
+  notes              String?
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  programmeInterest Programme? @relation(fields: [programmeInterestId], references: [id])
+  suggestedUnit     Unit?      @relation("SuggestedUnit", fields: [suggestedUnitId], references: [id])
+  assignedUnit      Unit?      @relation("AssignedUnit", fields: [assignedUnitId], references: [id])
+  student           Student?
+  discoveryFlights  DiscoveryFlight[]
+  activities        LeadActivity[]
+
+  @@map("leads")
+}
+
+// Timeline of everything that happens on a lead — stage moves, routing,
+// notes, registration. Append-only (history is never rewritten).
+model LeadActivity {
+  id        String   @id @default(uuid()) @db.Uuid
+  leadId    String   @map("lead_id") @db.Uuid
+  type      String // STAGE_CHANGE | ROUTING | NOTE | REGISTRATION | SYSTEM
+  note      String?
+  meta      Json?
+  byId      String?  @map("by_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lead Lead  @relation(fields: [leadId], references: [id])
+  by   User? @relation(fields: [byId], references: [id])
+
+  @@map("lead_activities")
+}
+
+// ─────────────────────────── STUDENTS ───────────────────────────
+
+model Student {
+  id            String        @id @default(uuid()) @db.Uuid
+  unitId        String        @map("unit_id") @db.Uuid
+  admissionNo   String        @unique @map("admission_no") // BB-U1-2627-0001
+  firstName     String        @map("first_name")
+  lastName      String        @map("last_name")
+  dob           DateTime      @db.Date
+  gender        String?
+  photoUrl      String?       @map("photo_url")
+  bloodGroup    String?       @map("blood_group") // sensitive — staff only
+  allergies     String? // sensitive — staff only
+  medicalNotes  String?       @map("medical_notes") // sensitive — staff only
+  fatherName    String?       @map("father_name")
+  fatherPhone   String?       @map("father_phone")
+  motherName    String?       @map("mother_name")
+  motherPhone   String?       @map("mother_phone")
+  addressArea   String?       @map("address_area")
+  programmeId   String?       @map("programme_id") @db.Uuid
+  batchId       String?       @map("batch_id") @db.Uuid
+  admissionDate DateTime?     @map("admission_date") @db.Date
+  instalmentPlan InstalmentPlan? @map("instalment_plan")
+  status        StudentStatus @default(ACTIVE)
+  academicYear  String        @map("academic_year")
+  siblingGroup  String?       @map("sibling_group") // shared key links siblings → concession
+  leadId        String?       @unique @map("lead_id") @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  unit      Unit       @relation(fields: [unitId], references: [id])
+  programme Programme? @relation(fields: [programmeId], references: [id])
+  batch     Batch?     @relation(fields: [batchId], references: [id])
+  lead      Lead?      @relation(fields: [leadId], references: [id])
+
+  attendanceRecords AttendanceRecord[]
+  feeTransactions   FeeTransaction[]
+  discoveryFlights  DiscoveryFlight[]
+  messageLogs       MessageLog[]
+  certificates      Certificate[]
+
+  @@map("students")
+}
+
+// ─────────────────────────── DISCOVERY FLIGHT ───────────────────────────
+
+model DiscoveryFlight {
+  id           String           @id @default(uuid()) @db.Uuid
+  leadId       String?          @map("lead_id") @db.Uuid
+  studentId    String?          @map("student_id") @db.Uuid
+  unitId       String           @map("unit_id") @db.Uuid
+  scheduledAt  DateTime?        @map("scheduled_at")
+  conductedAt  DateTime?        @map("conducted_at")
+  resultCode   ScreeningResult? @map("result_code")
+  recommendation String? // READY | READY_WITH_SUPPORT | ALTERNATE_LEVEL
+  notes        String?
+  internalOnly Boolean          @default(true) @map("internal_only") // NEVER parent-visible
+  approvedById String?          @map("approved_by_id") @db.Uuid
+  approvedAt   DateTime?        @map("approved_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  lead    Lead?    @relation(fields: [leadId], references: [id])
+  student Student? @relation(fields: [studentId], references: [id])
+  unit    Unit     @relation(fields: [unitId], references: [id])
+
+  @@map("discovery_flights")
+}
+
+// ─────────────────────────── ATTENDANCE ───────────────────────────
+
+model AttendanceRecord {
+  id             String           @id @default(uuid()) @db.Uuid
+  studentId      String           @map("student_id") @db.Uuid
+  batchId        String           @map("batch_id") @db.Uuid
+  unitId         String           @map("unit_id") @db.Uuid
+  date           DateTime         @db.Date
+  status         AttendanceStatus @default(ABSENT) // DEFAULT ABSENT — child safety
+  markedById     String?          @map("marked_by_id") @db.Uuid
+  markedAt       DateTime?        @map("marked_at")
+  isLocked       Boolean          @default(false) @map("is_locked")
+  lockTime       DateTime?        @map("lock_time") // batch.startTime + 30 min
+  overrideById   String?          @map("override_by_id") @db.Uuid // Centre Head only
+  overrideReason String?          @map("override_reason")
+
+  student Student @relation(fields: [studentId], references: [id])
+  batch   Batch   @relation(fields: [batchId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@unique([studentId, date, batchId])
+  @@map("attendance_records")
+}
+
+// ─────────────────────────── FEES ───────────────────────────
+
+model FeeStructure {
+  id              String   @id @default(uuid()) @db.Uuid
+  unitId          String   @map("unit_id") @db.Uuid
+  programmeId     String   @map("programme_id") @db.Uuid
+  academicYear    String   @map("academic_year")
+  totalFee        Decimal  @map("total_fee") @db.Decimal(10, 2)
+  instalment1     Decimal? @map("instalment_1") @db.Decimal(10, 2)
+  instalment2     Decimal? @map("instalment_2") @db.Decimal(10, 2)
+  instalment3     Decimal? @map("instalment_3") @db.Decimal(10, 2)
+  siblingDiscountPct Decimal? @map("sibling_discount_pct") @db.Decimal(5, 2)
+  locked          Boolean  @default(false) // HO locks before AY start
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  unit      Unit      @relation(fields: [unitId], references: [id])
+  programme Programme @relation(fields: [programmeId], references: [id])
+
+  @@unique([unitId, programmeId, academicYear])
+  @@map("fee_structures")
+}
+
+model FeeTransaction {
+  id            String      @id @default(uuid()) @db.Uuid
+  studentId     String      @map("student_id") @db.Uuid
+  unitId        String      @map("unit_id") @db.Uuid
+  ledgerType    LedgerType  @default(PRESCHOOL) @map("ledger_type") // dual ledger — never merged
+  amount        Decimal     @db.Decimal(10, 2)
+  discount      Decimal     @default(0) @db.Decimal(10, 2)
+  fine          Decimal     @default(0) @db.Decimal(10, 2)
+  paymentMode   PaymentMode @map("payment_mode")
+  reference     String? // cheque no / UPI ref / razorpay id
+  paymentDate   DateTime    @map("payment_date") @db.Date
+  instalmentNo  Int?        @map("instalment_no")
+  receiptNo     String      @unique @map("receipt_no") // auto, sequential
+  remarks       String?
+  isCancelled   Boolean     @default(false) @map("is_cancelled")
+  collectedById String?     @map("collected_by_id") @db.Uuid
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@map("fee_transactions")
+}
+
+// ─────────────────────────── DPDP / AUDIT ───────────────────────────
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  tableName String   @map("table_name")
+  recordId  String   @map("record_id")
+  action    String // INSERT | UPDATE | DELETE
+  oldData   Json?    @map("old_data")
+  newData   Json?    @map("new_data")
+  changedById String? @map("changed_by_id") @db.Uuid
+  changedAt DateTime @default(now()) @map("changed_at")
+  ipAddress String?  @map("ip_address")
+
+  changedBy User? @relation(fields: [changedById], references: [id])
+
+  @@map("audit_log")
+}
+
+// Issued certificates — 7 HO-locked templates; TC gated on fee clearance.
+model Certificate {
+  id         String   @id @default(uuid()) @db.Uuid
+  studentId  String   @map("student_id") @db.Uuid
+  type       String // BONAFIDE | TC | PROGRESS | PARTICIPATION | GRADUATION | CHARACTER | APPRECIATION
+  serialNo   String   @unique @map("serial_no")
+  payload    Json?
+  issuedById String?  @map("issued_by_id") @db.Uuid
+  issuedAt   DateTime @default(now()) @map("issued_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@map("certificates")
+}
+
+// Outbound message queue — absence alerts, escalations, fee reminders,
+// receipts. Status stays QUEUED until the WhatsApp BSP goes live (Slice 7).
+model MessageLog {
+  id           String    @id @default(uuid()) @db.Uuid
+  type         String // ABSENCE_ALERT | ADMIN_CALL | ESCALATION_3DAY | FEE_REMINDER | RECEIPT
+  channel      String    @default("WHATSAPP")
+  recipient    String // parent phone
+  studentId    String?   @map("student_id") @db.Uuid
+  unitId       String?   @map("unit_id") @db.Uuid
+  payload      Json?
+  status       String    @default("QUEUED") // QUEUED | SENT | FAILED
+  scheduledFor DateTime? @map("scheduled_for")
+  sentAt       DateTime? @map("sent_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  student Student? @relation(fields: [studentId], references: [id])
+
+  @@map("message_logs")
+}
+
+model ConsentLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  studentId   String   @map("student_id") @db.Uuid
+  consentType String   @map("consent_type") // ADMISSION_FORM | PHOTO_VIDEO | DATA_PROCESSING
+  granted     Boolean
+  grantedBy   String   @map("granted_by") // parent name
+  grantedAt   DateTime @default(now()) @map("granted_at")
+
+  @@map("consent_log")
+}

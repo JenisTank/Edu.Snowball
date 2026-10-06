@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  BumbleB Soft-Emboss Design System v3 — CONTRAST LAYERS
+  (per user direction: layers must contrast, not blend)
+
+  Layer 0 · PAGE      : warm white        #FBF8F1
+  Layer 1 · CARDS     : cream / light gold #F9F1DD → #EFE2C0  (clearly visible vs page)
+  Layer 2 · WELLS     : deeper cream      #F1E6C9  (inset — inputs, tracks, toggles)
+  Layer 3 · ACTIONS   : dark honey        #D9A73D → #AD7B19  (buttons, active states)
+*/
+
+@layer base {
+  html {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+  }
+  body {
+    @apply bg-cream text-ink antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Nunito', sans-serif;
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #DCCFA8; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #CDBC8E; }
+}
+
+@layer components {
+  /* ── Layer 1: raised cream cards on white page ──────── */
+  .card {
+    @apply rounded-2xl shadow-neo;
+    background: linear-gradient(145deg, #F8EDCD, #EBDBAC);
+    border: 1px solid #E4D29D;
+  }
+
+  /* ── Layer 2: wells carved into cards ───────────────── */
+  .neo-inset {
+    @apply rounded-xl shadow-neo-inset;
+    background: #EFE1B9;
+    border: 1px solid #E0CD96;
+  }
+
+  /* ── Layer 3: action buttons — dark honey ───────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5
+      font-heading font-bold text-white
+      shadow-neo-sm hover:brightness-105 active:shadow-neo-inset-sm active:brightness-95
+      focus:outline-none focus:ring-2 focus:ring-honey-300 transition disabled:opacity-50;
+    background: linear-gradient(145deg, #DCA93C, #A97716);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+  }
+  .btn-neo {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2
+      text-[12.5px] font-semibold text-stone-700 shadow-neo-sm
+      hover:text-honey-700 focus:outline-none transition select-none whitespace-nowrap;
+    background: linear-gradient(145deg, #F9EFD3, #EDDEB2);
+    border: 1px solid #E4D29D;
+  }
+  .btn-neo:active {
+    @apply shadow-neo-inset-sm;
+    background: #EFE1B9;
+  }
+  .btn-neo-icon {
+    @apply inline-flex items-center justify-center rounded-xl p-2.5
+      text-stone-600 shadow-neo-sm hover:text-honey-600 transition;
+    background: linear-gradient(145deg, #F9EFD3, #EDDEB2);
+    border: 1px solid #E4D29D;
+  }
+  .btn-neo-icon:active {
+    @apply shadow-neo-inset-sm;
+    background: #EFE1B9;
+  }
+
+  /* ── Inputs — carved wells ──────────────────────────── */
+  .input {
+    @apply w-full rounded-xl shadow-neo-inset-sm px-3.5 py-2.5 text-sm
+      text-ink placeholder:text-stone-400
+      focus:outline-none focus:ring-2 focus:ring-honey-300/70 transition;
+    background: #F0E3BF;
+    border: 1px solid #E0CD96;
+  }
+
+  /* ── Stat chips — small raised cream pills ──────────── */
+  .chip {
+    @apply inline-flex items-center gap-2 rounded-full shadow-neo-xs
+      px-3.5 py-1.5 text-xs font-semibold text-stone-700 whitespace-nowrap;
+    background: linear-gradient(145deg, #F9EFD3, #EDDEB2);
+    border: 1px solid #E4D29D;
+  }
+  .chip-dot {
+    @apply h-2 w-2 rounded-full shrink-0;
+  }
+
+  /* ── Segmented control (List / Board) ───────────────── */
+  .seg {
+    @apply inline-flex items-center gap-1 rounded-xl shadow-neo-inset-sm p-1 shrink-0;
+    background: #EFE1B9;
+    border: 1px solid #E0CD96;
+  }
+  .seg-item {
+    @apply inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold
+      text-stone-500 cursor-pointer transition select-none whitespace-nowrap;
+  }
+  .seg-item-active {
+    @apply shadow-neo-xs text-white;
+    background: linear-gradient(145deg, #DCA93C, #A97716);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+  }
+
+  /* ── Active sidebar item — honey emboss ─────────────── */
+  .nav-active {
+    @apply shadow-neo-sm text-honey-800;
+    background: linear-gradient(145deg, #F8ECC9, #EEDCA4);
+    border: 1px solid #EBD9A4;
+  }
+
+  /* ── Dropdown panels ────────────────────────────────── */
+  .pop {
+    @apply rounded-2xl shadow-lift p-2;
+    background: linear-gradient(145deg, #F9F0D6, #EEDFB6);
+    border: 1px solid #E4D29D;
+  }
+}
