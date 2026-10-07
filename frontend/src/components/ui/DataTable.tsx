@@ -305,19 +305,7 @@ export function Badge({ children, tone = 'stone', dot }: {
   tone?: 'honey' | 'sky' | 'green' | 'red' | 'violet' | 'stone' | 'pink';
   dot?: boolean;
 }) {
-  const tones: Record<string, string> = {
-    honey: 'bg-honey-100/80 text-honey-700',
-    sky: 'bg-sky-100/80 text-sky-700',
-    green: 'bg-emerald-100/70 text-emerald-700',
-    red: 'bg-rose-100/70 text-rose-600',
-    violet: 'bg-violet-100/70 text-violet-700',
-    pink: 'bg-pink-100/70 text-pink-600',
-    stone: 'bg-stone-200/60 text-stone-700',
-  };
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-neo-xs', tones[tone])}>
-      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-      {children}
-    </span>
-  );
+  const colours: Record<string,string>={honey:'var(--accent)',sky:'var(--info)',green:'var(--ok)',red:'var(--danger)',violet:'var(--violet)',pink:'var(--danger)',stone:'var(--txt2)'};
+  const colour=colours[tone]||'var(--txt2)';
+  return <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-neu-pill" style={{color:colour,background:`color-mix(in srgb, ${colour} 13%, var(--bg2))`}}>{dot&&<span className="h-1.5 w-1.5 rounded-full bg-current"/>}{children}</span>;
 }

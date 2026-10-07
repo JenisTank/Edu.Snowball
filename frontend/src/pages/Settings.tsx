@@ -331,7 +331,7 @@ function UnitsTab() {
                 });
               }}>Edit</button>
             </div>
-            <dl className="mt-4 space-y-2 border-t border-[#E6D7A8] pt-3 text-xs">
+            <dl className="mt-4 space-y-2 border-t border-[color:var(--neu-border)] pt-3 text-xs">
               <div className="flex justify-between"><dt className="text-stone-500 font-semibold">Address</dt><dd className="text-right font-semibold text-stone-700 max-w-[60%]">{u.address ?? '—'}</dd></div>
               <div className="flex justify-between"><dt className="text-stone-500 font-semibold">Ops phone (internal)</dt><dd className="font-semibold text-stone-700">{u.phone ?? '—'}</dd></div>
               <div className="flex justify-between"><dt className="text-stone-500 font-semibold">Calendly</dt><dd className="font-semibold text-stone-700 truncate max-w-[60%]">{u.settings?.calendlyLink ?? '—'}</dd></div>
@@ -395,7 +395,7 @@ function ProgrammesTab() {
                 <div className="text-xs font-semibold text-honey-700">{p.tierName}</div>
               </div>
             </div>
-            <div className="mt-3 border-t border-[#E6D7A8] pt-3 text-xs font-semibold text-stone-600">
+            <div className="mt-3 border-t border-[color:var(--neu-border)] pt-3 text-xs font-semibold text-stone-600">
               Age {Number(p.ageMin)} – {Number(p.ageMax)} years
             </div>
           </div>

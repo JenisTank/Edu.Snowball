@@ -23,15 +23,15 @@ interface LeadRow {
 }
 
 export const STAGE_META: Record<string, { label: string; tone: any; colour: string }> = {
-  NEW_INQUIRY: { label: 'New Inquiry', tone: 'sky', colour: '#4BAED0' },
-  FIRST_BUZZ: { label: 'First Buzz', tone: 'honey', colour: '#C8922A' },
-  ROUTING: { label: 'Routing', tone: 'violet', colour: '#8B5CF6' },
-  EXPERIENCE_SESSION: { label: 'Experience', tone: 'pink', colour: '#EC4899' },
-  DISCOVERY_FLIGHT: { label: 'Discovery Flight', tone: 'honey', colour: '#D6A747' },
-  OFFER: { label: 'Offer', tone: 'violet', colour: '#7C3AED' },
-  CONFIRMATION: { label: 'Confirmation', tone: 'green', colour: '#10B981' },
-  ENROLLED: { label: 'Enrolled', tone: 'green', colour: '#059669' },
-  LOST: { label: 'Lost', tone: 'stone', colour: '#9CA3AF' },
+  NEW_INQUIRY: { label: 'New Inquiry', tone: 'sky', colour: 'var(--info)' },
+  FIRST_BUZZ: { label: 'First Buzz', tone: 'honey', colour: 'var(--accent)' },
+  ROUTING: { label: 'Routing', tone: 'violet', colour: 'var(--violet)' },
+  EXPERIENCE_SESSION: { label: 'Experience', tone: 'pink', colour: 'var(--danger)' },
+  DISCOVERY_FLIGHT: { label: 'Discovery Flight', tone: 'honey', colour: 'var(--warn)' },
+  OFFER: { label: 'Offer', tone: 'violet', colour: 'var(--violet)' },
+  CONFIRMATION: { label: 'Confirmation', tone: 'green', colour: 'var(--ok)' },
+  ENROLLED: { label: 'Enrolled', tone: 'green', colour: 'var(--ok)' },
+  LOST: { label: 'Lost', tone: 'stone', colour: 'var(--txt3)' },
 };
 const STAGE_ORDER = ['NEW_INQUIRY', 'FIRST_BUZZ', 'ROUTING', 'EXPERIENCE_SESSION', 'DISCOVERY_FLIGHT', 'OFFER', 'CONFIRMATION', 'ENROLLED'];
 const CHANNEL_ICON: Record<string, string> = {
@@ -335,7 +335,7 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
             </div>
             <ol className="space-y-3">
               {lead.activities?.map((a: any) => (
-                <li key={a.id} className="border-l-2 border-[#E6D7A8] pl-3">
+                <li key={a.id} className="border-l-2 border-[color:var(--neu-border)] pl-3">
                   <div className="text-[11px] font-bold text-stone-700">
                     {a.type === 'STAGE_CHANGE' && a.meta ? `${STAGE_META[a.meta.from]?.label ?? a.meta.from} → ${STAGE_META[a.meta.to]?.label ?? a.meta.to}`
                       : a.type === 'ROUTING' && a.meta ? `Routing ${a.meta.kind}: ${a.meta.from ?? '—'} → ${a.meta.to}`
@@ -422,7 +422,7 @@ export default function Leads() {
         const v = Number(getValue());
         return (
           <div className="flex items-center gap-2">
-            <div className="h-1.5 w-12 overflow-hidden rounded-full shadow-neo-inset-sm bg-[#EFE1B9]">
+            <div className="h-1.5 w-12 overflow-hidden rounded-full shadow-neo-inset-sm bg-[color:var(--sunken)]">
               <div className={cn('h-full rounded-full', v >= 60 ? 'bg-emerald-400' : v >= 40 ? 'bg-honey-400' : 'bg-stone-300')} style={{ width: `${v}%` }} />
             </div>
             <span className="text-xs font-bold">{v}</span>

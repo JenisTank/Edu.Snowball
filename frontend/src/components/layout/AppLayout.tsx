@@ -157,7 +157,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="relative">
               <button
                 onClick={() => setUserMenu(v => !v)}
-                className="flex items-center gap-2.5 rounded-2xl border border-[#E4D29D] bg-gradient-to-br from-[#F9EFD3] to-[#EDDEB2] px-2.5 py-1.5 shadow-neo-sm active:shadow-neo-inset-sm transition"
+                className="flex items-center gap-2.5 rounded-2xl border border-[color:var(--neu-border)] bg-gradient-to-br from-[color:var(--bg2)] to-[color:var(--row)] px-2.5 py-1.5 shadow-neo-sm active:shadow-neo-inset-sm transition"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-honey-400 to-honey-600 font-heading text-sm font-extrabold text-white shadow-neo-xs">
                   {user.fullName.charAt(0)}
@@ -172,7 +172,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </button>
               {userMenu && (
                 <div className="pop absolute right-0 top-full z-30 mt-2 w-56">
-                  <div className="px-3 py-2 text-xs text-stone-500 border-b border-[#E3D5AC]/60 mb-1">
+                  <div className="px-3 py-2 text-xs text-stone-500 border-b border-[color:var(--neu-border)] mb-1">
                     {user.email}
                   </div>
                   <button

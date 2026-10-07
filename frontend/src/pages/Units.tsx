@@ -32,7 +32,7 @@ export default function Units() {
               {u.phone && <div className="flex gap-2 items-center"><Phone className="h-3.5 w-3.5 text-stone-400" />{u.phone} <span className="text-[10px] text-stone-400">(internal ops)</span></div>}
               {u.email && <div className="flex gap-2 items-center"><Mail className="h-3.5 w-3.5 text-stone-400" />{u.email}</div>}
             </div>
-            <div className="mt-4 flex items-center gap-4 border-t border-[#E6D7A8] pt-3 text-[12px] text-stone-600">
+            <div className="mt-4 flex items-center gap-4 border-t border-[color:var(--neu-border)] pt-3 text-[12px] text-stone-600">
               <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-honey-500" /> {u._count.students} students</span>
               <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-sky-500" /> {u._count.batches} batches</span>
               <span className="ml-auto text-stone-500">Float ₹{Number(u.settings?.pettyCashFloat ?? 0).toLocaleString('en-IN')}</span>
@@ -61,7 +61,7 @@ export default function Units() {
               <div className="flex justify-between text-[11px] text-stone-600 mb-1">
                 <span>Seats</span><span className="font-semibold">{b._count.students} / {b.capacity}</span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full shadow-neo-inset-sm bg-[#EFE1B9]">
+              <div className="h-1.5 overflow-hidden rounded-full shadow-neo-inset-sm bg-[color:var(--sunken)]">
                 <div
                   className={`h-full rounded-full ${b._count.students / b.capacity > 0.85 ? 'bg-rose-400' : 'bg-emerald-400'}`}
                   style={{ width: `${Math.min(100, (b._count.students / b.capacity) * 100)}%` }}
