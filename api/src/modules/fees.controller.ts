@@ -5,6 +5,7 @@ import {
 import { AuthGuard, Roles, unitScope, HO_ROLES } from '../auth/auth';
 import { PrismaService } from '../prisma.service';
 import { AuditService } from './admin.controller';
+import { sendWebPush } from './push.service';
 
 const AY = '2026-27';
 const AY_SHORT = '2627';
@@ -309,6 +310,7 @@ export class FeesController {
             payload: { stage, instalmentNo: inst.no, amountDue: inst.amount - inst.paid, dueDate: inst.dueDate, child: r.name },
           },
         });
+        await sendWebPush(this.prisma, phone, { title: 'Fee reminder', body: `₹${inst.amount - inst.paid} is due for ${r.name}.`, url: '/parent', tag: `fee-${r.id}-${inst.no}-${stage}` });
         queued++;
       }
     }

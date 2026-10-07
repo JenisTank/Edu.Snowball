@@ -94,6 +94,11 @@ export class CertificatesController {
       include: { student: { include: { programme: true, unit: true } } },
     });
     if (!c) throw new NotFoundException('Certificate not found');
+    if (req.user.role === 'PARENT') {
+      if (!req.user.studentIds?.includes(c.studentId)) throw new ForbiddenException('Not your child');
+    } else if (!HO_ROLES.includes(req.user.role) && c.student.unitId !== req.user.unitId) {
+      throw new ForbiddenException('Certificate is outside your unit');
+    }
     const tpl = TEMPLATES.find(t => t.type === c.type)!;
     const s = c.student;
     const p: any = c.payload ?? {};

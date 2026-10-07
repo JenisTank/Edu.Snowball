@@ -23,6 +23,11 @@ Classes in frontend/src/index.css: .card .btn-primary .btn-neo .input .chip .seg
 All tables = ONE shared TanStack DataTable component. ERP must stay programme-generic
 (will expand to full school up to 12th Std).
 
+## ✅ COMPLETED — Slice 6 parent hardening (7 Oct 2026)
+
+- Web Push for absence alerts, fee reminders, announcements and Centre Head replies; opt-in/out UI and stale-subscription cleanup.
+- Parent extras: safe My Child profile, issued-document vault, parent ↔ Centre Head messaging. Confidential Health/Infirmary/IEP/Child Support data remains excluded.
+
 ## 🔲 PENDING — remaining build work (Slice 6/7 hardening)
 
 1. **Razorpay live**: order → webhook → auto receipt → ledger update; "Pay Now" button
@@ -30,10 +35,6 @@ All tables = ONE shared TanStack DataTable component. ERP must stay programme-ge
 2. **WhatsApp BSP connect**: real dispatch via AiSensy/Interakt/Gupshup once keys exist
    (`WA_BSP_KEY` in .env flips sandbox→live). Plus HO Template Management screen (B2)
    and fallback chain app-push → WhatsApp → email.
-3. **Web-push notifications** in parent PWA (absence, fee reminders, announcements) —
-   currently in-app feed only.
-4. **Parent portal extras**: Documents vault, CH-reply messages model,
-   My Child parent-visible tabs (Health/Infirmary/IEP/Child Support Log must stay hidden).
 5. **I-card batch generation** (uses certificate/print pipeline).
 6. **DPDP hardening**: PII encryption at rest, consent-log wiring, retention config.
 7. **Production deploy**: domain + VPS, production docker-compose dress-rehearsal,

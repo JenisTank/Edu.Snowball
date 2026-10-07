@@ -65,3 +65,10 @@ phone `+91 9100000000` + admission no `BB-U1-2627-0001`.
 ## Docs
 - `docs/` — code plan, specification, SOPs
 - Slice progress: see `BumbleB_ERP_Code_Plan.md` (workspace root)
+
+### Parent PWA Web Push
+
+Generate VAPID keys once for each deployment (`npx web-push generate-vapid-keys`) and set
+`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and optionally `VAPID_SUBJECT` (a `mailto:` URI)
+in the API environment. Push gracefully remains disabled when keys are absent. After schema
+changes run `cd api && npx prisma db push && npx prisma generate` before starting the API.

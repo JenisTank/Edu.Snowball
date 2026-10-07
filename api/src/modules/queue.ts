@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────
 import { Queue, Worker } from 'bullmq';
 import { PrismaClient } from '@prisma/client';
+import { sendWebPush } from './push.service';
 
 const connection = { url: process.env.REDIS_URL || 'redis://localhost:6379' } as any;
 export const bbQueue = new Queue('bb-jobs', { connection });
@@ -37,6 +38,7 @@ export function startWorker(prisma: PrismaClient) {
             scheduledFor: new Date(),
           },
         });
+        await sendWebPush(prisma, phone, { title: 'Attendance alert', body: `${r.student.firstName} was marked absent today. Tap to review.`, url: '/parent', tag: `absence-${r.studentId}-${date}` });
         // ── 3-day consecutive absence → escalation to Centre Head ──
         const d1 = new Date(date); d1.setDate(d1.getDate() - 1);
         const d2 = new Date(date); d2.setDate(d2.getDate() - 2);

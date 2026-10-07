@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { Megaphone, Send, Smartphone } from 'lucide-react';
+import { Megaphone, Send, Smartphone, MessageCircle } from 'lucide-react';
 import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
@@ -24,8 +24,11 @@ export default function Comms() {
   const [announcing, setAnnouncing] = useState(false);
   const [form, setForm] = useState({ title: '', body: '' });
   const [err, setErr] = useState('');
+  const [replying, setReplying] = useState<any>(null);
+  const [replyBody, setReplyBody] = useState('');
 
   const { data: sm } = useQuery({ queryKey: ['comms-summary'], queryFn: () => api('/comms/summary') });
+  const { data: parentMsgs = [] } = useQuery({ queryKey: ['parent-messages'], queryFn: () => api('/comms/parent-messages') });
   const { data: msgs = [], isLoading } = useQuery({ queryKey: ['comms-messages'], queryFn: () => api('/comms/messages') });
 
   const refresh = () => { qc.invalidateQueries({ queryKey: ['comms-messages'] }); qc.invalidateQueries({ queryKey: ['comms-summary'] }); };
@@ -34,6 +37,7 @@ export default function Comms() {
     onSuccess: () => { refresh(); setAnnouncing(false); setForm({ title: '', body: '' }); },
     onError: (e: any) => setErr(e.message),
   });
+  const reply = useMutation({ mutationFn: () => api(`/comms/parent-messages/${replying.studentId}/reply`, { method: 'POST', body: JSON.stringify({ body: replyBody }) }), onSuccess: () => { setReplying(null); setReplyBody(''); qc.invalidateQueries({ queryKey: ['parent-messages'] }); }, onError: (e:any) => setErr(e.message) });
   const dispatch = useMutation({
     mutationFn: () => api('/comms/dispatch', { method: 'POST' }),
     onSuccess: refresh,
@@ -86,6 +90,14 @@ export default function Comms() {
       <DataTable columns={cols} data={msgs} isLoading={isLoading} title="Message outbox"
         searchPlaceholder="Search messages…" exportName="messages"
         filterable={[{ id: 'type', label: 'Type' }, { id: 'status', label: 'Status' }]} />
+
+      <div className="card mt-4 p-5">
+        <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold"><MessageCircle className="h-4 w-4 text-honey-700"/>Parent questions <span className="chip ml-auto">{parentMsgs.filter((m:any)=>m.sender==='PARENT'&&!m.readAt).length} unread</span></div>
+        {!parentMsgs.length && <div className="py-4 text-center text-[12px] font-semibold text-stone-400">No parent questions yet.</div>}
+        <div className="space-y-2">{parentMsgs.slice(0,20).map((m:any)=><div key={m.id} className="flex items-center gap-3 rounded-xl bg-white/60 px-3 py-2"><div className="min-w-0 flex-1"><div className="text-[11px] font-extrabold">{m.student?.firstName} {m.student?.lastName} · {m.sender==='PARENT'?'Parent':'Centre Head'}</div><div className="truncate text-[12px] font-semibold text-stone-600">{m.body}</div></div><span className="text-[10px] font-semibold text-stone-400">{fmtDate(m.createdAt)}</span>{canSend&&m.sender==='PARENT'&&<button className="btn-neo !px-3 !py-1.5 text-[11px]" onClick={()=>{setErr('');setReplying(m)}}>Reply</button>}</div>)}</div>
+      </div>
+
+      {replying && <Modal title={`Reply to ${replying.student?.firstName}'s parent`} onClose={()=>setReplying(null)}>{err&&<ErrorNote msg={err}/>}<Field label="Reply"><textarea autoFocus maxLength={1000} className="input min-h-28" value={replyBody} onChange={e=>setReplyBody(e.target.value)} /></Field><div className="mt-4 flex justify-end gap-2"><button className="btn-neo" onClick={()=>setReplying(null)}>Cancel</button><button className="btn-primary" disabled={!replyBody.trim()||reply.isPending} onClick={()=>reply.mutate()}><Send className="mr-1 inline h-3.5 w-3.5"/>Send reply</button></div></Modal>}
 
       {announcing && (
         <Modal title="📣 New announcement" onClose={() => setAnnouncing(false)}>
