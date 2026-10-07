@@ -28,6 +28,10 @@ All tables = ONE shared TanStack DataTable component. ERP must stay programme-ge
 - Web Push for absence alerts, fee reminders, announcements and Centre Head replies; opt-in/out UI and stale-subscription cleanup.
 - Parent extras: safe My Child profile, issued-document vault, parent ↔ Centre Head messaging. Confidential Health/Infirmary/IEP/Child Support data remains excluded.
 
+## ✅ COMPLETED — I-card pipeline (7 Oct 2026)
+
+- Batch-scoped, unit-authorized A4 I-card sheets with photos/initial fallbacks and print layout.
+
 ## 🔲 PENDING — remaining build work (Slice 6/7 hardening)
 
 1. **Razorpay live**: order → webhook → auto receipt → ledger update; "Pay Now" button
@@ -35,7 +39,6 @@ All tables = ONE shared TanStack DataTable component. ERP must stay programme-ge
 2. **WhatsApp BSP connect**: real dispatch via AiSensy/Interakt/Gupshup once keys exist
    (`WA_BSP_KEY` in .env flips sandbox→live). Plus HO Template Management screen (B2)
    and fallback chain app-push → WhatsApp → email.
-5. **I-card batch generation** (uses certificate/print pipeline).
 6. **DPDP hardening**: PII encryption at rest, consent-log wiring, retention config.
 7. **Production deploy**: domain + VPS, production docker-compose dress-rehearsal,
    nightly DB backups, Sentry alerts, deploy guide.

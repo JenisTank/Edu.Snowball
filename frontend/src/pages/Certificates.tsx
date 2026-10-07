@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { FileBadge, Lock, Printer, ShieldCheck } from 'lucide-react';
+import { FileBadge, Lock, Printer, ShieldCheck, Contact } from 'lucide-react';
 import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
@@ -16,9 +16,11 @@ export default function Certificates() {
   const [form, setForm] = useState<any>({ studentId: '', event: '', reason: '', noDuesConfirmed: false });
   const [err, setErr] = useState('');
   const [done, setDone] = useState<any>(null);
+  const [cardBatchId, setCardBatchId] = useState('');
 
   const { data: templates = [] } = useQuery({ queryKey: ['cert-templates'], queryFn: () => api('/certificates/templates') });
   const { data: issued = [], isLoading } = useQuery({ queryKey: ['certs'], queryFn: () => api('/certificates') });
+  const { data: batches = [] } = useQuery({ queryKey: ['batches'], queryFn: () => api('/batches') });
   const { data: students = [] } = useQuery({ queryKey: ['students'], queryFn: () => api('/students') });
 
   const issue = useMutation({
@@ -46,6 +48,12 @@ export default function Certificates() {
         title="Certificates" count={`${issued.length} issued`}
         subtitle="7 Head-Office-locked templates · serial-numbered · TC requires cleared fees + No-Dues confirmation"
       />
+
+      <div className="card mb-5 flex flex-col gap-3 p-4 sm:flex-row sm:items-end">
+        <div className="flex-1"><div className="mb-1 flex items-center gap-2 font-heading text-[14px] font-extrabold"><Contact className="h-4 w-4 text-honey-700" />Batch I-card generation</div><p className="text-[11px] font-semibold text-stone-500">Print-ready A4 sheets · 8 cards per page · active students only · photo fallback to initials</p></div>
+        <div className="min-w-64"><Field label="Batch"><select className="input" value={cardBatchId} onChange={e => setCardBatchId(e.target.value)}><option value="">Select batch…</option>{batches.filter((b:any)=>b.isActive).map((b:any)=><option key={b.id} value={b.id}>{b.unit?.code ? `${b.unit.code} · ` : ''}{b.name} · {b.academicYear}</option>)}</select></Field></div>
+        <button className="btn-primary" disabled={!cardBatchId} onClick={() => window.open(`/api/certificates/id-cards/batch/print?batchId=${encodeURIComponent(cardBatchId)}`, '_blank')}><Printer className="mr-1.5 inline h-3.5 w-3.5" />Generate I-cards</button>
+      </div>
 
       {/* template gallery */}
       <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

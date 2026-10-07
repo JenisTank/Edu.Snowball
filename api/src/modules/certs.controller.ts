@@ -85,6 +85,28 @@ export class CertificatesController {
     return cert;
   }
 
+  // ── Batch I-card sheet (A4, 8 cards/page) ──
+  @Get('id-cards/batch/print')
+  @Header('Content-Type', 'text/html')
+  async printIdCards(@Req() req: any, @Query('batchId') batchId?: string) {
+    if (!batchId) throw new BadRequestException('Batch is required');
+    const batch = await this.prisma.batch.findUnique({ where: { id: batchId }, include: { unit: true, programme: true } });
+    if (!batch) throw new NotFoundException('Batch not found');
+    if (!HO_ROLES.includes(req.user.role) && batch.unitId !== req.user.unitId) throw new ForbiddenException('Batch is outside your unit');
+    const students = await this.prisma.student.findMany({ where: { batchId, status: 'ACTIVE' }, orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }] });
+    if (!students.length) throw new BadRequestException('No active students in this batch');
+    const esc = (v: any) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]!));
+    const cards = students.map((s: any) => {
+      const name = `${s.firstName} ${s.lastName}`.trim();
+      const initials = `${s.firstName?.[0] ?? ''}${s.lastName?.[0] ?? ''}`.toUpperCase();
+      const photo = s.photoUrl ? `<img class="photo" src="${esc(s.photoUrl)}" alt="${esc(name)}">` : `<div class="photo fallback">${esc(initials || '🐝')}</div>`;
+      return `<article class="card"><div class="top"><div class="brand">🐝 BumbleB Kidz</div><div class="unit">${esc(batch.unit.name)}</div></div><div class="body">${photo}<div class="name">${esc(name)}</div><div class="programme">${esc(batch.programme.name)} · ${esc(batch.name)}</div><div class="rows"><div><span>Admission No.</span><b>${esc(s.admissionNo)}</b></div><div><span>Academic Year</span><b>${esc(batch.academicYear)}</b></div><div><span>Date of Birth</span><b>${new Date(s.dob).toLocaleDateString('en-IN')}</b></div></div></div><div class="foot">Student Identity Card · If found, contact ${esc(batch.unit.phone || batch.unit.email || 'the centre')}</div></article>`;
+    }).join('');
+    return `<!doctype html><html><head><meta charset="utf-8"><title>I-cards · ${esc(batch.name)}</title><style>
+      *{box-sizing:border-box}body{margin:0;background:#eee;font-family:Arial,sans-serif;color:#1f1b13}.toolbar{position:sticky;top:0;padding:10px;text-align:center;background:#fff;z-index:2}.toolbar button{background:#a97716;color:#fff;border:0;border-radius:8px;padding:9px 18px;font-weight:700}.sheet{width:210mm;min-height:297mm;margin:10px auto;background:#fff;padding:10mm;display:grid;grid-template-columns:repeat(2,86mm);grid-auto-rows:54mm;gap:8mm 10mm;align-content:start}.card{border:1px solid #d9c27f;border-radius:10px;overflow:hidden;position:relative;background:#fff;break-inside:avoid}.top{height:12mm;background:linear-gradient(145deg,#f8edcd,#ebdbac);padding:2.5mm 4mm;display:flex;justify-content:space-between;align-items:center}.brand{font-size:12px;font-weight:900;color:#8a6410}.unit{font-size:8px;font-weight:700}.body{padding:3mm 4mm 2mm 25mm;position:relative;min-height:35mm}.photo{position:absolute;left:4mm;top:3mm;width:17mm;height:21mm;border-radius:5px;object-fit:cover;border:1px solid #e2d5af}.fallback{display:grid;place-items:center;background:#f8edcd;font-size:16px;font-weight:900;color:#8a6410}.name{font-size:12px;font-weight:900}.programme{font-size:8px;color:#78716c;font-weight:700;margin:1mm 0 2mm}.rows div{display:flex;justify-content:space-between;font-size:7.5px;padding:.6mm 0;border-bottom:1px solid #f3ead0}.rows span{color:#78716c}.foot{position:absolute;bottom:0;width:100%;background:#a97716;color:white;padding:1.5mm;text-align:center;font-size:6.5px;font-weight:700}@page{size:A4;margin:0}@media print{body{background:#fff}.toolbar{display:none}.sheet{margin:0;page-break-after:always}}
+    </style></head><body><div class="toolbar"><button onclick="window.print()">Print ${students.length} I-cards</button></div><main class="sheet">${cards}</main></body></html>`;
+  }
+
   // ── Printable certificate ──
   @Get(':id/print')
   @Header('Content-Type', 'text/html')
