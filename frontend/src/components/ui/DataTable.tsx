@@ -16,9 +16,10 @@ import {
 } from '@tanstack/react-table';
 import {
   ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight,
-  Columns3, Download, Search, Inbox, ListFilter, X,
+  Columns3, Download, Search, ListFilter, X,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { EmptyState, Skeleton } from '@snowball/ui/components';
 
 interface FilterDef { id: string; label: string }
 
@@ -194,10 +195,10 @@ export function DataTable<T>({
 
       {/* ── Table ── */}
       <div className="overflow-x-auto px-2">
-        <table className="w-full text-sm">
+        <table className="tbl">
           <thead>
             {table.getHeaderGroups().map(hg => (
-              <tr key={hg.id} className="border-b border-[#DDCB92]">
+              <tr key={hg.id} className="border-b border-[color:var(--neu-border)]">
                 {hg.headers.map(h => (
                   <th
                     key={h.id}
@@ -223,10 +224,10 @@ export function DataTable<T>({
           <tbody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-[#E6D7A8]">
+                <tr key={i} className="border-b border-[color:var(--neu-border)]">
                   {columns.map((_, j) => (
                     <td key={j} className="px-4 py-3.5">
-                      <div className="h-3.5 w-3/4 animate-pulse rounded bg-[#E6D7A8]" />
+                      <Skeleton height={14} className="!w-3/4" />
                     </td>
                   ))}
                 </tr>
@@ -234,11 +235,7 @@ export function DataTable<T>({
             ) : table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="py-16 text-center">
-                  <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl shadow-neo-inset">
-                    <Inbox className="h-6 w-6 text-stone-500" />
-                  </div>
-                  <p className="font-heading font-bold text-stone-600">No records found</p>
-                  <p className="text-xs text-stone-500 mt-0.5">Try clearing search or filters</p>
+                  <EmptyState icon="inbox" headline="No records found" description="Try clearing search or filters." />
                 </td>
               </tr>
             ) : (
@@ -247,8 +244,8 @@ export function DataTable<T>({
                   key={row.id}
                   onClick={() => onRowClick?.(row.original)}
                   className={cn(
-                    'border-b border-[#E6D7A8] transition-colors',
-                    onRowClick ? 'cursor-pointer hover:bg-white/40' : 'hover:bg-white/30',
+                    'transition-colors',
+                    onRowClick ? 'cursor-pointer hover:bg-[color:var(--row-hover)]' : 'hover:bg-[color:var(--row-hover)]',
                   )}
                 >
                   {row.getVisibleCells().map(cell => (
