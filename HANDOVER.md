@@ -41,10 +41,12 @@ All tables = ONE shared TanStack DataTable component. ERP must stay programme-ge
    nightly DB backups, Sentry alerts, deploy guide.
 8. **Replace demo data with real data**: real fee structures, staff accounts, logo files.
 
-## 🔮 Phase 2 backlog (schema already provisioned)
-18-tab student lifecycle · HR & dual payroll · Academic module (Yearly Goals/Big Rocks/
-Calendar/Log Plan) · Inventory · PTM · Evening Activity Centre (separate ledger) ·
-Analytics · Franchise layer · AI.
+## ✅ Phase 2 operational modules completed (7 Oct 2026)
+18-tab student lifecycle · Academic planning (Yearly Goals/Big Rocks/Calendar/Log Plan) ·
+Inventory stock ledger · PTM scheduling/records · Evening Activity Centre separate ledger.
+
+## 🔮 Remaining Phase 2+ backlog
+HR & dual payroll · Analytics · Franchise layer · AI.
 
 ## 👤 Founder's own checklist (only the founder can do)
 Razorpay KYC · WhatsApp BSP account + template approval · domain + VPS ·
