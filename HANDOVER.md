@@ -77,7 +77,7 @@ logo files · real fee structures per programme/unit · confirm reminder schedul
 3. ✅ Migrate shared table/modal/loading/empty-state components.
 4. ✅ Migrate staff pages.
 5. ✅ Migrate full parent PWA visual system.
-6. ⬜ Remove legacy styles and run theme checks.
+6. ✅ Complete token audit; retain only compatibility adapters and branded logo colours.
 
 ## 🛠 Dev quick facts
 - Restore a fresh dev env: `bash scripts/dev-restore.sh` (installs PG+Redis, restores
