@@ -63,6 +63,8 @@ Inventory stock ledger · PTM scheduling/records · Evening Activity Centre sepa
 ## ✅ Analytics completed (7 Oct 2026)
 Cross-module founder dashboard: admissions, attendance, fees, HR/payroll, inventory, academic, PTM and evening centre.
 
+Snowball shell correction: compact icon rail + horizontal module navigation, dense token shadows, Inter typography, floating 3-preset selector and Settings selector.
+
 ## 🔮 Remaining Phase 2+ backlog
 Franchise layer · AI (both explicitly deferred).
 
@@ -71,7 +73,7 @@ Razorpay KYC · WhatsApp BSP account + template approval · domain + VPS ·
 logo files · real fee structures per programme/unit · confirm reminder schedule with FA.
 
 
-## 🚧 Snowball UI migration
+## ✅ Snowball UI migration
 1. ✅ Pinned `@snowball/ui` v1.0.0 Git dependency, Tailwind preset, pre-paint theme engine, ErrorBoundary and Settings preset selector.
 2. ✅ Tokenise application shell and shared controls.
 3. ✅ Migrate shared table/modal/loading/empty-state components.

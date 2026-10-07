@@ -6,8 +6,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        heading: ['Nunito', 'sans-serif'],
-        body: ['"DM Sans"', 'sans-serif'],
+        heading: ['Inter', 'sans-serif'],
+        body: ['Inter', 'sans-serif'],
       },
       colors: {
         honey: {
@@ -25,14 +25,12 @@ export default {
         ink: 'var(--txt)',
       },
       boxShadow: {
-        // Cards are DARKER than the page, so depth comes from a warm drop
-        // shadow below-right + white highlight above-left + the tint contrast.
-        neo: '8px 8px 20px rgba(167,138,70,0.28), -6px -6px 14px #FFFFFF',
-        'neo-sm': '5px 5px 12px rgba(167,138,70,0.3), -4px -4px 10px #FFFFFF',
-        'neo-xs': '3px 3px 8px rgba(167,138,70,0.3), -3px -3px 7px #FFFFFF',
-        'neo-inset': 'inset 5px 5px 10px rgba(146,117,48,0.22), inset -4px -4px 9px rgba(255,255,255,0.95)',
-        'neo-inset-sm': 'inset 4px 4px 8px rgba(146,117,48,0.2), inset -3px -3px 7px rgba(255,255,255,0.9)',
-        lift: '12px 12px 28px rgba(150,120,55,0.35), -8px -8px 18px #FFFFFF',
+        neo: '8px 8px 20px var(--shadow-dark), -6px -6px 16px var(--shadow-light), inset 0 1px 1px var(--sheen-line)',
+        'neo-sm': '4px 4px 10px var(--shadow-dark-soft), -2px -2px 6px var(--shadow-light-soft)',
+        'neo-xs': '2px 2px 5px var(--shadow-dark-soft), -1px -1px 3px var(--shadow-light)',
+        'neo-inset': 'inset 3px 3px 6px var(--shadow-inset-dark), inset -2px -2px 5px var(--shadow-inset-light)',
+        'neo-inset-sm': 'inset 2px 2px 5px var(--shadow-inset-dark), inset -1px -1px 3px var(--shadow-inset-light)',
+        lift: '8px 10px 24px var(--shadow-dark)',
       },
     },
   },
