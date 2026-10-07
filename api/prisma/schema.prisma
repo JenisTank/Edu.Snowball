@@ -592,6 +592,7 @@ model Employee {
   overtime OvertimeAuthorisation[]
   payrollLines PayrollLine[]
   payrollAdjustments PayrollAdjustment[]
+  minuteRates EmployeeMinuteRate[]
 
   @@index([unitId, status])
   @@index([reportingManagerId])
@@ -630,3 +631,4 @@ model OvertimeAuthorisation { id String @id @default(uuid()) @db.Uuid employeeId
 model PayrollRun { id String @id @default(uuid()) @db.Uuid type String month String unitId String? @map("unit_id") @db.Uuid status String @default("DRAFT") version Int @default(1) createdById String @map("created_by_id") @db.Uuid submittedById String? @map("submitted_by_id") @db.Uuid approvedById String? @map("approved_by_id") @db.Uuid approvedAt DateTime? @map("approved_at") lockedAt DateTime? @map("locked_at") reversalOfId String? @map("reversal_of_id") @db.Uuid createdAt DateTime @default(now()) @map("created_at") lines PayrollLine[] @@unique([type,month,unitId,version]) @@map("payroll_runs") }
 model PayrollLine { id String @id @default(uuid()) @db.Uuid runId String @map("run_id") @db.Uuid employeeId String @map("employee_id") @db.Uuid gross Decimal @db.Decimal(12,2) deductions Decimal @db.Decimal(12,2) employerContributions Decimal @default(0) @map("employer_contributions") @db.Decimal(12,2) net Decimal @db.Decimal(12,2) workedMinutes Int @default(0) @map("worked_minutes") otMinutes Int @default(0) @map("ot_minutes") lwpDays Decimal @default(0) @map("lwp_days") @db.Decimal(6,2) details Json run PayrollRun @relation(fields:[runId],references:[id]) employee Employee @relation(fields:[employeeId],references:[id]) @@unique([runId,employeeId]) @@map("payroll_lines") }
 model PayrollAdjustment { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") month String type String amount Decimal @db.Decimal(12,2) reason String status String @default("APPROVED") sourceRunId String? @map("source_run_id") @db.Uuid createdById String @map("created_by_id") @db.Uuid createdAt DateTime @default(now()) @map("created_at") employee Employee @relation(fields:[employeeId],references:[id]) @@index([employeeId,month]) @@map("payroll_adjustments") }
+model EmployeeMinuteRate { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") @db.Uuid rate Decimal @db.Decimal(10,4) effectiveFrom DateTime @map("effective_from") @db.Date effectiveTo DateTime? @map("effective_to") @db.Date employee Employee @relation(fields:[employeeId],references:[id]) @@index([employeeId,effectiveFrom]) @@map("employee_minute_rates") }
