@@ -586,6 +586,7 @@ model Employee {
   history      EmploymentHistory[]
   shifts       EmployeeShift[]
   salaryComponents EmployeeSalaryComponent[]
+  attendance StaffAttendance[]
 
   @@index([unitId, status])
   @@index([reportingManagerId])
@@ -615,3 +616,5 @@ model EmployeeShift { id String @id @default(uuid()) @db.Uuid employeeId String 
 model HrHoliday { id String @id @default(uuid()) @db.Uuid unitId String? @map("unit_id") @db.Uuid date DateTime @db.Date name String paid Boolean @default(true) @@unique([unitId,date]) @@map("hr_holidays") }
 model SalaryComponent { id String @id @default(uuid()) @db.Uuid code String @unique name String type String calculationType String @map("calculation_type") defaultValue Decimal @default(0) @map("default_value") @db.Decimal(12,4) pfApplicable Boolean @default(false) @map("pf_applicable") esicApplicable Boolean @default(false) @map("esic_applicable") ptApplicable Boolean @default(false) @map("pt_applicable") active Boolean @default(true) values EmployeeSalaryComponent[] @@map("salary_components") }
 model EmployeeSalaryComponent { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") componentId String @map("component_id") value Decimal @db.Decimal(12,4) effectiveFrom DateTime @map("effective_from") @db.Date effectiveTo DateTime? @map("effective_to") @db.Date employee Employee @relation(fields:[employeeId],references:[id]) component SalaryComponent @relation(fields:[componentId],references:[id]) @@index([employeeId,effectiveFrom]) @@map("employee_salary_components") }
+model AttendanceImport { id String @id @default(uuid()) @db.Uuid fileName String @map("file_name") source String status String @default("PROCESSED") totalRows Int @default(0) errorRows Int @default(0) importedById String? @map("imported_by_id") @db.Uuid createdAt DateTime @default(now()) @map("created_at") records StaffAttendance[] @@map("attendance_imports") }
+model StaffAttendance { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") @db.Uuid date DateTime @db.Date firstIn DateTime? @map("first_in") lastOut DateTime? @map("last_out") workedMinutes Int @default(0) @map("worked_minutes") lateMinutes Int @default(0) @map("late_minutes") status String @default("PRESENT") exception String? exceptionResolved Boolean @default(false) @map("exception_resolved") correctionReason String? @map("correction_reason") importId String? @map("import_id") @db.Uuid employee Employee @relation(fields:[employeeId],references:[id]) import AttendanceImport? @relation(fields:[importId],references:[id]) @@unique([employeeId,date]) @@index([date,exceptionResolved]) @@map("staff_attendance") }
