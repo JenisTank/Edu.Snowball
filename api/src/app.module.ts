@@ -12,8 +12,9 @@ import { CertificatesModule } from './modules/certs.controller';
 import { CommsModule } from './modules/comms.controller';
 import { LifecycleModule } from './modules/lifecycle.controller';
 import { AcademicModule } from './modules/academic.controller';
+import { InventoryModule } from './modules/inventory.controller';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule, LifecycleModule, AcademicModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule, LifecycleModule, AcademicModule, InventoryModule],
 })
 export class AppModule {}

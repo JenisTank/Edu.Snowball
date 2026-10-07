@@ -39,7 +39,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/units', label: 'Units & Batches', icon: Building2 },
       { to: '/hr', label: 'HR & Payroll', icon: Briefcase, soon: 'Phase 2' },
       { to: '/academic', label: 'Academic Planning', icon: GraduationCap },
-      { to: '/inventory', label: 'Inventory', icon: Boxes, soon: 'Phase 2' },
+      { to: '/inventory', label: 'Inventory', icon: Boxes },
       { to: '/settings', label: 'Settings', icon: Settings },
     ],
   },

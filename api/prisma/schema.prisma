@@ -542,3 +542,5 @@ model AcademicPlan {
  @@index([unitId])
  @@map("academic_plans")
 }
+model InventoryItem { id String @id @default(uuid()) @db.Uuid unitId String? @map("unit_id") @db.Uuid sku String @unique name String category String reorderLevel Int @default(0) @map("reorder_level") quantity Int @default(0) unitCost Decimal @default(0) @map("unit_cost") @db.Decimal(10,2) active Boolean @default(true) movements InventoryMovement[] @@map("inventory_items") }
+model InventoryMovement { id String @id @default(uuid()) @db.Uuid itemId String @map("item_id") @db.Uuid unitId String @map("unit_id") @db.Uuid type String quantity Int unitCost Decimal? @map("unit_cost") @db.Decimal(10,2) reference String? notes String? createdById String? @map("created_by_id") @db.Uuid createdAt DateTime @default(now()) @map("created_at") item InventoryItem @relation(fields:[itemId],references:[id]) @@index([unitId,createdAt]) @@map("inventory_movements") }
