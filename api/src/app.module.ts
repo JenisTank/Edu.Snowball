@@ -10,8 +10,9 @@ import { FeesModule } from './modules/fees.controller';
 import { ParentModule } from './modules/parent.controller';
 import { CertificatesModule } from './modules/certs.controller';
 import { CommsModule } from './modules/comms.controller';
+import { LifecycleModule } from './modules/lifecycle.controller';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule, LifecycleModule],
 })
 export class AppModule {}

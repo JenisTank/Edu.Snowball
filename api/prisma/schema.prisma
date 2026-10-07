@@ -305,6 +305,7 @@ model Student {
   messageLogs       MessageLog[]
   certificates      Certificate[]
   parentMessages    ParentMessage[]
+  lifecycleRecords  StudentLifecycleRecord[]
 
   @@map("students")
 }
@@ -497,4 +498,23 @@ model ParentMessage {
   @@index([studentId, createdAt])
   @@index([unitId, createdAt])
   @@map("parent_messages")
+}
+
+model StudentLifecycleRecord {
+  id          String   @id @default(uuid()) @db.Uuid
+  studentId   String   @map("student_id") @db.Uuid
+  unitId      String   @map("unit_id") @db.Uuid
+  tab         String
+  title       String
+  payload     Json
+  visibility  String   @default("STAFF_PARENT") // STAFF_PARENT | STAFF_ONLY | INTERNAL
+  status      String? 
+  eventDate   DateTime? @map("event_date") @db.Date
+  createdById String?  @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  student Student @relation(fields: [studentId], references: [id])
+  @@index([studentId, tab])
+  @@index([unitId])
+  @@map("student_lifecycle_records")
 }

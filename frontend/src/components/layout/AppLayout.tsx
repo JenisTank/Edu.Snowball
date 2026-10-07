@@ -26,6 +26,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     group: 'Daily Operations',
     items: [
       { to: '/students', label: 'Students', icon: Users },
+      { to: '/lifecycle', label: 'Student Lifecycle', icon: Users },
       { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
       { to: '/fees', label: 'Fees', icon: IndianRupee },
       { to: '/comms', label: 'Communication', icon: MessageCircle },
