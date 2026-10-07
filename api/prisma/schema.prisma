@@ -589,6 +589,7 @@ model Employee {
   attendance StaffAttendance[]
   leaves StaffLeave[]
   leaveBalances LeaveBalance[]
+  overtime OvertimeAuthorisation[]
 
   @@index([unitId, status])
   @@index([reportingManagerId])
@@ -623,3 +624,4 @@ model StaffAttendance { id String @id @default(uuid()) @db.Uuid employeeId Strin
 model LeavePolicy { id String @id @default(uuid()) @db.Uuid year Int leaveType String allocation Decimal @db.Decimal(6,2) carryForwardCap Decimal @map("carry_forward_cap") @db.Decimal(6,2) effectiveFrom DateTime @map("effective_from") @db.Date active Boolean @default(true) @@unique([year,leaveType]) @@map("leave_policies") }
 model StaffLeave { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") @db.Uuid leaveType String fromDate DateTime @map("from_date") @db.Date toDate DateTime @map("to_date") @db.Date days Decimal @db.Decimal(6,2) reason String status String @default("PENDING_MANAGER") managerApprovedById String? @map("manager_approved_by_id") @db.Uuid hrApprovedById String? @map("hr_approved_by_id") @db.Uuid isLwp Boolean @default(false) @map("is_lwp") createdAt DateTime @default(now()) @map("created_at") employee Employee @relation(fields:[employeeId],references:[id]) @@index([employeeId,fromDate]) @@map("staff_leaves") }
 model LeaveBalance { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") @db.Uuid year Int leaveType String opening Decimal @default(0) @db.Decimal(6,2) allocated Decimal @default(0) @db.Decimal(6,2) used Decimal @default(0) @db.Decimal(6,2) carried Decimal @default(0) @db.Decimal(6,2) employee Employee @relation(fields:[employeeId],references:[id]) @@unique([employeeId,year,leaveType]) @@map("leave_balances") }
+model OvertimeAuthorisation { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") @db.Uuid date DateTime @db.Date expectedMinutes Int @map("expected_minutes") reason String multiplier Decimal @default(1) @db.Decimal(5,2) status String @default("REQUESTED") approvedById String? @map("approved_by_id") @db.Uuid approvedAt DateTime? @map("approved_at") actualMinutes Int? @map("actual_minutes") eligibleMinutes Int? @map("eligible_minutes") createdAt DateTime @default(now()) @map("created_at") employee Employee @relation(fields:[employeeId],references:[id]) @@unique([employeeId,date]) @@map("overtime_authorisations") }
