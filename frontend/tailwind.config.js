@@ -1,6 +1,8 @@
+import snowballPreset from '@snowball/ui/tailwind-preset';
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  presets: [snowballPreset],
+  content: ['./index.html', './src/**/*.{ts,tsx}', './node_modules/@snowball/ui/dist/**/*.js'],
   theme: {
     extend: {
       fontFamily: {
