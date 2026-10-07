@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Get, Injectable, Module, Param, Patch, Post, Query, Req,
+  Body, Controller, Get, Injectable, Module, Param, Patch, Post, Put, Query, Req,
   UseGuards, BadRequestException, ForbiddenException, NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
@@ -248,9 +248,18 @@ export class AuditController {
   }
 }
 
+
+@Controller('theme')
+@UseGuards(AuthGuard)
+export class ThemeController {
+  constructor(private prisma: PrismaService, private audit: AuditService) {}
+  @Get('default') async getDefault(){const row=await this.prisma.appSetting.findUnique({where:{key:'organisation-theme'}});return {value:row?.value??null,updatedAt:row?.updatedAt??null}}
+  @Put('default') @Roles('FOUNDER') async setDefault(@Req()req:any,@Body()body:any){const t=body?.theme;if(!t?.id||!t?.bg||!t?.accent||!t?.txt)throw new BadRequestException('Invalid theme');const row=await this.prisma.appSetting.upsert({where:{key:'organisation-theme'},create:{key:'organisation-theme',value:t,updatedById:req.user.sub},update:{value:t,updatedById:req.user.sub}});await this.audit.log(req,'app_settings','organisation-theme','UPDATE',null,{themeId:t.id});return {value:row.value,updatedAt:row.updatedAt}}
+}
+
 // ─────────────────────────── MODULE ───────────────────────────
 @Module({
-  controllers: [UsersController, UnitsAdminController, BatchesAdminController, AuditController],
+  controllers: [UsersController, UnitsAdminController, BatchesAdminController, AuditController, ThemeController],
   providers: [PrismaService, AuditService],
 })
 export class AdminModule {}

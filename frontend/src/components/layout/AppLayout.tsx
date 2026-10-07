@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Megaphone, GraduationCap, CalendarCheck,
@@ -10,6 +10,7 @@ import { useAuth, ROLE_LABELS, HO_ROLES } from '../../lib/auth';
 import { cn } from '../../lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { applyTheme, loadPersonalTheme, type Theme } from '@snowball/ui/theme';
 
 interface NavItem { to: string; label: string; icon: any; soon?: string }
 
@@ -53,6 +54,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
+
+  const { data: organisationTheme } = useQuery({ queryKey: ['organisation-theme'], queryFn: () => api('/theme/default'), enabled: !!user });
+  useEffect(() => { const theme=organisationTheme?.value as Theme|undefined; if(theme&&!loadPersonalTheme()){ localStorage.setItem('firm-theme-v1',JSON.stringify(theme)); applyTheme(theme); } }, [organisationTheme]);
 
   const { data: units } = useQuery({
     queryKey: ['units'],
