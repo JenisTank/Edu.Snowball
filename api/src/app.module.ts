@@ -11,8 +11,9 @@ import { ParentModule } from './modules/parent.controller';
 import { CertificatesModule } from './modules/certs.controller';
 import { CommsModule } from './modules/comms.controller';
 import { LifecycleModule } from './modules/lifecycle.controller';
+import { AcademicModule } from './modules/academic.controller';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule, LifecycleModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule, LifecycleModule, AcademicModule],
 })
 export class AppModule {}

@@ -518,3 +518,27 @@ model StudentLifecycleRecord {
   @@index([unitId])
   @@map("student_lifecycle_records")
 }
+
+model AcademicPlan {
+ id String @id @default(uuid()) @db.Uuid
+ unitId String? @map("unit_id") @db.Uuid
+ programmeId String? @map("programme_id") @db.Uuid
+ academicYear String @map("academic_year")
+ kind String // YEARLY_GOAL | BIG_ROCK | CALENDAR | LOG_PLAN
+ title String
+ description String?
+ month Int?
+ startDate DateTime? @map("start_date") @db.Date
+ endDate DateTime? @map("end_date") @db.Date
+ status String @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | LOCKED
+ parentVisible Boolean @default(false) @map("parent_visible")
+ payload Json?
+ authoredById String? @map("authored_by_id") @db.Uuid
+ approvedById String? @map("approved_by_id") @db.Uuid
+ approvedAt DateTime? @map("approved_at")
+ createdAt DateTime @default(now()) @map("created_at")
+ updatedAt DateTime @updatedAt @map("updated_at")
+ @@index([academicYear,kind])
+ @@index([unitId])
+ @@map("academic_plans")
+}

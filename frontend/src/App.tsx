@@ -15,6 +15,7 @@ import Certificates from './pages/Certificates';
 import Comms from './pages/Comms';
 import ParentPortal from './pages/Parent';
 import Lifecycle from './pages/Lifecycle';
+import Academic from './pages/Academic';
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000, refetchOnWindowFocus: false } },
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/" element={<Protected><Dashboard /></Protected>} />
             <Route path="/students" element={<Protected><Students /></Protected>} />
             <Route path="/lifecycle" element={<Protected><Lifecycle /></Protected>} />
+            <Route path="/academic" element={<Protected><Academic /></Protected>} />
             <Route path="/leads" element={<Protected><Leads /></Protected>} />
             <Route path="/admissions" element={<Protected><Admissions /></Protected>} />
             <Route path="/attendance" element={<Protected><Attendance /></Protected>} />
