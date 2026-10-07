@@ -76,7 +76,7 @@ logo files · real fee structures per programme/unit · confirm reminder schedul
 2. ✅ Tokenise application shell and shared controls.
 3. ✅ Migrate shared table/modal/loading/empty-state components.
 4. ✅ Migrate staff pages.
-5. ⬜ Migrate full parent PWA visual system.
+5. ✅ Migrate full parent PWA visual system.
 6. ⬜ Remove legacy styles and run theme checks.
 
 ## 🛠 Dev quick facts

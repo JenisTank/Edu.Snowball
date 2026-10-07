@@ -10,6 +10,8 @@ import {
   IndianRupee, LogOut, Printer, Smile, Sun, UserRound, FolderOpen, MessageCircle, Send, Download, BellOff,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { APP_THEMES, selectTheme } from '../lib/appTheme';
+import { loadTheme, themesEqual, type Theme } from '@snowball/ui/theme';
 
 // ── tiny parent-scoped API client (separate from staff session) ──
 const pstore = {
@@ -260,6 +262,7 @@ function ConversationCard({ childId }: { childId: string }) {
 export default function ParentPortal() {
   const [authed, setAuthed] = useState(!!pstore.get());
   const [childId, setChildId] = useState('');
+  const [theme, setTheme] = useState<Theme>(() => loadTheme());
   const { data: kids = [], isError } = useQuery({
     queryKey: ['p-kids', authed],
     queryFn: () => papi('/parent/children'),
@@ -272,15 +275,16 @@ export default function ParentPortal() {
   const kid = kids.find((k: any) => k.id === childId);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-amber-50 pb-10 font-body text-ink">
-      <header className="sticky top-0 z-10 border-b border-amber-100 bg-white/80 backdrop-blur">
+    <div className="min-h-screen bg-[color:var(--bg)] pb-10 font-body text-[color:var(--txt)]">
+      <header className="sticky top-0 z-10 border-b border-[color:var(--neu-border)] bg-[color:var(--bg2)]/90 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
           <span className="text-2xl">🐝</span>
           <div className="min-w-0">
             <div className="font-heading text-[15px] font-extrabold text-honey-700">BumbleB Kidz</div>
             <div className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400">Parent Portal</div>
           </div>
-          <button className="btn-neo ml-auto !px-3 !py-1.5 text-[11.5px]" onClick={() => { pstore.del(); setAuthed(false); }}>
+          <div className="ml-auto hidden gap-1 sm:flex">{APP_THEMES.map(t=><button key={t.id} title={t.name} aria-label={`Use ${t.name} theme`} onClick={()=>{selectTheme(t);setTheme(t)}} className={cn('h-6 w-6 rounded-full border-2',themesEqual(theme,t)?'border-[color:var(--accent)]':'border-transparent')} style={{background:t.bg}} />)}</div>
+          <button className="btn-neo !px-3 !py-1.5 text-[11.5px]" onClick={() => { pstore.del(); setAuthed(false); }}>
             <LogOut className="mr-1 inline h-3 w-3" />Sign out
           </button>
         </div>
