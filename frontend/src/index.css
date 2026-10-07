@@ -33,15 +33,15 @@
   /* ── Layer 1: raised cream cards on white page ──────── */
   .card {
     @apply rounded-2xl shadow-neo;
-    background: linear-gradient(145deg, #F8EDCD, #EBDBAC);
-    border: 1px solid #E4D29D;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--bg2) 94%, white), var(--bg2));
+    border: 1px solid var(--neu-border);
   }
 
   /* ── Layer 2: wells carved into cards ───────────────── */
   .neo-inset {
     @apply rounded-xl shadow-neo-inset;
-    background: #EFE1B9;
-    border: 1px solid #E0CD96;
+    background: var(--sunken);
+    border: 1px solid var(--neu-border);
   }
 
   /* ── Layer 3: action buttons — dark honey ───────────── */
@@ -50,29 +50,29 @@
       font-heading font-bold text-white
       shadow-neo-sm hover:brightness-105 active:shadow-neo-inset-sm active:brightness-95
       focus:outline-none focus:ring-2 focus:ring-honey-300 transition disabled:opacity-50;
-    background: linear-gradient(145deg, #DCA93C, #A97716);
+    background: linear-gradient(145deg, var(--primary-from), var(--primary-to));
     border: 1px solid rgba(255, 255, 255, 0.4);
   }
   .btn-neo {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2
       text-[12.5px] font-semibold text-stone-700 shadow-neo-sm
       hover:text-honey-700 focus:outline-none transition select-none whitespace-nowrap;
-    background: linear-gradient(145deg, #F9EFD3, #EDDEB2);
-    border: 1px solid #E4D29D;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--bg2) 96%, white), var(--bg2));
+    border: 1px solid var(--neu-border);
   }
   .btn-neo:active {
     @apply shadow-neo-inset-sm;
-    background: #EFE1B9;
+    background: var(--sunken);
   }
   .btn-neo-icon {
     @apply inline-flex items-center justify-center rounded-xl p-2.5
       text-stone-600 shadow-neo-sm hover:text-honey-600 transition;
-    background: linear-gradient(145deg, #F9EFD3, #EDDEB2);
-    border: 1px solid #E4D29D;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--bg2) 96%, white), var(--bg2));
+    border: 1px solid var(--neu-border);
   }
   .btn-neo-icon:active {
     @apply shadow-neo-inset-sm;
-    background: #EFE1B9;
+    background: var(--sunken);
   }
 
   /* ── Inputs — carved wells ──────────────────────────── */
@@ -80,16 +80,16 @@
     @apply w-full rounded-xl shadow-neo-inset-sm px-3.5 py-2.5 text-sm
       text-ink placeholder:text-stone-400
       focus:outline-none focus:ring-2 focus:ring-honey-300/70 transition;
-    background: #F0E3BF;
-    border: 1px solid #E0CD96;
+    background: var(--sunken);
+    border: 1px solid var(--neu-border);
   }
 
   /* ── Stat chips — small raised cream pills ──────────── */
   .chip {
     @apply inline-flex items-center gap-2 rounded-full shadow-neo-xs
       px-3.5 py-1.5 text-xs font-semibold text-stone-700 whitespace-nowrap;
-    background: linear-gradient(145deg, #F9EFD3, #EDDEB2);
-    border: 1px solid #E4D29D;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--bg2) 96%, white), var(--bg2));
+    border: 1px solid var(--neu-border);
   }
   .chip-dot {
     @apply h-2 w-2 rounded-full shrink-0;
@@ -98,8 +98,8 @@
   /* ── Segmented control (List / Board) ───────────────── */
   .seg {
     @apply inline-flex items-center gap-1 rounded-xl shadow-neo-inset-sm p-1 shrink-0;
-    background: #EFE1B9;
-    border: 1px solid #E0CD96;
+    background: var(--sunken);
+    border: 1px solid var(--neu-border);
   }
   .seg-item {
     @apply inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold
@@ -107,21 +107,29 @@
   }
   .seg-item-active {
     @apply shadow-neo-xs text-white;
-    background: linear-gradient(145deg, #DCA93C, #A97716);
+    background: linear-gradient(145deg, var(--primary-from), var(--primary-to));
     border: 1px solid rgba(255, 255, 255, 0.4);
   }
 
   /* ── Active sidebar item — honey emboss ─────────────── */
   .nav-active {
     @apply shadow-neo-sm text-honey-800;
-    background: linear-gradient(145deg, #F8ECC9, #EEDCA4);
-    border: 1px solid #EBD9A4;
+    background: color-mix(in srgb, var(--accent) 14%, var(--bg2));
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   }
 
   /* ── Dropdown panels ────────────────────────────────── */
   .pop {
     @apply rounded-2xl shadow-lift p-2;
-    background: linear-gradient(145deg, #F9F0D6, #EEDFB6);
-    border: 1px solid #E4D29D;
+    background: var(--bg2);
+    border: 1px solid var(--neu-border);
   }
 }
+
+/* Snowball UI compatibility bridge — legacy names now resolve through shared tokens. */
+.card,.btn-neo,.btn-neo-icon,.chip,.pop{color:var(--txt)}
+.input,.neo-inset,.seg{color:var(--txt);background-color:var(--sunken)}
+.input::placeholder{color:var(--txt3)}
+.btn-neo:hover,.btn-neo-icon:hover,.nav-active{color:var(--accent)}
+[data-theme='dark'] .text-stone-400,[data-theme='dark'] .text-stone-500,[data-theme='dark'] .text-stone-600,[data-theme='dark'] .text-stone-700{color:var(--txt2)!important}
+[data-theme='dark'] .bg-white,[data-theme='dark'] .bg-white\/60,[data-theme='dark'] .bg-white\/80{background-color:var(--bg2)!important}

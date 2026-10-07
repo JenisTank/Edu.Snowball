@@ -64,7 +64,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const isHO = HO_ROLES.includes(user.role);
 
   const sidebar = (
-    <aside className="flex h-full w-[248px] flex-col bg-cream border-r border-[#EFE6CC]">
+    <aside className="flex h-full w-[248px] flex-col bg-cream border-r border-[color:var(--neu-border)]">
       <div className="flex items-center justify-between px-5 py-5">
         <Logo />
         <button className="md:hidden btn-neo-icon p-1.5" onClick={() => setMobileOpen(false)}><X className="h-4 w-4" /></button>
@@ -87,13 +87,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     ? 'cursor-default text-stone-400'
                     : isActive
                       ? 'nav-active'
-                      : 'text-stone-600 hover:bg-[#F7EFD8] hover:text-ink active:shadow-neo-inset-sm',
+                      : 'text-stone-600 hover:bg-[color:var(--row-hover)] hover:text-ink active:shadow-neo-inset-sm',
                 )}
               >
                 <item.icon className="h-[17px] w-[17px] shrink-0" />
                 <span className="flex-1">{item.label}</span>
                 {item.soon && (
-                  <span className="rounded-full bg-[#F2EAD3] px-2 py-0.5 text-[9px] font-bold text-stone-500">
+                  <span className="rounded-full bg-[color:var(--sunken)] px-2 py-0.5 text-[9px] font-bold text-stone-500">
                     {item.soon}
                   </span>
                 )}

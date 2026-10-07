@@ -73,7 +73,7 @@ logo files · real fee structures per programme/unit · confirm reminder schedul
 
 ## 🚧 Snowball UI migration
 1. ✅ Pinned `@snowball/ui` v1.0.0 Git dependency, Tailwind preset, pre-paint theme engine, ErrorBoundary and Settings preset selector.
-2. ⬜ Tokenise application shell and shared controls.
+2. ✅ Tokenise application shell and shared controls.
 3. ⬜ Migrate shared table/modal/loading/empty-state components.
 4. ⬜ Migrate staff pages.
 5. ⬜ Migrate full parent PWA visual system.

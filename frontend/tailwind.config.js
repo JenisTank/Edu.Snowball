@@ -21,8 +21,8 @@ export default {
           800: '#1E5062', 900: '#12303B',
         },
         // Layer system (contrast-based): page = warm white, cards = cream.
-        cream: '#FFFFFF',
-        ink: '#1F1B13',
+        cream: 'var(--bg)',
+        ink: 'var(--txt)',
       },
       boxShadow: {
         // Cards are DARKER than the page, so depth comes from a warm drop
