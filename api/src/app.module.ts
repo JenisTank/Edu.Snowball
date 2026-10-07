@@ -16,8 +16,9 @@ import { InventoryModule } from './modules/inventory.controller';
 import { PtmModule } from './modules/ptm.controller';
 import { EveningModule } from './modules/evening.controller';
 import { HrModule } from './modules/hr.controller';
+import { AnalyticsModule } from './modules/analytics.controller';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule, LifecycleModule, AcademicModule, InventoryModule, PtmModule, EveningModule, HrModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule, LifecycleModule, AcademicModule, InventoryModule, PtmModule, EveningModule, HrModule, AnalyticsModule],
 })
 export class AppModule {}

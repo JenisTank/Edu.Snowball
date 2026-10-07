@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Megaphone, GraduationCap, CalendarCheck,
   IndianRupee, Briefcase, Boxes, MessageCircle, FileBadge, Building2,
-  LogOut, ChevronDown, Menu, X, Bell, Settings, Search,
+  LogOut, ChevronDown, Menu, X, Bell, Settings, Search, BarChart3,
 } from 'lucide-react';
 import { Logo } from '../brand/Logo';
 import { useAuth, ROLE_LABELS, HO_ROLES } from '../../lib/auth';
@@ -36,6 +36,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: 'Management',
     items: [
+      { to: '/analytics', label: 'Analytics', icon: BarChart3 },
       { to: '/units', label: 'Units & Batches', icon: Building2 },
       { to: '/hr', label: 'HR & Payroll', icon: Briefcase },
       { to: '/academic', label: 'Academic Planning', icon: GraduationCap },

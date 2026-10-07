@@ -60,8 +60,11 @@ Inventory stock ledger · PTM scheduling/records · Evening Activity Centre sepa
 9. ✅ Maker-checker, locking and reversals.
 10. ✅ Payslips, exports and reports.
 
+## ✅ Analytics completed (7 Oct 2026)
+Cross-module founder dashboard: admissions, attendance, fees, HR/payroll, inventory, academic, PTM and evening centre.
+
 ## 🔮 Remaining Phase 2+ backlog
-Analytics · Franchise layer · AI.
+Franchise layer · AI (both explicitly deferred).
 
 ## 👤 Founder's own checklist (only the founder can do)
 Razorpay KYC · WhatsApp BSP account + template approval · domain + VPS ·
