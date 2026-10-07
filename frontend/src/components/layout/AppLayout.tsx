@@ -40,6 +40,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/hr', label: 'HR & Payroll', icon: Briefcase, soon: 'Phase 2' },
       { to: '/academic', label: 'Academic Planning', icon: GraduationCap },
       { to: '/ptm', label: 'PTM', icon: MessageCircle },
+      { to: '/evening', label: 'Evening Centre', icon: IndianRupee },
       { to: '/inventory', label: 'Inventory', icon: Boxes },
       { to: '/settings', label: 'Settings', icon: Settings },
     ],

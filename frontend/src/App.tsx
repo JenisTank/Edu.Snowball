@@ -18,6 +18,7 @@ import Lifecycle from './pages/Lifecycle';
 import Academic from './pages/Academic';
 import Inventory from './pages/Inventory';
 import PTM from './pages/PTM';
+import Evening from './pages/Evening';
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000, refetchOnWindowFocus: false } },
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/academic" element={<Protected><Academic /></Protected>} />
             <Route path="/inventory" element={<Protected><Inventory /></Protected>} />
             <Route path="/ptm" element={<Protected><PTM /></Protected>} />
+            <Route path="/evening" element={<Protected><Evening /></Protected>} />
             <Route path="/leads" element={<Protected><Leads /></Protected>} />
             <Route path="/admissions" element={<Protected><Admissions /></Protected>} />
             <Route path="/attendance" element={<Protected><Attendance /></Protected>} />
