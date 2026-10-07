@@ -48,8 +48,20 @@ All tables = ONE shared TanStack DataTable component. ERP must stay programme-ge
 18-tab student lifecycle · Academic planning (Yearly Goals/Big Rocks/Calendar/Log Plan) ·
 Inventory stock ledger · PTM scheduling/records · Evening Activity Centre separate ledger.
 
+## 🚧 HR & dual payroll — in progress
+1. ✅ HR Manager role, employee master, reporting hierarchy and effective-dated employment history.
+2. ⬜ Shift, holiday and salary-component masters.
+3. ⬜ Attendance import and exception resolution.
+4. ⬜ Yearly leave policy and leave workflow.
+5. ⬜ OT authorization and attendance matching.
+6. ⬜ Morning payroll engine.
+7. ⬜ Evening minute-rate payroll engine.
+8. ⬜ Statutory masters and deductions.
+9. ⬜ Maker-checker, locking and reversals.
+10. ⬜ Payslips, exports and reports.
+
 ## 🔮 Remaining Phase 2+ backlog
-HR & dual payroll · Analytics · Franchise layer · AI.
+Analytics · Franchise layer · AI.
 
 ## 👤 Founder's own checklist (only the founder can do)
 Razorpay KYC · WhatsApp BSP account + template approval · domain + VPS ·

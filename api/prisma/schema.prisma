@@ -20,6 +20,7 @@ enum UserRole {
   COORDINATOR
   TEACHER
   RECEPTIONIST
+  HR_MANAGER
 }
 
 enum UnitType {
@@ -551,3 +552,58 @@ model PtmRecord { id String @id @default(uuid()) @db.Uuid sessionId String @map(
 model EveningActivity { id String @id @default(uuid()) @db.Uuid unitId String @map("unit_id") @db.Uuid name String schedule String? fee Decimal @db.Decimal(10,2) capacity Int active Boolean @default(true) enrollments EveningEnrollment[] @@index([unitId]) @@map("evening_activities") }
 model EveningEnrollment { id String @id @default(uuid()) @db.Uuid activityId String @map("activity_id") @db.Uuid studentId String @map("student_id") @db.Uuid startDate DateTime @map("start_date") @db.Date endDate DateTime? @map("end_date") @db.Date status String @default("ACTIVE") amountDue Decimal @map("amount_due") @db.Decimal(10,2) payments EveningPayment[] activity EveningActivity @relation(fields:[activityId],references:[id]) student Student @relation(fields:[studentId],references:[id]) @@unique([activityId,studentId]) @@map("evening_enrollments") }
 model EveningPayment { id String @id @default(uuid()) @db.Uuid enrollmentId String @map("enrollment_id") @db.Uuid amount Decimal @db.Decimal(10,2) mode PaymentMode reference String? receiptNo String @unique @map("receipt_no") paidAt DateTime @default(now()) @map("paid_at") collectedById String? @map("collected_by_id") @db.Uuid enrollment EveningEnrollment @relation(fields:[enrollmentId],references:[id]) @@map("evening_payments") }
+
+
+model Employee {
+  id                String   @id @default(uuid()) @db.Uuid
+  employeeNo        String   @unique @map("employee_no")
+  fullName          String   @map("full_name")
+  email             String?  @unique
+  phone             String?
+  dateOfBirth       DateTime? @map("date_of_birth") @db.Date
+  joiningDate       DateTime  @map("joining_date") @db.Date
+  relievingDate     DateTime? @map("relieving_date") @db.Date
+  status            String   @default("ACTIVE") // ACTIVE | ON_NOTICE | RELIEVED | SUSPENDED
+  unitId            String   @map("unit_id") @db.Uuid
+  department        String?
+  designation       String
+  reportingManagerId String?  @map("reporting_manager_id") @db.Uuid
+  employmentType    String   @map("employment_type") // MORNING_SALARIED | EVENING_HOURLY | DUAL
+  bankAccountName   String?  @map("bank_account_name")
+  bankAccountNo     String?  @map("bank_account_no")
+  bankIfsc          String?  @map("bank_ifsc")
+  pan               String?
+  uan               String?
+  esicNumber        String?  @map("esic_number")
+  pfEnabled         Boolean  @default(false) @map("pf_enabled")
+  esicEnabled       Boolean  @default(false) @map("esic_enabled")
+  ptEnabled         Boolean  @default(false) @map("pt_enabled")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  manager      Employee?  @relation("EmployeeManager", fields: [reportingManagerId], references: [id])
+  directReports Employee[] @relation("EmployeeManager")
+  history      EmploymentHistory[]
+
+  @@index([unitId, status])
+  @@index([reportingManagerId])
+  @@map("employees")
+}
+
+model EmploymentHistory {
+  id             String   @id @default(uuid()) @db.Uuid
+  employeeId     String   @map("employee_id") @db.Uuid
+  effectiveFrom  DateTime @map("effective_from") @db.Date
+  effectiveTo    DateTime? @map("effective_to") @db.Date
+  unitId         String   @map("unit_id") @db.Uuid
+  department     String?
+  designation    String
+  employmentType String   @map("employment_type")
+  reportingManagerId String? @map("reporting_manager_id") @db.Uuid
+  reason         String?
+  changedById    String?  @map("changed_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  employee Employee @relation(fields: [employeeId], references: [id])
+  @@index([employeeId, effectiveFrom])
+  @@map("employment_history")
+}

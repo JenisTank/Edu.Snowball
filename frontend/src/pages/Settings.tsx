@@ -55,7 +55,7 @@ function TeamTab() {
   const [err, setErr] = useState('');
 
   const roleOptions = isAdmin
-    ? ['ACADEMIC_DIR', 'CURRICULUM_LEAD', 'CENTRE_HEAD', 'COORDINATOR', 'TEACHER', 'RECEPTIONIST']
+    ? ['ACADEMIC_DIR', 'CURRICULUM_LEAD', 'HR_MANAGER', 'CENTRE_HEAD', 'COORDINATOR', 'TEACHER', 'RECEPTIONIST']
     : CH_ROLES;
 
   const save = useMutation({

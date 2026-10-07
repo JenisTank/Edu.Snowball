@@ -7,6 +7,7 @@ import { AuthGuard, Roles, unitScope, HO_ROLES } from '../auth/auth';
 import { PrismaService } from '../prisma.service';
 
 const ADMIN_ROLES = ['FOUNDER', 'ACADEMIC_DIR'];
+const HEAD_OFFICE_USER_ROLES = [...HO_ROLES, 'HR_MANAGER'];
 const UNIT_MANAGED_ROLES = ['COORDINATOR', 'TEACHER', 'RECEPTIONIST']; // roles a Centre Head may manage
 
 // ─────────────────────────── AUDIT SERVICE (Rule 3: every mutation logged) ───────────────────────────
@@ -74,8 +75,8 @@ export class UsersController {
     const { email, fullName, phone, role, unitId, password } = body;
     if (!email || !fullName || !role || !password) throw new BadRequestException('email, fullName, role and password are required');
     if (password.length < 8) throw new BadRequestException('Password must be at least 8 characters');
-    const unitIdFinal = HO_ROLES.includes(role) ? (unitId || null) : unitId;
-    if (!HO_ROLES.includes(role) && !unitIdFinal) throw new BadRequestException('Unit is required for unit-level roles');
+    const unitIdFinal = HEAD_OFFICE_USER_ROLES.includes(role) ? (unitId || null) : unitId;
+    if (!HEAD_OFFICE_USER_ROLES.includes(role) && !unitIdFinal) throw new BadRequestException('Unit is required for unit-level roles');
     this.assertCanManage(req.user, { role, unitId: unitIdFinal });
 
     const exists = await this.prisma.user.findUnique({ where: { email } });
@@ -102,7 +103,7 @@ export class UsersController {
       if (body[k] !== undefined) data[k] = body[k];
     }
     if (data.role && !ADMIN_ROLES.includes(req.user.role)) this.assertCanManage(req.user, { role: data.role, unitId: data.unitId ?? existing.unitId });
-    if (data.role && HO_ROLES.includes(data.role)) data.unitId = body.unitId ?? null;
+    if (data.role && HEAD_OFFICE_USER_ROLES.includes(data.role)) data.unitId = body.unitId ?? null;
 
     const updated = await this.prisma.user.update({ where: { id }, data });
     await this.audit.log(req, 'users', id, 'UPDATE', existing, updated);
