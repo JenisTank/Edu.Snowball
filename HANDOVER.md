@@ -23,6 +23,15 @@ Classes in frontend/src/index.css: .card .btn-primary .btn-neo .input .chip .seg
 All tables = ONE shared TanStack DataTable component. ERP must stay programme-generic
 (will expand to full school up to 12th Std).
 
+## ✅ COMPLETED — Slice 6 parent hardening (7 Oct 2026)
+
+- Web Push for absence alerts, fee reminders, announcements and Centre Head replies; opt-in/out UI and stale-subscription cleanup.
+- Parent extras: safe My Child profile, issued-document vault, parent ↔ Centre Head messaging. Confidential Health/Infirmary/IEP/Child Support data remains excluded.
+
+## ✅ COMPLETED — I-card pipeline (7 Oct 2026)
+
+- Batch-scoped, unit-authorized A4 I-card sheets with photos/initial fallbacks and print layout.
+
 ## 🔲 PENDING — remaining build work (Slice 6/7 hardening)
 
 1. **Razorpay live**: order → webhook → auto receipt → ledger update; "Pay Now" button
@@ -30,24 +39,47 @@ All tables = ONE shared TanStack DataTable component. ERP must stay programme-ge
 2. **WhatsApp BSP connect**: real dispatch via AiSensy/Interakt/Gupshup once keys exist
    (`WA_BSP_KEY` in .env flips sandbox→live). Plus HO Template Management screen (B2)
    and fallback chain app-push → WhatsApp → email.
-3. **Web-push notifications** in parent PWA (absence, fee reminders, announcements) —
-   currently in-app feed only.
-4. **Parent portal extras**: Documents vault, CH-reply messages model,
-   My Child parent-visible tabs (Health/Infirmary/IEP/Child Support Log must stay hidden).
-5. **I-card batch generation** (uses certificate/print pipeline).
 6. **DPDP hardening**: PII encryption at rest, consent-log wiring, retention config.
 7. **Production deploy**: domain + VPS, production docker-compose dress-rehearsal,
    nightly DB backups, Sentry alerts, deploy guide.
 8. **Replace demo data with real data**: real fee structures, staff accounts, logo files.
 
-## 🔮 Phase 2 backlog (schema already provisioned)
-18-tab student lifecycle · HR & dual payroll · Academic module (Yearly Goals/Big Rocks/
-Calendar/Log Plan) · Inventory · PTM · Evening Activity Centre (separate ledger) ·
-Analytics · Franchise layer · AI.
+## ✅ Phase 2 operational modules completed (7 Oct 2026)
+18-tab student lifecycle · Academic planning (Yearly Goals/Big Rocks/Calendar/Log Plan) ·
+Inventory stock ledger · PTM scheduling/records · Evening Activity Centre separate ledger.
+
+## 🚧 HR & dual payroll — in progress
+1. ✅ HR Manager role, employee master, reporting hierarchy and effective-dated employment history.
+2. ✅ Shift, holiday and salary-component masters.
+3. ✅ Attendance import and exception resolution.
+4. ✅ Yearly leave policy and leave workflow.
+5. ✅ OT authorization and attendance matching.
+6. ✅ Morning payroll engine.
+7. ✅ Evening minute-rate payroll engine.
+8. ✅ Statutory masters and deductions.
+9. ✅ Maker-checker, locking and reversals.
+10. ✅ Payslips, exports and reports.
+
+## ✅ Analytics completed (7 Oct 2026)
+Cross-module founder dashboard: admissions, attendance, fees, HR/payroll, inventory, academic, PTM and evening centre.
+
+Snowball shell correction: compact icon rail + horizontal module navigation, dense token shadows, Inter typography, floating 3-preset selector and Settings selector.
+
+## 🔮 Remaining Phase 2+ backlog
+Franchise layer · AI (both explicitly deferred).
 
 ## 👤 Founder's own checklist (only the founder can do)
 Razorpay KYC · WhatsApp BSP account + template approval · domain + VPS ·
 logo files · real fee structures per programme/unit · confirm reminder schedule with FA.
+
+
+## ✅ Snowball UI migration
+1. ✅ Pinned `@snowball/ui` v1.0.0 Git dependency, Tailwind preset, pre-paint theme engine, ErrorBoundary and Settings preset selector.
+2. ✅ Tokenise application shell and shared controls.
+3. ✅ Migrate shared table/modal/loading/empty-state components.
+4. ✅ Migrate staff pages.
+5. ✅ Migrate full parent PWA visual system.
+6. ✅ Complete token audit; retain only compatibility adapters and branded logo colours.
 
 ## 🛠 Dev quick facts
 - Restore a fresh dev env: `bash scripts/dev-restore.sh` (installs PG+Redis, restores

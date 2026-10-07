@@ -72,7 +72,7 @@ export default function Dashboard() {
               return (
                 <div key={stage} className="flex items-center gap-3">
                   <div className="w-32 shrink-0 text-right text-xs font-semibold text-stone-600">{STAGE_LABELS[stage]}</div>
-                  <div className="h-7 flex-1 overflow-hidden rounded-lg shadow-neo-inset-sm bg-[#EFE1B9]">
+                  <div className="h-7 flex-1 overflow-hidden rounded-lg shadow-neo-inset-sm bg-[color:var(--sunken)]">
                     <div
                       className="flex h-full items-center rounded-lg bg-gradient-to-r from-honey-400 to-honey-500 pl-2.5 text-[11px] font-bold text-white transition-all duration-700"
                       style={{ width: count ? `${Math.max(9, (count / maxFunnel) * 100)}%` : '0%' }}
@@ -116,7 +116,7 @@ export default function Dashboard() {
           <h3 className="font-heading text-[15px] font-extrabold">Recent Inquiries</h3>
           <Link to="/leads" className="btn-ghost text-xs">All leads <ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
-        <div className="mt-3 divide-y divide-[#E6D7A8]">
+        <div className="mt-3 divide-y divide-[color:var(--neu-border)]">
           {(data?.recentLeads ?? []).map((l: any) => (
             <div key={l.id} className="flex flex-wrap items-center gap-3 py-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-50 font-heading text-sm font-extrabold text-sky-600">

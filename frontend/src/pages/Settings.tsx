@@ -9,6 +9,8 @@ import { DataTable, Badge } from '../components/ui/DataTable';
 import { api, fmtDate } from '../lib/api';
 import { useAuth, ROLE_LABELS } from '../lib/auth';
 import { cn } from '../lib/utils';
+import { loadTheme, themesEqual, type Theme } from '@snowball/ui/theme';
+import { APP_THEMES, selectTheme } from '../lib/appTheme';
 
 const ADMIN_ROLES = ['FOUNDER', 'ACADEMIC_DIR'];
 const CH_ROLES = ['COORDINATOR', 'TEACHER', 'RECEPTIONIST'];
@@ -55,7 +57,7 @@ function TeamTab() {
   const [err, setErr] = useState('');
 
   const roleOptions = isAdmin
-    ? ['ACADEMIC_DIR', 'CURRICULUM_LEAD', 'CENTRE_HEAD', 'COORDINATOR', 'TEACHER', 'RECEPTIONIST']
+    ? ['ACADEMIC_DIR', 'CURRICULUM_LEAD', 'HR_MANAGER', 'CENTRE_HEAD', 'COORDINATOR', 'TEACHER', 'RECEPTIONIST']
     : CH_ROLES;
 
   const save = useMutation({
@@ -329,7 +331,7 @@ function UnitsTab() {
                 });
               }}>Edit</button>
             </div>
-            <dl className="mt-4 space-y-2 border-t border-[#E6D7A8] pt-3 text-xs">
+            <dl className="mt-4 space-y-2 border-t border-[color:var(--neu-border)] pt-3 text-xs">
               <div className="flex justify-between"><dt className="text-stone-500 font-semibold">Address</dt><dd className="text-right font-semibold text-stone-700 max-w-[60%]">{u.address ?? '—'}</dd></div>
               <div className="flex justify-between"><dt className="text-stone-500 font-semibold">Ops phone (internal)</dt><dd className="font-semibold text-stone-700">{u.phone ?? '—'}</dd></div>
               <div className="flex justify-between"><dt className="text-stone-500 font-semibold">Calendly</dt><dd className="font-semibold text-stone-700 truncate max-w-[60%]">{u.settings?.calendlyLink ?? '—'}</dd></div>
@@ -393,7 +395,7 @@ function ProgrammesTab() {
                 <div className="text-xs font-semibold text-honey-700">{p.tierName}</div>
               </div>
             </div>
-            <div className="mt-3 border-t border-[#E6D7A8] pt-3 text-xs font-semibold text-stone-600">
+            <div className="mt-3 border-t border-[color:var(--neu-border)] pt-3 text-xs font-semibold text-stone-600">
               Age {Number(p.ageMin)} – {Number(p.ageMax)} years
             </div>
           </div>
@@ -540,6 +542,14 @@ function AccountTab() {
   );
 }
 
+function AppearanceTab({ founder }: { founder: boolean }) {
+  const [active, setActive] = useState<Theme>(() => loadTheme());
+  const choose = (theme: Theme) => { selectTheme(theme); setActive(theme); };
+  const [firmMsg,setFirmMsg]=useState('');
+  const firm = async (theme: Theme) => { await api('/theme/default',{method:'PUT',body:JSON.stringify({theme})});localStorage.setItem('firm-theme-v1',JSON.stringify(theme));choose(theme);setFirmMsg(`${theme.name} is now the organisation default.`); };
+  return <><div className="grid gap-4 md:grid-cols-3">{APP_THEMES.map(theme => { const selected=themesEqual(active,theme); return <div key={theme.id} className="card p-5" style={{background:theme.bg2,color:theme.txt,borderColor:theme.accent}}><div className="mb-4 flex gap-2">{[theme.bg,theme.bg2||theme.bg,theme.sunken||theme.bg,theme.accent,theme.txt].map((c,i)=><span key={i} className="h-8 flex-1 rounded-lg border border-black/10" style={{background:c}} />)}</div><div className="font-heading text-base font-extrabold">{theme.name}</div><div className="mt-1 text-xs opacity-70">{theme.id==='bumbleb'?'Warm BumbleB brand':'Shared Snowball preset'}</div><button className={selected?'btn-primary mt-4 w-full':'btn-neo mt-4 w-full'} onClick={()=>choose(theme)}>{selected?'Selected':'Use this theme'}</button>{founder&&<button className="mt-2 w-full text-xs font-bold underline opacity-70" onClick={()=>firm(theme)}>Set organisation default</button>}</div>})}</div>{firmMsg&&<p className="mt-4 text-xs font-bold text-[color:var(--ok)]">{firmMsg}</p>}</>;
+}
+
 // ───────────────────────── Page ─────────────────────────
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -549,6 +559,7 @@ export default function SettingsPage() {
   const tabs = [
     ...(isAdmin || isCH ? [{ id: 'team', label: 'Team' }, { id: 'batches', label: 'Batches' }] : []),
     ...(isAdmin ? [{ id: 'units', label: 'Units' }, { id: 'areas', label: 'Areas' }, { id: 'programmes', label: 'Programmes' }, { id: 'audit', label: 'Audit Log' }] : []),
+    { id: 'appearance', label: 'Appearance' },
     { id: 'account', label: 'My Account' },
   ];
   const [tab, setTab] = useState(tabs[0].id);
@@ -571,6 +582,7 @@ export default function SettingsPage() {
       {tab === 'areas' && <AreasTab />}
       {tab === 'programmes' && <ProgrammesTab />}
       {tab === 'audit' && <AuditTab />}
+      {tab === 'appearance' && <AppearanceTab founder={user!.role === 'FOUNDER'} />}
       {tab === 'account' && <AccountTab />}
     </div>
   );

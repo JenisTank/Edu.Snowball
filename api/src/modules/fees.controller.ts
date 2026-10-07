@@ -5,6 +5,7 @@ import {
 import { AuthGuard, Roles, unitScope, HO_ROLES } from '../auth/auth';
 import { PrismaService } from '../prisma.service';
 import { AuditService } from './admin.controller';
+import { sendWebPush } from './push.service';
 
 const AY = '2026-27';
 const AY_SHORT = '2627';
@@ -98,7 +99,7 @@ export class FeesController {
     const row = existing
       ? await this.prisma.feeStructure.update({ where: { id: existing.id }, data })
       : await this.prisma.feeStructure.create({ data: { unitId: b.unitId, programmeId: b.programmeId, academicYear: AY, ...data } });
-    await this.audit.log(req, 'fee_structures', row.id, existing ? 'UPDATE' : 'CREATE', existing, row);
+    await this.audit.log(req, 'fee_structures', row.id, existing ? 'UPDATE' : 'INSERT', existing, row);
     return row;
   }
 
@@ -117,7 +118,7 @@ export class FeesController {
     });
     const structures = await this.prisma.feeStructure.findMany({ where: { academicYear: AY } });
     const sMap = new Map(structures.map(f => [`${f.unitId}:${f.programmeId}`, f]));
-    const rows = [];
+    const rows: any[] = [];
     for (const s of students) {
       const structure = sMap.get(`${s.unitId}:${s.programmeId}`);
       const led = await this.studentLedger(s, structure, s.feeTransactions);
@@ -181,7 +182,7 @@ export class FeesController {
         collectedById: req.user.sub,
       },
     });
-    await this.audit.log(req, 'fee_transactions', txn.id, 'CREATE', null, txn);
+    await this.audit.log(req, 'fee_transactions', txn.id, 'INSERT', null, txn);
     // Receipt → parent WhatsApp (BSP live in Slice 7; queued now)
     const phone = s.fatherPhone || s.motherPhone;
     if (phone) {
@@ -309,10 +310,11 @@ export class FeesController {
             payload: { stage, instalmentNo: inst.no, amountDue: inst.amount - inst.paid, dueDate: inst.dueDate, child: r.name },
           },
         });
+        await sendWebPush(this.prisma, phone, { title: 'Fee reminder', body: `₹${inst.amount - inst.paid} is due for ${r.name}.`, url: '/parent', tag: `fee-${r.id}-${inst.no}-${stage}` });
         queued++;
       }
     }
-    await this.audit.log(req, 'message_logs', 'fee-reminders', 'CREATE', null, { queued });
+    await this.audit.log(req, 'message_logs', 'fee-reminders', 'INSERT', null, { queued });
     return { ok: true, queued };
   }
 

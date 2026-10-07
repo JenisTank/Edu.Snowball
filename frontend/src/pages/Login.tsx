@@ -37,7 +37,7 @@ export default function Login() {
   return (
     <div className="flex min-h-screen">
       {/* ── Brand panel ── */}
-      <div className="relative hidden w-[46%] overflow-hidden bg-gradient-to-br from-honey-500 via-honey-400 to-[#E8B64C] lg:block">
+      <div className="relative hidden w-[46%] overflow-hidden bg-gradient-to-br from-honey-500 via-honey-400 to-[color:var(--accent)] lg:block">
         <Honeycomb className="absolute -left-10 -top-10 h-[420px] w-[420px] text-white/60" />
         <Honeycomb className="absolute -bottom-16 -right-16 h-[380px] w-[380px] text-white/40 rotate-12" />
         <div className="relative flex h-full flex-col justify-between p-12">
@@ -135,10 +135,10 @@ export default function Login() {
           {/* Demo quick logins */}
           <div className="mt-8">
             <div className="flex items-center gap-2 text-xs text-stone-500">
-              <div className="h-px flex-1 bg-[#E8E2D6]" />
+              <div className="h-px flex-1 bg-[color:var(--neu-border)]" />
               <Sparkles className="h-3.5 w-3.5 text-honey-400" />
               <span>Demo accounts — one click</span>
-              <div className="h-px flex-1 bg-[#E8E2D6]" />
+              <div className="h-px flex-1 bg-[color:var(--neu-border)]" />
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2.5">
               {DEMO_ACCOUNTS.map(acc => (

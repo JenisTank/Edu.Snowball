@@ -1,10 +1,11 @@
 import {
   Body, Controller, Get, Module, Param, Post, Query, Req, UseGuards,
-  BadRequestException, ForbiddenException, NotFoundException, UnauthorizedException,
+  BadRequestException, ForbiddenException, NotFoundException, UnauthorizedException, Delete,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthGuard, Roles } from '../auth/auth';
 import { PrismaService } from '../prisma.service';
+import { PushService } from './push.service';
 
 // ─────────────────────────────────────────────────────────────
 // Parent Portal API (Slice 6 — PWA)
@@ -25,7 +26,7 @@ const DUE: Record<string, string[]> = {
 
 @Controller('parent')
 export class ParentController {
-  constructor(private prisma: PrismaService, private jwt: JwtService) {}
+  constructor(private prisma: PrismaService, private jwt: JwtService, private push: PushService) {}
 
   // ── Login: phone + admission number of any one child ──
   @Post('login')
@@ -74,7 +75,7 @@ export class ParentController {
     });
     const today = new Date(new Date().toISOString().slice(0, 10));
     const monthStart = new Date(today); monthStart.setDate(1);
-    const out = [];
+    const out: any[] = [];
     for (const k of kids) {
       const att = await this.prisma.attendanceRecord.groupBy({
         by: ['status'], where: { studentId: k.id, date: { gte: monthStart, lte: today } }, _count: true,
@@ -152,6 +153,75 @@ export class ParentController {
     };
   }
 
+  // ── Parent-safe child profile. Deliberately excludes health, infirmary, IEP,
+  // child-support and internal screening fields.
+  @Get('child/:id/profile')
+  @UseGuards(AuthGuard) @Roles('PARENT')
+  async profile(@Req() req: any, @Param('id') id: string) {
+    this.guardChild(req, id);
+    const child = await this.prisma.student.findUnique({ where: { id }, select: {
+      id: true, admissionNo: true, firstName: true, lastName: true, dob: true, gender: true,
+      admissionDate: true, academicYear: true, addressArea: true, status: true,
+      programme: { select: { name: true, tierName: true } },
+      batch: { select: { name: true, shift: true, startTime: true, endTime: true } },
+      unit: { select: { name: true, address: true, phone: true, email: true } },
+    }});
+    if (!child) throw new NotFoundException();
+    return child;
+  }
+
+  // Documents vault contains only already-issued, parent-safe documents.
+  @Get('child/:id/documents')
+  @UseGuards(AuthGuard) @Roles('PARENT')
+  async documents(@Req() req: any, @Param('id') id: string) {
+    this.guardChild(req, id);
+    const [certificates, receipts] = await Promise.all([
+      this.prisma.certificate.findMany({ where: { studentId: id }, orderBy: { issuedAt: 'desc' } }),
+      this.prisma.feeTransaction.findMany({ where: { studentId: id, isCancelled: false }, orderBy: { paymentDate: 'desc' }, select: { id: true, receiptNo: true, paymentDate: true, amount: true } }),
+    ]);
+    return [
+      ...certificates.map(c => ({ id: c.id, kind: 'CERTIFICATE', title: c.type.replace(/_/g, ' '), number: c.serialNo, date: c.issuedAt, url: `/api/certificates/${c.id}/print` })),
+      ...receipts.map(r => ({ id: r.id, kind: 'RECEIPT', title: 'Fee receipt', number: r.receiptNo, date: r.paymentDate, amount: Number(r.amount), url: `/api/fees/receipt/${r.id}/print` })),
+    ].sort((a, b) => +new Date(b.date) - +new Date(a.date));
+  }
+
+  @Get('child/:id/conversation')
+  @UseGuards(AuthGuard) @Roles('PARENT')
+  async conversation(@Req() req: any, @Param('id') id: string) {
+    this.guardChild(req, id);
+    await this.prisma.parentMessage.updateMany({ where: { studentId: id, sender: 'CENTRE_HEAD', readAt: null }, data: { readAt: new Date() } });
+    return this.prisma.parentMessage.findMany({ where: { studentId: id }, orderBy: { createdAt: 'asc' }, take: 100 });
+  }
+
+  @Post('child/:id/conversation')
+  @UseGuards(AuthGuard) @Roles('PARENT')
+  async sendMessage(@Req() req: any, @Param('id') id: string, @Body() b: { body: string }) {
+    this.guardChild(req, id);
+    if (!b.body?.trim() || b.body.trim().length > 1000) throw new BadRequestException('Message must be 1–1000 characters');
+    const child = await this.prisma.student.findUnique({ where: { id }, select: { unitId: true } });
+    if (!child) throw new NotFoundException();
+    return this.prisma.parentMessage.create({ data: { studentId: id, unitId: child.unitId, sender: 'PARENT', body: b.body.trim() } });
+  }
+
+  @Get('push/config')
+  @UseGuards(AuthGuard) @Roles('PARENT')
+  pushConfig() { return { publicKey: process.env.VAPID_PUBLIC_KEY || null, enabled: this.push.enabled() }; }
+
+  @Post('push/subscribe')
+  @UseGuards(AuthGuard) @Roles('PARENT')
+  async subscribe(@Req() req: any, @Body() b: any) {
+    if (!b?.endpoint || !b?.keys?.p256dh || !b?.keys?.auth) throw new BadRequestException('Invalid push subscription');
+    await this.prisma.pushSubscription.upsert({ where: { endpoint: b.endpoint }, create: { phone: req.user.phone, endpoint: b.endpoint, p256dh: b.keys.p256dh, auth: b.keys.auth }, update: { phone: req.user.phone, p256dh: b.keys.p256dh, auth: b.keys.auth } });
+    return { ok: true };
+  }
+
+  @Delete('push/subscribe')
+  @UseGuards(AuthGuard) @Roles('PARENT')
+  async unsubscribe(@Req() req: any, @Body() b: { endpoint: string }) {
+    await this.prisma.pushSubscription.deleteMany({ where: { endpoint: b.endpoint, phone: req.user.phone } });
+    return { ok: true };
+  }
+
   // ── Messages sent to this parent (parent-safe types only) ──
   @Get('messages')
   @UseGuards(AuthGuard)
@@ -168,5 +238,5 @@ export class ParentController {
   }
 }
 
-@Module({ controllers: [ParentController], providers: [PrismaService] })
+@Module({ controllers: [ParentController], providers: [PrismaService, PushService] })
 export class ParentModule {}

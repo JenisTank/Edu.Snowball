@@ -42,7 +42,7 @@ export class AttendanceController {
       orderBy: { firstName: 'asc' },
     });
     const records = await this.prisma.attendanceRecord.findMany({ where: { batchId, date: new Date(d) } });
-    const recMap = new Map(records.map(r => [r.studentId, r]));
+    const recMap = new Map<string, any>(records.map((r: any) => [r.studentId, r]));
     const now = new Date();
     return {
       batch: { id: batch.id, name: batch.name, startTime: batch.startTime, unit: batch.unit.code },

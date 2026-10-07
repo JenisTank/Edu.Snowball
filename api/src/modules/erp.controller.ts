@@ -10,7 +10,7 @@ export class UnitsController {
 
   @Get()
   async list(@Req() req: any) {
-    const where = HO_ROLES.includes(req.user.role) ? {} : { id: req.user.unitId ?? '__none__' };
+    const where = (HO_ROLES.includes(req.user.role) || req.user.role === 'HR_MANAGER') ? {} : { id: req.user.unitId ?? '__none__' };
     return this.prisma.unit.findMany({ where, include: { settings: true, _count: { select: { students: true, batches: true } } }, orderBy: { code: 'asc' } });
   }
 }

@@ -14,6 +14,13 @@ import Fees from './pages/Fees';
 import Certificates from './pages/Certificates';
 import Comms from './pages/Comms';
 import ParentPortal from './pages/Parent';
+import Lifecycle from './pages/Lifecycle';
+import Academic from './pages/Academic';
+import Inventory from './pages/Inventory';
+import PTM from './pages/PTM';
+import Evening from './pages/Evening';
+import HR from './pages/HR';
+import Analytics from './pages/Analytics';
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000, refetchOnWindowFocus: false } },
@@ -34,6 +41,13 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Protected><Dashboard /></Protected>} />
             <Route path="/students" element={<Protected><Students /></Protected>} />
+            <Route path="/lifecycle" element={<Protected><Lifecycle /></Protected>} />
+            <Route path="/academic" element={<Protected><Academic /></Protected>} />
+            <Route path="/inventory" element={<Protected><Inventory /></Protected>} />
+            <Route path="/ptm" element={<Protected><PTM /></Protected>} />
+            <Route path="/evening" element={<Protected><Evening /></Protected>} />
+            <Route path="/hr" element={<Protected><HR /></Protected>} />
+            <Route path="/analytics" element={<Protected><Analytics /></Protected>} />
             <Route path="/leads" element={<Protected><Leads /></Protected>} />
             <Route path="/admissions" element={<Protected><Admissions /></Protected>} />
             <Route path="/attendance" element={<Protected><Attendance /></Protected>} />

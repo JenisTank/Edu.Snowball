@@ -18,9 +18,10 @@ export const ROLE_LABELS: Record<string, string> = {
   COORDINATOR: 'Coordinator',
   TEACHER: 'Teacher',
   RECEPTIONIST: 'Receptionist',
+  HR_MANAGER: 'HR Manager',
 };
 
-export const HO_ROLES = ['FOUNDER', 'ACADEMIC_DIR', 'CURRICULUM_LEAD', 'RECEPTIONIST'];
+export const HO_ROLES = ['FOUNDER', 'ACADEMIC_DIR', 'CURRICULUM_LEAD', 'RECEPTIONIST', 'HR_MANAGER'];
 
 interface AuthCtx {
   user: SessionUser | null;

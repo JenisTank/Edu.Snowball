@@ -10,8 +10,15 @@ import { FeesModule } from './modules/fees.controller';
 import { ParentModule } from './modules/parent.controller';
 import { CertificatesModule } from './modules/certs.controller';
 import { CommsModule } from './modules/comms.controller';
+import { LifecycleModule } from './modules/lifecycle.controller';
+import { AcademicModule } from './modules/academic.controller';
+import { InventoryModule } from './modules/inventory.controller';
+import { PtmModule } from './modules/ptm.controller';
+import { EveningModule } from './modules/evening.controller';
+import { HrModule } from './modules/hr.controller';
+import { AnalyticsModule } from './modules/analytics.controller';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule, LifecycleModule, AcademicModule, InventoryModule, PtmModule, EveningModule, HrModule, AnalyticsModule],
 })
 export class AppModule {}
