@@ -81,7 +81,7 @@ export class CertificatesController {
     if (b.type === 'TC') {
       await this.prisma.student.update({ where: { id: s.id }, data: { status: 'TC_ISSUED' } });
     }
-    await this.audit.log(req, 'certificates', cert.id, 'CREATE', null, cert);
+    await this.audit.log(req, 'certificates', cert.id, 'INSERT', null, cert);
     return cert;
   }
 

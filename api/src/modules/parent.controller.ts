@@ -75,7 +75,7 @@ export class ParentController {
     });
     const today = new Date(new Date().toISOString().slice(0, 10));
     const monthStart = new Date(today); monthStart.setDate(1);
-    const out = [];
+    const out: any[] = [];
     for (const k of kids) {
       const att = await this.prisma.attendanceRecord.groupBy({
         by: ['status'], where: { studentId: k.id, date: { gte: monthStart, lte: today } }, _count: true,

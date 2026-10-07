@@ -90,7 +90,7 @@ export class CommsController {
       await this.push.send(phone, { title: b.title.trim(), body: b.body.trim(), url: '/parent', tag: `announcement-${Date.now()}` });
       queued++;
     }
-    await this.audit.log(req, 'message_logs', 'announcement', 'CREATE', null, { title: b.title, queued });
+    await this.audit.log(req, 'message_logs', 'announcement', 'INSERT', null, { title: b.title, queued });
     return { ok: true, queued };
   }
 
