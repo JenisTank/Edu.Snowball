@@ -16,6 +16,12 @@ import { Roles } from '../../common/auth/roles.decorator';
 import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import {
+  SENSITIVE_EMPLOYEE_FIELDS,
+  decryptField,
+  encryptField,
+  encryptionEnabled,
+} from '../../common/crypto/pii.service';
 
 const HR_ROLES = ['FOUNDER', 'HR_MANAGER'];
 const TYPES = ['MORNING_SALARIED', 'EVENING_HOURLY', 'DUAL'];
@@ -90,14 +96,18 @@ export class EmployeesController {
   }
 
   @Get('employees')
-  employees(@Req() req: any, @Query('unitId') unitId?: string, @Query('status') status?: string) {
+  async employees(
+    @Req() req: any,
+    @Query('unitId') unitId?: string,
+    @Query('status') status?: string,
+  ) {
     const scope =
       HO_ROLES.includes(req.user.role) || req.user.role === 'HR_MANAGER'
         ? unitId
           ? { unitId }
           : {}
         : { unitId: req.user.unitId };
-    return this.prisma.employee.findMany({
+    const rows = await this.prisma.employee.findMany({
       where: { ...scope, ...(status ? { status } : {}) },
       include: {
         manager: { select: { id: true, employeeNo: true, fullName: true } },
@@ -106,6 +116,15 @@ export class EmployeesController {
       },
       orderBy: { fullName: 'asc' },
     });
+    // DPDP: statutory identifiers never leave the API in clear text on a list.
+    return rows.map((r: any) => ({
+      ...r,
+      pan: r.pan ? '***' : null,
+      uan: r.uan ? '***' : null,
+      esicNumber: r.esicNumber ? '***' : null,
+      bankAccountNo: r.bankAccountNo ? '***' : null,
+      piiEncrypted: encryptionEnabled(),
+    }));
   }
 
   @Get('employees/:id') async one(@Param('id') id: string) {
@@ -120,7 +139,11 @@ export class EmployeesController {
       },
     });
     if (!row) throw new NotFoundException();
-    return row;
+    // The detail view is role-gated to Founder / HR; it returns clear values
+    // because payroll and statutory filing need them.
+    const out: any = { ...row };
+    for (const f of SENSITIVE_EMPLOYEE_FIELDS) out[f] = decryptField((row as any)[f]);
+    return { ...out, piiEncrypted: encryptionEnabled() };
   }
 
   @Post('employees') async create(@Req() req: any, @Body() b: any) {
@@ -154,11 +177,12 @@ export class EmployeesController {
       reportingManagerId: b.reportingManagerId || null,
       employmentType: b.employmentType,
       bankAccountName: b.bankAccountName || null,
-      bankAccountNo: b.bankAccountNo || null,
+      // DPDP: statutory identifiers are encrypted before they reach Postgres.
+      bankAccountNo: encryptField(b.bankAccountNo || null),
       bankIfsc: b.bankIfsc || null,
-      pan: b.pan || null,
-      uan: b.uan || null,
-      esicNumber: b.esicNumber || null,
+      pan: encryptField(b.pan || null),
+      uan: encryptField(b.uan || null),
+      esicNumber: encryptField(b.esicNumber || null),
       pfEnabled: !!b.pfEnabled,
       esicEnabled: !!b.esicEnabled,
       ptEnabled: !!b.ptEnabled,
@@ -186,6 +210,29 @@ export class EmployeesController {
       pan: row.pan ? '***' : null,
     });
     return row;
+  }
+
+  /** Statutory identifiers (PAN/UAN/ESIC/bank) — encrypted at rest. */
+  @Patch('employees/:id/statutory')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'HR_MANAGER')
+  async statutory(@Req() req: any, @Param('id') id: string, @Body() b: any) {
+    const old = await this.prisma.employee.findUnique({ where: { id } });
+    if (!old) throw new NotFoundException();
+    const data: any = {};
+    for (const f of SENSITIVE_EMPLOYEE_FIELDS) {
+      if (b[f] !== undefined) data[f] = encryptField(b[f] || null);
+    }
+    if (b.bankAccountName !== undefined) data.bankAccountName = b.bankAccountName || null;
+    if (b.bankIfsc !== undefined) data.bankIfsc = b.bankIfsc || null;
+    if (!Object.keys(data).length) throw new BadRequestException('Nothing to update');
+    const row = await this.prisma.employee.update({ where: { id }, data });
+    await this.audit.log(req, 'employees', id, 'UPDATE', null, {
+      fields: Object.keys(data),
+      encrypted: encryptionEnabled(),
+    });
+    const out: any = { ...row };
+    for (const f of SENSITIVE_EMPLOYEE_FIELDS) out[f] = decryptField((row as any)[f]);
+    return out;
   }
 
   @Patch('employees/:id/employment') async change(

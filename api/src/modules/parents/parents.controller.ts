@@ -22,6 +22,7 @@ import { env } from '../../config/env';
 import { Throttle } from '@nestjs/throttler';
 import { ParentLoginDto } from './dto/parent-login.dto';
 import { istDateKey, validateLeave, canCancel } from '../leaves/leaves.rules';
+import { CONSENT_TYPES, consentRegister } from '../privacy/privacy.rules';
 
 // ─────────────────────────────────────────────────────────────
 // Parent Portal API (Slice 6 — PWA)
@@ -421,6 +422,113 @@ export class ParentController {
       where: { id: leaveId },
       data: { status: 'CANCELLED' },
     });
+  }
+
+  // ── DPDP: the parent's own consent register ──
+  @Get('child/:id/consents')
+  @UseGuards(AuthGuard)
+  @Roles('PARENT')
+  async consents(@Req() req: any, @Param('id') id: string) {
+    this.guardChild(req, id);
+    const rows = await this.prisma.consentLog.findMany({
+      where: { studentId: id },
+      orderBy: { grantedAt: 'desc' },
+    });
+    return { ...consentRegister(rows), available: CONSENT_TYPES };
+  }
+
+  @Post('child/:id/consents')
+  @UseGuards(AuthGuard)
+  @Roles('PARENT')
+  async recordConsent(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() b: { decisions: Record<string, boolean> },
+  ) {
+    this.guardChild(req, id);
+    const decisions = b?.decisions ?? {};
+    const unknown = Object.keys(decisions).filter((k) => !CONSENT_TYPES.includes(k as any));
+    if (unknown.length)
+      throw new BadRequestException(`Unknown consent types: ${unknown.join(', ')}`);
+    // Core processing cannot be switched off while the child is enrolled.
+    if (decisions.DATA_PROCESSING === false)
+      throw new BadRequestException(
+        'Core data processing cannot be withdrawn while your child is enrolled — please speak to the centre',
+      );
+    if (!Object.keys(decisions).length)
+      throw new BadRequestException('No consent decisions supplied');
+    for (const [type, granted] of Object.entries(decisions)) {
+      await this.prisma.consentLog.create({
+        data: { studentId: id, consentType: type, granted: !!granted, grantedBy: req.user.name },
+      });
+    }
+    return { ok: true, recorded: Object.keys(decisions).length };
+  }
+
+  /** Everything the portal holds about one child, for the family's own records. */
+  @Get('child/:id/data')
+  @UseGuards(AuthGuard)
+  @Roles('PARENT')
+  async myData(@Req() req: any, @Param('id') id: string) {
+    this.guardChild(req, id);
+    const [student, attendance, fees, consents, certificates, leaves] = await Promise.all([
+      this.prisma.student.findUnique({
+        where: { id },
+        select: {
+          admissionNo: true,
+          firstName: true,
+          lastName: true,
+          dob: true,
+          status: true,
+          admissionDate: true,
+          academicYear: true,
+          addressArea: true,
+          fatherName: true,
+          fatherPhone: true,
+          motherName: true,
+          motherPhone: true,
+          guardianEmail: true,
+          programme: { select: { name: true } },
+          batch: { select: { name: true, startTime: true } },
+          unit: { select: { name: true } },
+        },
+      }),
+      this.prisma.attendanceRecord.findMany({
+        where: { studentId: id },
+        select: { date: true, status: true },
+        orderBy: { date: 'asc' },
+      }),
+      this.prisma.feeTransaction.findMany({
+        where: { studentId: id },
+        select: {
+          receiptNo: true,
+          amount: true,
+          paymentMode: true,
+          paymentDate: true,
+          ledgerType: true,
+        },
+        orderBy: { paymentDate: 'asc' },
+      }),
+      this.prisma.consentLog.findMany({ where: { studentId: id }, orderBy: { grantedAt: 'asc' } }),
+      this.prisma.certificate.findMany({
+        where: { studentId: id },
+        select: { type: true, serialNo: true, issuedAt: true },
+      }),
+      this.prisma.studentLeave.findMany({
+        where: { studentId: id },
+        select: { fromDate: true, toDate: true, type: true, status: true, reason: true },
+      }),
+    ]);
+    return {
+      generatedAt: new Date(),
+      note: 'This is the personal data the parent portal holds about your child (DPDP Act 2023, section 11).',
+      student,
+      attendance,
+      fees,
+      consents,
+      certificates,
+      leaves,
+    };
   }
 
   @Get('push/config')

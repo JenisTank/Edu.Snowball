@@ -291,6 +291,7 @@ model Student {
   batchId       String?       @map("batch_id") @db.Uuid
   admissionDate DateTime?     @map("admission_date") @db.Date
   orientationDate DateTime?   @map("orientation_date") @db.Date // set at confirmation (spec, module 3)
+  anonymisedAt  DateTime?     @map("anonymised_at") // DPDP erasure: PII cleared, finance retained
   instalmentPlan InstalmentPlan? @map("instalment_plan")
   status        StudentStatus @default(ACTIVE)
   academicYear  String        @map("academic_year")

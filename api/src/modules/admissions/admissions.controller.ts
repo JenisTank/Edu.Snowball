@@ -256,10 +256,28 @@ export class AdmissionsController {
         meta: { suggestedPlan: student.instalmentPlan, sibling: !!sibling },
       },
     });
+    // DPDP: consent is captured at registration, not bolted on later.
+    const consents: Record<string, boolean> = {
+      DATA_PROCESSING: true,
+      ...(body.consents ?? {}),
+    };
+    for (const [type, granted] of Object.entries(consents)) {
+      await this.prisma.consentLog
+        .create({
+          data: {
+            studentId: student.id,
+            consentType: type,
+            granted: !!granted,
+            grantedBy: fatherName || motherName || 'Parent',
+          },
+        })
+        .catch(() => null);
+    }
     await this.audit.log(req, 'students', student.id, 'INSERT', null, {
       admissionNo,
       leadId,
       sibling: !!sibling,
+      consents,
     });
     return {
       ...student,

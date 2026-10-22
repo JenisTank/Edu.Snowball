@@ -27,9 +27,12 @@ import {
 
 const LAST_SCAN_KEY = 'scheduler.last_daily_scan';
 const LAST_COMMS_KEY = 'scheduler.last_comms_sweep';
+const LAST_RETENTION_KEY = 'scheduler.last_retention';
 const TICK_MS = 60_000;
 /** Parent-reply SLA + delivery retries run every 15 minutes. */
 const COMMS_SWEEP_MS = 15 * 60_000;
+/** DPDP retention runs weekly (Sunday 03:00 IST is inside the daily tick guard). */
+const RETENTION_MS = 7 * 24 * 60 * 60_000;
 const REPEAT_JOB_ID = 'daily-attendance-plan';
 
 const log = new Logger('AttendanceScheduler');
@@ -133,6 +136,27 @@ export async function runCommsSweepTick(prisma: any, now: Date = new Date()) {
   return result;
 }
 
+/**
+ * Weekly DPDP retention purge. Dry-run by default: a deployment only starts
+ * deleting history once `retentionEnabled` is set to true in app_settings.
+ */
+export async function runRetentionTick(prisma: any, now: Date = new Date()) {
+  const setting = await prisma.appSetting.findUnique({ where: { key: LAST_RETENTION_KEY } });
+  const last = (setting?.value as any)?.at ? new Date((setting?.value as any).at) : null;
+  if (last && now.getTime() - last.getTime() < RETENTION_MS) return null;
+  const enabled = !!(setting?.value as any)?.enabled;
+  const { runRetention } = await import('../modules/privacy/retention.service');
+  const result = await runRetention(prisma, { dryRun: !enabled, now });
+  await prisma.appSetting
+    .upsert({
+      where: { key: LAST_RETENTION_KEY },
+      update: { value: { at: now.toISOString(), enabled } },
+      create: { key: LAST_RETENTION_KEY, value: { at: now.toISOString(), enabled } },
+    })
+    .catch(() => null);
+  return result;
+}
+
 export function startScheduler(prisma: any): () => void {
   let busy = false;
 
@@ -148,6 +172,9 @@ export function startScheduler(prisma: any): () => void {
       // Independent guard: a comms failure must not skip the attendance plan.
       await runCommsSweepTick(prisma).catch((err: any) =>
         log.warn(`Comms sweep failed: ${err?.message ?? err}`),
+      );
+      await runRetentionTick(prisma).catch((err: any) =>
+        log.warn(`Retention check failed: ${err?.message ?? err}`),
       );
     } catch (err: any) {
       log.warn(`Daily attendance plan not derived: ${err?.message ?? err}`);

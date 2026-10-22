@@ -251,6 +251,7 @@ CREATE TABLE "students" (
     "batch_id" TEXT,
     "admission_date" TIMESTAMP(3),
     "orientation_date" TIMESTAMP(3),
+    "anonymised_at" TIMESTAMP(3),
     "instalment_plan" "InstalmentPlan",
     "status" "StudentStatus" DEFAULT 'ACTIVE' NOT NULL,
     "academic_year" TEXT NOT NULL,

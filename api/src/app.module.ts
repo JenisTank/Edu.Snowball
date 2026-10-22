@@ -25,6 +25,7 @@ import { LeavesModule } from './modules/leaves/leaves.module';
 import { LifecycleModule } from './modules/lifecycle/lifecycle.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ParentModule } from './modules/parents/parents.module';
+import { PrivacyModule } from './modules/privacy/privacy.module';
 import { PtmModule } from './modules/ptm/ptm.module';
 import { StudentsModule } from './modules/students/students.module';
 import { ThemeModule } from './modules/theme/theme.module';
@@ -63,6 +64,7 @@ import { UsersModule } from './modules/users/users.module';
     InventoryModule,
     LeavesModule,
     PtmModule,
+    PrivacyModule,
     EveningModule,
     HrModule,
     HealthModule,
