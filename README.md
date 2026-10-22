@@ -75,6 +75,16 @@ docker compose exec api npx prisma migrate deploy   # first run only
 The frontend container serves the SPA on port 80 and proxies `/api` to the API
 container, so the browser only ever talks to one origin.
 
+Operations (deploy, rollback, backups, restore drill, monitoring, incident
+playbook) are documented in [`docs/RUNBOOK.md`](docs/RUNBOOK.md). The API exposes
+`/api/health` (always 200, human-readable) and `/api/health/ready` (503 when the
+database or Redis is down) for Docker and uptime monitors.
+
+```bash
+bash scripts/backup.sh                     # gzip dump + sha256 manifest, 30-day retention
+bash scripts/restore.sh <dump.sql.gz>      # restores into a scratch DB and prints row counts
+```
+
 ## Demo logins (seed data — password `bumbleb123`)
 
 | Role               | Email                      |
@@ -91,7 +101,7 @@ container, so the browser only ever talks to one origin.
 **Parent portal demo** (open `/parent` on a phone or narrow window):
 phone `+91 9100000000` + admission no `BB-U1-2627-0001`.
 
-## Module map (Slices 0–7, live)
+## Module map (live)
 
 | Area                | Where                                                                                                     |
 | ------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -103,7 +113,14 @@ phone `+91 9100000000` + admission no `BB-U1-2627-0001`.
 | Certificates        | `/certificates` — 7 HO-locked templates, serial numbers, TC gated on cleared fees + No-Dues               |
 | Communication       | `/comms` — single outbox for WhatsApp messages; sandbox mode until `WA_BSP_KEY` is set                    |
 | HR & dual payroll   | `/hr` — employee master, attendance import, leave, OT, morning + evening payroll, statutory               |
-| Analytics           | `/analytics` — cross-module founder dashboard                                                             |
+| Analytics           | `/analytics` — capacity, staff, revenue and cross-module founder dashboard                                |
+| PTM                 | `/ptm` — timetable slots, phone booking on a family's behalf, roll-up, teacher notes; parents self-book   |
+| Evening centre      | `/evening` — activities, external (non-student) children, session rosters and attendance                  |
+| Inventory           | `/inventory` — stock, PRF → PO → GRN, vendors, petty cash, student issue billed to fees, 10 reports       |
+| Lifecycle           | `/lifecycle` — per-tab records with validation, grade promotion, K2 readiness report                      |
+| Compliance (DPDP)   | consent register, field encryption, retention purge, parent data export + erasure                         |
+| Online fees         | Razorpay behind an adapter — sandbox until KYC keys land; signed webhook issues the receipt               |
+| My Space            | `/me` — staff self-service: profile, payslips, leave application, own attendance                          |
 
 ## Key system rules (enforced from Slice 0)
 
@@ -122,6 +139,7 @@ phone `+91 9100000000` + admission no `BB-U1-2627-0001`.
 - [`docs/BumbleB_ERP_Architecture.md`](docs/BumbleB_ERP_Architecture.md) — module architecture
 - [`docs/CODE_STRUCTURE.md`](docs/CODE_STRUCTURE.md) — how the code is organised
 - [`docs/PENDING_ITEMS.md`](docs/PENDING_ITEMS.md) — requirements traceability: what is built, partial or open
+- [`docs/RUNBOOK.md`](docs/RUNBOOK.md) — production deployment, backups, monitoring, incident playbook
 - [`HANDOVER.md`](HANDOVER.md) — what is done, what is pending
 
 ### Parent PWA web push
