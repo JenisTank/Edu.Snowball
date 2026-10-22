@@ -424,6 +424,43 @@ export class ParentController {
     });
   }
 
+  // ── PTM: the sessions the family is invited to, with their booked slot ──
+  @Get('child/:id/ptm')
+  @UseGuards(AuthGuard)
+  @Roles('PARENT')
+  async ptm(@Req() req: any, @Param('id') id: string) {
+    this.guardChild(req, id);
+    const records = await this.prisma.ptmRecord.findMany({
+      where: { studentId: id },
+      include: {
+        session: { include: { slots: { orderBy: { startTime: 'asc' } } } },
+      },
+      orderBy: { session: { scheduledAt: 'desc' } },
+      take: 20,
+    });
+    return records.map((r: any) => ({
+      session: {
+        id: r.session.id,
+        title: r.session.title,
+        scheduledAt: r.session.scheduledAt,
+        status: r.session.status,
+      },
+      record: {
+        attended: r.attended,
+        parentNames: r.parentNames,
+        teacherNotes: r.teacherNotes,
+      },
+      mySlot: r.session.slots.find((s: any) => s.studentId === id) ?? null,
+      openSlots: r.session.slots
+        .filter((s: any) => !s.studentId)
+        .map((s: any) => ({
+          id: s.id,
+          startTime: s.startTime,
+          endTime: s.endTime,
+        })),
+    }));
+  }
+
   // ── DPDP: the parent's own consent register ──
   @Get('child/:id/consents')
   @UseGuards(AuthGuard)

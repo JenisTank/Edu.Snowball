@@ -627,7 +627,8 @@ CREATE INDEX "evening_activities_unit_id_idx" ON "evening_activities"("unit_id")
 CREATE TABLE "evening_enrollments" (
     "id" TEXT NOT NULL,
     "activity_id" TEXT NOT NULL,
-    "student_id" TEXT NOT NULL,
+    "student_id" TEXT,
+    "participant_id" TEXT,
     "start_date" TIMESTAMP(3) NOT NULL,
     "end_date" TIMESTAMP(3),
     "status" TEXT DEFAULT 'ACTIVE' NOT NULL,
@@ -636,6 +637,7 @@ CREATE TABLE "evening_enrollments" (
 );
 
 CREATE UNIQUE INDEX "evening_enrollments_activity_id_student_id_key" ON "evening_enrollments"("activity_id", "student_id");
+CREATE UNIQUE INDEX "evening_enrollments_activity_id_participant_id_key" ON "evening_enrollments"("activity_id", "participant_id");
 
 -- CreateTable
 CREATE TABLE "evening_payments" (
@@ -801,6 +803,69 @@ CREATE TABLE "inward_outward_entries" (
 );
 
 CREATE INDEX "inward_outward_entries_unit_id_date_idx" ON "inward_outward_entries"("unit_id", "date");
+
+-- CreateTable
+CREATE TABLE "evening_participants" (
+    "id" TEXT NOT NULL,
+    "unit_id" TEXT NOT NULL,
+    "full_name" TEXT NOT NULL,
+    "dob" TIMESTAMP(3),
+    "guardian_name" TEXT,
+    "guardian_phone" TEXT,
+    "school" TEXT,
+    "active" BOOLEAN DEFAULT true NOT NULL,
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "evening_participants_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "evening_participants_unit_id_active_idx" ON "evening_participants"("unit_id", "active");
+
+-- CreateTable
+CREATE TABLE "evening_sessions" (
+    "id" TEXT NOT NULL,
+    "activity_id" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
+    "start_time" TEXT,
+    "end_time" TEXT,
+    "topic" TEXT,
+    "status" TEXT DEFAULT 'SCHEDULED' NOT NULL,
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "evening_sessions_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "evening_sessions_activity_id_date_key" ON "evening_sessions"("activity_id", "date");
+
+-- CreateTable
+CREATE TABLE "evening_attendance" (
+    "id" TEXT NOT NULL,
+    "session_id" TEXT NOT NULL,
+    "student_id" TEXT,
+    "participant_id" TEXT,
+    "status" TEXT DEFAULT 'PRESENT' NOT NULL,
+    "marked_by_id" TEXT,
+    "marked_at" TIMESTAMP(3),
+    CONSTRAINT "evening_attendance_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "evening_attendance_session_id_student_id_key" ON "evening_attendance"("session_id", "student_id");
+CREATE UNIQUE INDEX "evening_attendance_session_id_participant_id_key" ON "evening_attendance"("session_id", "participant_id");
+CREATE INDEX "evening_attendance_session_id_idx" ON "evening_attendance"("session_id");
+
+-- CreateTable
+CREATE TABLE "ptm_slots" (
+    "id" TEXT NOT NULL,
+    "session_id" TEXT NOT NULL,
+    "start_time" TIMESTAMP(3) NOT NULL,
+    "end_time" TIMESTAMP(3) NOT NULL,
+    "student_id" TEXT,
+    "booked_at" TIMESTAMP(3),
+    "booked_by_id" TEXT,
+    "notes" TEXT,
+    CONSTRAINT "ptm_slots_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "ptm_slots_session_id_start_time_key" ON "ptm_slots"("session_id", "start_time");
+CREATE INDEX "ptm_slots_session_id_idx" ON "ptm_slots"("session_id");
 
 -- CreateTable
 CREATE TABLE "employees" (
@@ -1170,6 +1235,7 @@ ALTER TABLE "ptm_records" ADD CONSTRAINT "ptm_records_session_id_fkey" FOREIGN K
 ALTER TABLE "ptm_records" ADD CONSTRAINT "ptm_records_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "evening_enrollments" ADD CONSTRAINT "evening_enrollments_activity_id_fkey" FOREIGN KEY ("activity_id") REFERENCES "evening_activities"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "evening_enrollments" ADD CONSTRAINT "evening_enrollments_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "evening_enrollments" ADD CONSTRAINT "evening_enrollments_participant_id_fkey" FOREIGN KEY ("participant_id") REFERENCES "evening_participants"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "evening_payments" ADD CONSTRAINT "evening_payments_enrollment_id_fkey" FOREIGN KEY ("enrollment_id") REFERENCES "evening_enrollments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "purchase_request_lines" ADD CONSTRAINT "purchase_request_lines_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "purchase_requests"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "purchase_orders_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "vendors"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1178,6 +1244,10 @@ ALTER TABLE "purchase_order_lines" ADD CONSTRAINT "purchase_order_lines_order_id
 ALTER TABLE "goods_receipts" ADD CONSTRAINT "goods_receipts_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "purchase_orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "goods_receipt_lines" ADD CONSTRAINT "goods_receipt_lines_receipt_id_fkey" FOREIGN KEY ("receipt_id") REFERENCES "goods_receipts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "goods_receipt_lines" ADD CONSTRAINT "goods_receipt_lines_order_line_id_fkey" FOREIGN KEY ("order_line_id") REFERENCES "purchase_order_lines"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "evening_sessions" ADD CONSTRAINT "evening_sessions_activity_id_fkey" FOREIGN KEY ("activity_id") REFERENCES "evening_activities"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "evening_attendance" ADD CONSTRAINT "evening_attendance_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "evening_sessions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "evening_attendance" ADD CONSTRAINT "evening_attendance_participant_id_fkey" FOREIGN KEY ("participant_id") REFERENCES "evening_participants"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ptm_slots" ADD CONSTRAINT "ptm_slots_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "ptm_sessions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "employees" ADD CONSTRAINT "employees_reporting_manager_id_fkey" FOREIGN KEY ("reporting_manager_id") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "employment_history" ADD CONSTRAINT "employment_history_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "employee_shifts" ADD CONSTRAINT "employee_shifts_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

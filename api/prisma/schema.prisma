@@ -316,6 +316,7 @@ model Student {
   lifecycleRecords  StudentLifecycleRecord[]
   ptmRecords        PtmRecord[]
   eveningEnrollments EveningEnrollment[]
+  eveningAttendance  EveningAttendance[]
 
   @@map("students")
 }
@@ -632,10 +633,10 @@ model AcademicPlan {
 }
 model InventoryItem { id String @id @default(uuid()) @db.Uuid unitId String? @map("unit_id") @db.Uuid sku String @unique name String category String reorderLevel Int @default(0) @map("reorder_level") quantity Int @default(0) unitCost Decimal @default(0) @map("unit_cost") @db.Decimal(10,2) active Boolean @default(true) movements InventoryMovement[] @@map("inventory_items") }
 model InventoryMovement { id String @id @default(uuid()) @db.Uuid itemId String @map("item_id") @db.Uuid unitId String @map("unit_id") @db.Uuid type String quantity Int unitCost Decimal? @map("unit_cost") @db.Decimal(10,2) reference String? notes String? createdById String? @map("created_by_id") @db.Uuid createdAt DateTime @default(now()) @map("created_at") item InventoryItem @relation(fields:[itemId],references:[id]) @@index([unitId,createdAt]) @@map("inventory_movements") }
-model PtmSession { id String @id @default(uuid()) @db.Uuid unitId String @map("unit_id") @db.Uuid batchId String? @map("batch_id") @db.Uuid title String scheduledAt DateTime @map("scheduled_at") status String @default("SCHEDULED") records PtmRecord[] createdAt DateTime @default(now()) @map("created_at") @@index([unitId,scheduledAt]) @@map("ptm_sessions") }
+model PtmSession { id String @id @default(uuid()) @db.Uuid unitId String @map("unit_id") @db.Uuid batchId String? @map("batch_id") @db.Uuid title String scheduledAt DateTime @map("scheduled_at") status String @default("SCHEDULED") records PtmRecord[] slots PtmSlot[] createdAt DateTime @default(now()) @map("created_at") @@index([unitId,scheduledAt]) @@map("ptm_sessions") }
 model PtmRecord { id String @id @default(uuid()) @db.Uuid sessionId String @map("session_id") @db.Uuid studentId String @map("student_id") @db.Uuid attended Boolean @default(false) parentNames String? @map("parent_names") teacherNotes String? @map("teacher_notes") signedFormUrl String? @map("signed_form_url") recordedById String? @map("recorded_by_id") recordedAt DateTime? @map("recorded_at") session PtmSession @relation(fields:[sessionId],references:[id]) student Student @relation(fields:[studentId],references:[id]) @@unique([sessionId,studentId]) @@map("ptm_records") }
-model EveningActivity { id String @id @default(uuid()) @db.Uuid unitId String @map("unit_id") @db.Uuid name String schedule String? fee Decimal @db.Decimal(10,2) capacity Int active Boolean @default(true) enrollments EveningEnrollment[] @@index([unitId]) @@map("evening_activities") }
-model EveningEnrollment { id String @id @default(uuid()) @db.Uuid activityId String @map("activity_id") @db.Uuid studentId String @map("student_id") @db.Uuid startDate DateTime @map("start_date") @db.Date endDate DateTime? @map("end_date") @db.Date status String @default("ACTIVE") amountDue Decimal @map("amount_due") @db.Decimal(10,2) payments EveningPayment[] activity EveningActivity @relation(fields:[activityId],references:[id]) student Student @relation(fields:[studentId],references:[id]) @@unique([activityId,studentId]) @@map("evening_enrollments") }
+model EveningActivity { id String @id @default(uuid()) @db.Uuid unitId String @map("unit_id") @db.Uuid name String schedule String? fee Decimal @db.Decimal(10,2) capacity Int active Boolean @default(true) enrollments EveningEnrollment[] sessions EveningSession[] @@index([unitId]) @@map("evening_activities") }
+model EveningEnrollment { id String @id @default(uuid()) @db.Uuid activityId String @map("activity_id") @db.Uuid studentId String? @map("student_id") @db.Uuid participantId String? @map("participant_id") @db.Uuid startDate DateTime @map("start_date") @db.Date endDate DateTime? @map("end_date") @db.Date status String @default("ACTIVE") amountDue Decimal @map("amount_due") @db.Decimal(10,2) payments EveningPayment[] activity EveningActivity @relation(fields:[activityId],references:[id]) student Student? @relation(fields:[studentId],references:[id]) participant EveningParticipant? @relation(fields:[participantId],references:[id]) @@unique([activityId,studentId]) @@unique([activityId,participantId]) @@map("evening_enrollments") }
 model EveningPayment { id String @id @default(uuid()) @db.Uuid enrollmentId String @map("enrollment_id") @db.Uuid amount Decimal @db.Decimal(10,2) mode PaymentMode reference String? receiptNo String @unique @map("receipt_no") paidAt DateTime @default(now()) @map("paid_at") collectedById String? @map("collected_by_id") @db.Uuid enrollment EveningEnrollment @relation(fields:[enrollmentId],references:[id]) @@map("evening_payments") }
 
 
@@ -804,6 +805,81 @@ model InwardOutwardEntry {
 
   @@index([unitId, date])
   @@map("inward_outward_entries")
+}
+
+/// A child who attends the evening centre without being enrolled in the
+/// preschool (spec: external registration). Kept separate from Student so a
+/// non-student never appears in attendance or fee reports.
+model EveningParticipant {
+  id            String   @id @default(uuid()) @db.Uuid
+  unitId        String   @map("unit_id") @db.Uuid
+  fullName      String   @map("full_name")
+  dob           DateTime? @db.Date
+  guardianName  String?  @map("guardian_name")
+  guardianPhone String?  @map("guardian_phone")
+  school        String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  enrollments EveningEnrollment[]
+  attendance  EveningAttendance[]
+
+  @@index([unitId, active])
+  @@map("evening_participants")
+}
+
+/// One class occurrence of an evening activity.
+model EveningSession {
+  id         String   @id @default(uuid()) @db.Uuid
+  activityId String   @map("activity_id") @db.Uuid
+  date       DateTime @db.Date
+  startTime  String?  @map("start_time")
+  endTime    String?  @map("end_time")
+  topic      String?
+  status     String   @default("SCHEDULED") // SCHEDULED | HELD | CANCELLED
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  activity   EveningActivity   @relation(fields: [activityId], references: [id])
+  attendance EveningAttendance[]
+
+  @@unique([activityId, date])
+  @@map("evening_sessions")
+}
+
+model EveningAttendance {
+  id            String    @id @default(uuid()) @db.Uuid
+  sessionId     String    @map("session_id") @db.Uuid
+  studentId     String?   @map("student_id") @db.Uuid
+  participantId String?   @map("participant_id") @db.Uuid
+  status        String    @default("PRESENT") // PRESENT | ABSENT
+  markedById    String?   @map("marked_by_id") @db.Uuid
+  markedAt      DateTime? @map("marked_at")
+
+  session     EveningSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant EveningParticipant? @relation(fields: [participantId], references: [id])
+
+  @@unique([sessionId, studentId])
+  @@unique([sessionId, participantId])
+  @@index([sessionId])
+  @@map("evening_attendance")
+}
+
+/// Parent-bookable PTM slot. One booking per slot keeps the queue honest.
+model PtmSlot {
+  id         String    @id @default(uuid()) @db.Uuid
+  sessionId  String    @map("session_id") @db.Uuid
+  startTime  DateTime  @map("start_time")
+  endTime    DateTime  @map("end_time")
+  studentId  String?   @map("student_id") @db.Uuid
+  bookedAt   DateTime? @map("booked_at")
+  bookedById String?   @map("booked_by_id") @db.Uuid // parent user id or staff user id
+  notes      String?
+
+  session PtmSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, startTime])
+  @@index([sessionId])
+  @@map("ptm_slots")
 }
 
 model Employee {

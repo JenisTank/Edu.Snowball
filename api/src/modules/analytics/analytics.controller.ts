@@ -37,6 +37,15 @@ export class AnalyticsController {
       ptms,
       evening,
       payroll,
+      batches,
+      employees,
+      staffToday,
+      feeStructuresAll,
+      feeTxnsAll,
+      leaves,
+      participants,
+      sessionsHeld,
+      slotStats,
     ] = await Promise.all([
       this.prisma.student.findMany({
         where: { ...scope, status: 'ACTIVE' },
@@ -84,6 +93,44 @@ export class AnalyticsController {
         },
         include: { lines: true },
       }),
+      this.prisma.batch.findMany({
+        where: { ...scope, isActive: true },
+        select: { id: true, name: true, capacity: true, unitId: true, programmeId: true },
+      }),
+      this.prisma.employee.findMany({
+        where: unitId ? { unitId } : {},
+        select: { id: true, unitId: true, employmentType: true, status: true, designation: true },
+      }),
+      this.prisma.staffAttendance.findMany({
+        where: { date: new Date(new Date().toISOString().slice(0, 10)) },
+        select: { employeeId: true, status: true },
+      }),
+      this.prisma.feeStructure.findMany({
+        where: { ...scope, academicYear: '2026-27' },
+        select: { unitId: true, programmeId: true, totalFee: true, siblingDiscountPct: true },
+      }),
+      this.prisma.feeTransaction.findMany({
+        where: { ...scope, isCancelled: false },
+        select: { amount: true, ledgerType: true },
+      }),
+      this.prisma.studentLeave.findMany({
+        where: {
+          ...scope,
+          status: 'APPROVED',
+          fromDate: { lte: new Date() },
+          toDate: { gte: new Date() },
+        },
+        select: { id: true, studentId: true, type: true },
+      }),
+      this.prisma.eveningParticipant.findMany({ where: scope, select: { id: true, active: true } }),
+      this.prisma.eveningSession.findMany({
+        where: { activity: scope, status: 'HELD' },
+        select: { id: true },
+      }),
+      this.prisma.ptmSlot.findMany({
+        where: { session: scope },
+        select: { id: true, studentId: true },
+      }),
     ]);
     const attendanceMap = Object.fromEntries(attendance.map((x: any) => [x.status, x._count]));
     const attTotal = Object.values(attendanceMap).reduce((a: any, b: any) => a + b, 0) as number;
@@ -123,6 +170,59 @@ export class AnalyticsController {
         .flatMap((x: any) => x.payments)
         .reduce((a: number, x: any) => a + n(x.amount), 0),
       eveningDue = eveningEnrollments.reduce((a: number, x: any) => a + n(x.amountDue), 0);
+    // ── Capacity: seats against enrolled children, per unit and per batch ──
+    const seats = batches.reduce((sum: number, b: any) => sum + b.capacity, 0);
+    const capacityByUnit = new Map<string, { unitId: string; seats: number; enrolled: number }>();
+    for (const b of batches) {
+      const row = capacityByUnit.get(b.unitId) ?? { unitId: b.unitId, seats: 0, enrolled: 0 };
+      row.seats += b.capacity;
+      row.enrolled += students.filter((s: any) => s.programmeId === b.programmeId).length;
+      capacityByUnit.set(b.unitId, row);
+    }
+    const batchCapacity = batches.map((b: any) => {
+      const enrolled = students.filter((s: any) => s.programmeId === b.programmeId).length;
+      return {
+        batchId: b.id,
+        name: b.name,
+        capacity: b.capacity,
+        enrolled,
+        utilisationPct: b.capacity ? Math.round((enrolled / b.capacity) * 1000) / 10 : 0,
+        seatsAvailable: Math.max(0, b.capacity - enrolled),
+      };
+    });
+
+    // ── Outstanding: what the year billed minus what has been received ──
+    const billed = students.reduce((sum: number, student: any) => {
+      const fee = feeStructuresAll.find(
+        (x: any) => x.unitId === student.unitId && x.programmeId === student.programmeId,
+      );
+      if (!fee) return sum;
+      const discount = student.siblingGroup ? n(fee.siblingDiscountPct) : 0;
+      return sum + n(fee.totalFee) * (1 - discount / 100);
+    }, 0);
+    const collectedAll = feeTxnsAll
+      .filter((t: any) => t.ledgerType === 'PRESCHOOL')
+      .reduce((a: number, t: any) => a + n(t.amount), 0);
+
+    // ── Staff ──
+    const activeStaff = employees.filter((e: any) => e.status === 'ACTIVE');
+    const presentIds = new Set(
+      staffToday.filter((x: any) => x.status === 'PRESENT').map((x: any) => x.employeeId),
+    );
+    const staff = {
+      total: activeStaff.length,
+      byType: activeStaff.reduce((a: any, e: any) => {
+        a[e.employmentType] = (a[e.employmentType] ?? 0) + 1;
+        return a;
+      }, {}),
+      byUnit: activeStaff.reduce((a: any, e: any) => {
+        a[e.unitId] = (a[e.unitId] ?? 0) + 1;
+        return a;
+      }, {}),
+      presentToday: activeStaff.filter((e: any) => presentIds.has(e.id)).length,
+      markedToday: staffToday.length,
+    };
+
     return {
       generatedAt: new Date(),
       filters: { unitId: unitId || null, months },
@@ -154,7 +254,28 @@ export class AnalyticsController {
         payrollCost: payroll
           .flatMap((x: any) => x.lines)
           .reduce((a: number, x: any) => a + n(x.net) + n(x.employerContributions), 0),
+        seats,
+        enrolledSeats: students.length,
+        capacityUtilisation: seats ? Math.round((students.length / seats) * 1000) / 10 : 0,
+        seatsAvailable: Math.max(0, seats - students.length),
+        outstanding: Math.max(0, billed - collectedAll),
+        onApprovedLeave: leaves.length,
+        eveningParticipants: participants.filter((p: any) => p.active).length,
+        eveningSessionsHeld: sessionsHeld.length,
+        ptmSlotsBooked: slotStats.filter((s: any) => s.studentId).length,
+        ptmSlotsTotal: slotStats.length,
+        staffPresent: staff.presentToday,
+        staffTotal: staff.total,
       },
+      capacity: {
+        seats,
+        byUnit: [...capacityByUnit.values()].map((u) => ({
+          ...u,
+          utilisationPct: u.seats ? Math.round((u.enrolled / u.seats) * 1000) / 10 : 0,
+        })),
+        batches: batchCapacity.sort((a, b) => b.utilisationPct - a.utilisationPct),
+      },
+      staff,
       funnel,
       attendance: attendanceMap,
       academic: Object.fromEntries(plans.map((x: any) => [x.status, x._count])),
