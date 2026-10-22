@@ -122,6 +122,29 @@ def attr_attr(attrs, name):
     return None
 
 
+# Prisma writes referential actions in CamelCase (`SetNull`), SQL in upper case
+# (`SET NULL`). Passing the schema value straight through produced
+# `ON DELETE SetNull`, which Postgres rejects.
+REFERENTIAL_ACTIONS = {
+    'cascade': 'CASCADE',
+    'restrict': 'RESTRICT',
+    'noaction': 'NO ACTION',
+    'no_action': 'NO ACTION',
+    'setnull': 'SET NULL',
+    'set_null': 'SET NULL',
+    'setdefault': 'SET DEFAULT',
+    'set_default': 'SET DEFAULT',
+}
+
+
+def referential_action(value):
+    """Map a Prisma referential action to its SQL spelling (None if unset)."""
+    if not value:
+        return None
+    key = value.strip().strip('"\'').replace(' ', '').lower()
+    return REFERENTIAL_ACTIONS.get(key)
+
+
 def attr_arg(attr, key=None):
     inner = attr[attr.index('(') + 1 : attr.rindex(')')] if '(' in attr else ''
     if key is None:
@@ -274,8 +297,10 @@ def main():
             # RESTRICT, an optional one SET NULL. Explicit @relation(onDelete:…)
             # wins. Getting this wrong makes `migrate diff` rewrite every FK.
             optional = f['type'].rstrip('[]').endswith('?')
-            on_delete = attr_arg(rel, 'onDelete') or ('SET NULL' if optional else 'RESTRICT')
-            on_update = attr_arg(rel, 'onUpdate') or 'CASCADE'
+            on_delete = referential_action(attr_arg(rel, 'onDelete')) or (
+                'SET NULL' if optional else 'RESTRICT'
+            )
+            on_update = referential_action(attr_arg(rel, 'onUpdate')) or 'CASCADE'
             lines.append(
                 f'ALTER TABLE {q(table_name(model))} ADD CONSTRAINT {q(trunc(fk_name))} '
                 f'FOREIGN KEY ({", ".join(q(c) for c in local_cols)}) REFERENCES '

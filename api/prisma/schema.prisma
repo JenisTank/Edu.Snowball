@@ -657,10 +657,22 @@ model AcademicPlan {
  authoredById String? @map("authored_by_id") @db.Uuid
  approvedById String? @map("approved_by_id") @db.Uuid
  approvedAt DateTime? @map("approved_at")
+ // ── HO-locked authoring ──
+ // The Academic Director authors a master record and locks it; units consume
+ // the locked master and may only add their own overlay (see `masterId`).
+ version Int @default(1)
+ lockedById String? @map("locked_by_id") @db.Uuid
+ lockedAt DateTime? @map("locked_at")
+ // A unit overlay points at the AD master it adapts. Self-relation: deleting
+ // the master leaves the overlay in place (SET NULL).
+ masterId String? @map("master_id") @db.Uuid
+ master AcademicPlan? @relation("PlanOverlay", fields: [masterId], references: [id], onDelete: SetNull)
+ overlays AcademicPlan[] @relation("PlanOverlay")
  createdAt DateTime @default(now()) @map("created_at")
  updatedAt DateTime @updatedAt @map("updated_at")
  @@index([academicYear,kind])
  @@index([unitId])
+ @@index([masterId])
  @@map("academic_plans")
 }
 

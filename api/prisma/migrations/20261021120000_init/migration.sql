@@ -559,6 +559,10 @@ CREATE TABLE "academic_plans" (
     "authored_by_id" UUID,
     "approved_by_id" UUID,
     "approved_at" TIMESTAMP(3),
+    "version" INTEGER DEFAULT 1 NOT NULL,
+    "locked_by_id" UUID,
+    "locked_at" TIMESTAMP(3),
+    "master_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updated_at" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "academic_plans_pkey" PRIMARY KEY ("id")
@@ -566,6 +570,7 @@ CREATE TABLE "academic_plans" (
 
 CREATE INDEX "academic_plans_academic_year_kind_idx" ON "academic_plans"("academic_year", "kind");
 CREATE INDEX "academic_plans_unit_id_idx" ON "academic_plans"("unit_id");
+CREATE INDEX "academic_plans_master_id_idx" ON "academic_plans"("master_id");
 
 -- CreateTable
 CREATE TABLE "inventory_items" (
@@ -1279,6 +1284,7 @@ ALTER TABLE "certificates" ADD CONSTRAINT "certificates_student_id_fkey" FOREIGN
 ALTER TABLE "message_logs" ADD CONSTRAINT "message_logs_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "parent_messages" ADD CONSTRAINT "parent_messages_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "student_lifecycle_records" ADD CONSTRAINT "student_lifecycle_records_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "academic_plans" ADD CONSTRAINT "academic_plans_master_id_fkey" FOREIGN KEY ("master_id") REFERENCES "academic_plans"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "inventory_movements" ADD CONSTRAINT "inventory_movements_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "inventory_items"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "ptm_records" ADD CONSTRAINT "ptm_records_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "ptm_sessions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "ptm_records" ADD CONSTRAINT "ptm_records_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1288,18 +1294,18 @@ ALTER TABLE "evening_enrollments" ADD CONSTRAINT "evening_enrollments_participan
 ALTER TABLE "evening_payments" ADD CONSTRAINT "evening_payments_enrollment_id_fkey" FOREIGN KEY ("enrollment_id") REFERENCES "evening_enrollments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "online_payments" ADD CONSTRAINT "online_payments_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "online_payments" ADD CONSTRAINT "online_payments_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "purchase_request_lines" ADD CONSTRAINT "purchase_request_lines_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "purchase_requests"("id") ON DELETE Cascade ON UPDATE CASCADE;
+ALTER TABLE "purchase_request_lines" ADD CONSTRAINT "purchase_request_lines_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "purchase_requests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "purchase_orders_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "vendors"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "purchase_orders_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "purchase_requests"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "purchase_order_lines" ADD CONSTRAINT "purchase_order_lines_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "purchase_orders"("id") ON DELETE Cascade ON UPDATE CASCADE;
+ALTER TABLE "purchase_order_lines" ADD CONSTRAINT "purchase_order_lines_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "purchase_orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "goods_receipts" ADD CONSTRAINT "goods_receipts_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "purchase_orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "goods_receipt_lines" ADD CONSTRAINT "goods_receipt_lines_receipt_id_fkey" FOREIGN KEY ("receipt_id") REFERENCES "goods_receipts"("id") ON DELETE Cascade ON UPDATE CASCADE;
+ALTER TABLE "goods_receipt_lines" ADD CONSTRAINT "goods_receipt_lines_receipt_id_fkey" FOREIGN KEY ("receipt_id") REFERENCES "goods_receipts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "goods_receipt_lines" ADD CONSTRAINT "goods_receipt_lines_order_line_id_fkey" FOREIGN KEY ("order_line_id") REFERENCES "purchase_order_lines"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "evening_sessions" ADD CONSTRAINT "evening_sessions_activity_id_fkey" FOREIGN KEY ("activity_id") REFERENCES "evening_activities"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "evening_attendance" ADD CONSTRAINT "evening_attendance_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "evening_sessions"("id") ON DELETE Cascade ON UPDATE CASCADE;
+ALTER TABLE "evening_attendance" ADD CONSTRAINT "evening_attendance_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "evening_sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "evening_attendance" ADD CONSTRAINT "evening_attendance_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "evening_attendance" ADD CONSTRAINT "evening_attendance_participant_id_fkey" FOREIGN KEY ("participant_id") REFERENCES "evening_participants"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "ptm_slots" ADD CONSTRAINT "ptm_slots_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "ptm_sessions"("id") ON DELETE Cascade ON UPDATE CASCADE;
+ALTER TABLE "ptm_slots" ADD CONSTRAINT "ptm_slots_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "ptm_sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "employees" ADD CONSTRAINT "employees_reporting_manager_id_fkey" FOREIGN KEY ("reporting_manager_id") REFERENCES "employees"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "employment_history" ADD CONSTRAINT "employment_history_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "employee_shifts" ADD CONSTRAINT "employee_shifts_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
