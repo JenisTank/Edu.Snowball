@@ -335,9 +335,27 @@ documentation deliverable:
 | Faculty guest-engagement / security deposit | 🟡     | Not built — needs HR policy confirmation                              |
 
 **Verification for this state:** `npm test` 196/196 across 21 suites,
-`tsc --noEmit` clean, prettier clean, frontend production build clean, and the
-66-table init migration applied to a scratch Postgres (PGlite) with FK
-enforcement checked.
+`tsc --noEmit` clean, prettier clean, frontend production build clean, and all
+four CI jobs green (`API`, `Database`, `Frontend`, `Repo — prettier`).
+
+### Schema integrity (fixed 22 Oct 2026)
+
+`prisma generate` had never run in this environment (engine downloads are
+blocked), so two latent defects only surfaced when CI first ran:
+
+1. **The schema was not valid Prisma** — a group of models had every field on
+   one line, which the parser rejects. Every model/enum is now one field per
+   line (canonical `prisma format` output).
+2. **The generated migration disagreed with the schema** — `@db.*` attributes
+   were ignored, so every UUID column was emitted as `TEXT`, dates as
+   `TIMESTAMP(3)` and sized decimals as `DECIMAL(65,30)`; optional `@unique`
+   columns had no index; `ON DELETE` ignored relation optionality. Fixed in
+   `prisma/generate-init-migration.py`, and five HR relation columns that were
+   missing `@db.Uuid` were corrected in the schema.
+
+The generator is now guarded by CI: the committed SQL must equal a fresh run of
+`prisma/generate-init-migration.py`, and `prisma migrate diff` must report no
+drift against `schema.prisma`.
 
 ## 9. How this was verified
 

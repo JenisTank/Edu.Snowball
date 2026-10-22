@@ -85,6 +85,17 @@ bash scripts/backup.sh                     # gzip dump + sha256 manifest, 30-day
 bash scripts/restore.sh <dump.sql.gz>      # restores into a scratch DB and prints row counts
 ```
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs four jobs on every pull request:
+
+| Job      | What it proves                                                                                                                                  |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| API      | `prisma generate` succeeds, `tsc --noEmit` is clean, 196 tests pass, prettier                                                                   |
+| Database | migration applies to Postgres 16, is byte-identical to the generator output, and `prisma migrate diff` reports no drift against `schema.prisma` |
+| Frontend | production build succeeds                                                                                                                       |
+| Repo     | `prettier --check .` across the whole tree                                                                                                      |
+
 ## Demo logins (seed data — password `bumbleb123`)
 
 | Role               | Email                      |
