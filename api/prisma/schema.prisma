@@ -639,6 +639,173 @@ model EveningEnrollment { id String @id @default(uuid()) @db.Uuid activityId Str
 model EveningPayment { id String @id @default(uuid()) @db.Uuid enrollmentId String @map("enrollment_id") @db.Uuid amount Decimal @db.Decimal(10,2) mode PaymentMode reference String? receiptNo String @unique @map("receipt_no") paidAt DateTime @default(now()) @map("paid_at") collectedById String? @map("collected_by_id") @db.Uuid enrollment EveningEnrollment @relation(fields:[enrollmentId],references:[id]) @@map("evening_payments") }
 
 
+// ─────────────────────────── PROCUREMENT ───────────────────────────
+// PRF → PO → GRN. Stock only ever moves through the GRN (or an explicit
+// adjustment), so the ledger and the shelf can never disagree.
+
+model Vendor {
+  id           String   @id @default(uuid()) @db.Uuid
+  unitId       String?  @map("unit_id") @db.Uuid // null = HO-preferred vendor
+  code         String   @unique
+  name         String
+  category     String? // matches the inventory category it supplies
+  contactName  String?  @map("contact_name")
+  phone        String?
+  email        String?
+  gstin        String?
+  address      String?
+  preApproved  Boolean  @default(false) @map("pre_approved")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  orders PurchaseOrder[]
+
+  @@index([unitId, active])
+  @@map("vendors")
+}
+
+model PurchaseRequest {
+  id            String    @id @default(uuid()) @db.Uuid
+  unitId        String    @map("unit_id") @db.Uuid
+  title         String
+  justification String?
+  status        String    @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | REJECTED | ORDERED | CLOSED
+  requestedById String?   @map("requested_by_id") @db.Uuid
+  approvedById  String?   @map("approved_by_id") @db.Uuid
+  approvedAt    DateTime? @map("approved_at")
+  decisionNote  String?   @map("decision_note")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  lines  PurchaseRequestLine[]
+  orders PurchaseOrder[]
+
+  @@index([unitId, status])
+  @@map("purchase_requests")
+}
+
+model PurchaseRequestLine {
+  id            String  @id @default(uuid()) @db.Uuid
+  requestId     String  @map("request_id") @db.Uuid
+  itemId        String? @map("item_id") @db.Uuid
+  description   String
+  quantity      Int
+  estimatedCost Decimal @default(0) @map("estimated_cost") @db.Decimal(10, 2)
+
+  request PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("purchase_request_lines")
+}
+
+model PurchaseOrder {
+  id          String    @id @default(uuid()) @db.Uuid
+  unitId      String    @map("unit_id") @db.Uuid
+  vendorId    String    @map("vendor_id") @db.Uuid
+  requestId   String?   @map("request_id") @db.Uuid
+  poNo        String    @unique @map("po_no")
+  status      String    @default("DRAFT") // DRAFT | SENT | PARTIAL | RECEIVED | CANCELLED
+  orderedAt   DateTime? @map("ordered_at")
+  expectedAt  DateTime? @map("expected_at") @db.Date
+  totalAmount Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
+  notes       String?
+  createdById String?   @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  vendor   Vendor           @relation(fields: [vendorId], references: [id])
+  request  PurchaseRequest? @relation(fields: [requestId], references: [id])
+  lines    PurchaseOrderLine[]
+  receipts GoodsReceipt[]
+
+  @@index([unitId, status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id          String  @id @default(uuid()) @db.Uuid
+  orderId     String  @map("order_id") @db.Uuid
+  itemId      String? @map("item_id") @db.Uuid
+  description String
+  quantity    Int
+  unitCost    Decimal @default(0) @map("unit_cost") @db.Decimal(10, 2)
+  receivedQty Int     @default(0) @map("received_qty")
+
+  order        PurchaseOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  receiptLines GoodsReceiptLine[]
+
+  @@index([orderId])
+  @@map("purchase_order_lines")
+}
+
+model GoodsReceipt {
+  id           String    @id @default(uuid()) @db.Uuid
+  orderId      String    @map("order_id") @db.Uuid
+  unitId       String    @map("unit_id") @db.Uuid
+  grnNo        String    @unique @map("grn_no")
+  invoiceNo    String?   @map("invoice_no")
+  invoiceDate  DateTime? @map("invoice_date") @db.Date
+  receivedById String?   @map("received_by_id") @db.Uuid
+  notes        String?
+  receivedAt   DateTime  @default(now()) @map("received_at")
+
+  order PurchaseOrder      @relation(fields: [orderId], references: [id])
+  lines GoodsReceiptLine[]
+
+  @@index([unitId, receivedAt])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptLine {
+  id          String  @id @default(uuid()) @db.Uuid
+  receiptId   String  @map("receipt_id") @db.Uuid
+  orderLineId String? @map("order_line_id") @db.Uuid
+  itemId      String? @map("item_id") @db.Uuid
+  description String
+  quantity    Int
+  unitCost    Decimal @default(0) @map("unit_cost") @db.Decimal(10, 2)
+
+  receipt   GoodsReceipt       @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  orderLine PurchaseOrderLine? @relation(fields: [orderLineId], references: [id])
+
+  @@index([receiptId])
+  @@map("goods_receipt_lines")
+}
+
+/// Petty-cash ledger per unit. The float itself is a unit setting; this table
+/// records every rupee in and out so the balance is always reconstructable.
+model PettyCashEntry {
+  id           String   @id @default(uuid()) @db.Uuid
+  unitId       String   @map("unit_id") @db.Uuid
+  date         DateTime @db.Date
+  type         String // TOPUP | SPEND | RETURN
+  description  String
+  amount       Decimal  @db.Decimal(10, 2)
+  receiptRef   String?  @map("receipt_ref")
+  recordedById String?  @map("recorded_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([unitId, date])
+  @@map("petty_cash_entries")
+}
+
+// Inward / Outward register (spec module 16) — every non-stock item that enters
+// or leaves the premises: courier, documents, keys, repairs.
+model InwardOutwardEntry {
+  id           String   @id @default(uuid()) @db.Uuid
+  unitId       String   @map("unit_id") @db.Uuid
+  direction    String // INWARD | OUTWARD
+  date         DateTime @db.Date
+  category     String // COURIER | DOCUMENT | ASSET | REPAIR | VISITOR | OTHER
+  party        String // who sent it or who took it
+  description  String
+  reference    String?
+  handledById  String?  @map("handled_by_id") @db.Uuid
+  acknowledged Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([unitId, date])
+  @@map("inward_outward_entries")
+}
+
 model Employee {
   id                String   @id @default(uuid()) @db.Uuid
   employeeNo        String   @unique @map("employee_no")

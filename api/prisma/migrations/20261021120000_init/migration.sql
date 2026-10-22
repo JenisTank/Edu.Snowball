@@ -653,6 +653,156 @@ CREATE TABLE "evening_payments" (
 CREATE UNIQUE INDEX "evening_payments_receipt_no_key" ON "evening_payments"("receipt_no");
 
 -- CreateTable
+CREATE TABLE "vendors" (
+    "id" TEXT NOT NULL,
+    "unit_id" TEXT,
+    "code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "category" TEXT,
+    "contact_name" TEXT,
+    "phone" TEXT,
+    "email" TEXT,
+    "gstin" TEXT,
+    "address" TEXT,
+    "pre_approved" BOOLEAN DEFAULT false NOT NULL,
+    "active" BOOLEAN DEFAULT true NOT NULL,
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "vendors_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "vendors_code_key" ON "vendors"("code");
+CREATE INDEX "vendors_unit_id_active_idx" ON "vendors"("unit_id", "active");
+
+-- CreateTable
+CREATE TABLE "purchase_requests" (
+    "id" TEXT NOT NULL,
+    "unit_id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "justification" TEXT,
+    "status" TEXT DEFAULT 'DRAFT' NOT NULL,
+    "requested_by_id" TEXT,
+    "approved_by_id" TEXT,
+    "approved_at" TIMESTAMP(3),
+    "decision_note" TEXT,
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "purchase_requests_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "purchase_requests_unit_id_status_idx" ON "purchase_requests"("unit_id", "status");
+
+-- CreateTable
+CREATE TABLE "purchase_request_lines" (
+    "id" TEXT NOT NULL,
+    "request_id" TEXT NOT NULL,
+    "item_id" TEXT,
+    "description" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL,
+    "estimated_cost" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    CONSTRAINT "purchase_request_lines_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "purchase_request_lines_request_id_idx" ON "purchase_request_lines"("request_id");
+
+-- CreateTable
+CREATE TABLE "purchase_orders" (
+    "id" TEXT NOT NULL,
+    "unit_id" TEXT NOT NULL,
+    "vendor_id" TEXT NOT NULL,
+    "request_id" TEXT,
+    "po_no" TEXT NOT NULL,
+    "status" TEXT DEFAULT 'DRAFT' NOT NULL,
+    "ordered_at" TIMESTAMP(3),
+    "expected_at" TIMESTAMP(3),
+    "total_amount" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    "notes" TEXT,
+    "created_by_id" TEXT,
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "purchase_orders_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "purchase_orders_po_no_key" ON "purchase_orders"("po_no");
+CREATE INDEX "purchase_orders_unit_id_status_idx" ON "purchase_orders"("unit_id", "status");
+
+-- CreateTable
+CREATE TABLE "purchase_order_lines" (
+    "id" TEXT NOT NULL,
+    "order_id" TEXT NOT NULL,
+    "item_id" TEXT,
+    "description" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL,
+    "unit_cost" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    "received_qty" INTEGER DEFAULT 0 NOT NULL,
+    CONSTRAINT "purchase_order_lines_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "purchase_order_lines_order_id_idx" ON "purchase_order_lines"("order_id");
+
+-- CreateTable
+CREATE TABLE "goods_receipts" (
+    "id" TEXT NOT NULL,
+    "order_id" TEXT NOT NULL,
+    "unit_id" TEXT NOT NULL,
+    "grn_no" TEXT NOT NULL,
+    "invoice_no" TEXT,
+    "invoice_date" TIMESTAMP(3),
+    "received_by_id" TEXT,
+    "notes" TEXT,
+    "received_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "goods_receipts_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "goods_receipts_grn_no_key" ON "goods_receipts"("grn_no");
+CREATE INDEX "goods_receipts_unit_id_received_at_idx" ON "goods_receipts"("unit_id", "received_at");
+
+-- CreateTable
+CREATE TABLE "goods_receipt_lines" (
+    "id" TEXT NOT NULL,
+    "receipt_id" TEXT NOT NULL,
+    "order_line_id" TEXT,
+    "item_id" TEXT,
+    "description" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL,
+    "unit_cost" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    CONSTRAINT "goods_receipt_lines_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "goods_receipt_lines_receipt_id_idx" ON "goods_receipt_lines"("receipt_id");
+
+-- CreateTable
+CREATE TABLE "petty_cash_entries" (
+    "id" TEXT NOT NULL,
+    "unit_id" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
+    "type" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "amount" DECIMAL(65,30) NOT NULL,
+    "receipt_ref" TEXT,
+    "recorded_by_id" TEXT,
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "petty_cash_entries_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "petty_cash_entries_unit_id_date_idx" ON "petty_cash_entries"("unit_id", "date");
+
+-- CreateTable
+CREATE TABLE "inward_outward_entries" (
+    "id" TEXT NOT NULL,
+    "unit_id" TEXT NOT NULL,
+    "direction" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
+    "category" TEXT NOT NULL,
+    "party" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "reference" TEXT,
+    "handled_by_id" TEXT,
+    "acknowledged" BOOLEAN DEFAULT false NOT NULL,
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "inward_outward_entries_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "inward_outward_entries_unit_id_date_idx" ON "inward_outward_entries"("unit_id", "date");
+
+-- CreateTable
 CREATE TABLE "employees" (
     "id" TEXT NOT NULL,
     "employee_no" TEXT NOT NULL,
@@ -1021,6 +1171,13 @@ ALTER TABLE "ptm_records" ADD CONSTRAINT "ptm_records_student_id_fkey" FOREIGN K
 ALTER TABLE "evening_enrollments" ADD CONSTRAINT "evening_enrollments_activity_id_fkey" FOREIGN KEY ("activity_id") REFERENCES "evening_activities"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "evening_enrollments" ADD CONSTRAINT "evening_enrollments_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "evening_payments" ADD CONSTRAINT "evening_payments_enrollment_id_fkey" FOREIGN KEY ("enrollment_id") REFERENCES "evening_enrollments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "purchase_request_lines" ADD CONSTRAINT "purchase_request_lines_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "purchase_requests"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "purchase_orders" ADD CONSTRAINT "purchase_orders_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "vendors"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "purchase_orders" ADD CONSTRAINT "purchase_orders_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "purchase_requests"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "purchase_order_lines" ADD CONSTRAINT "purchase_order_lines_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "purchase_orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "goods_receipts" ADD CONSTRAINT "goods_receipts_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "purchase_orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "goods_receipt_lines" ADD CONSTRAINT "goods_receipt_lines_receipt_id_fkey" FOREIGN KEY ("receipt_id") REFERENCES "goods_receipts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "goods_receipt_lines" ADD CONSTRAINT "goods_receipt_lines_order_line_id_fkey" FOREIGN KEY ("order_line_id") REFERENCES "purchase_order_lines"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "employees" ADD CONSTRAINT "employees_reporting_manager_id_fkey" FOREIGN KEY ("reporting_manager_id") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "employment_history" ADD CONSTRAINT "employment_history_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "employee_shifts" ADD CONSTRAINT "employee_shifts_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
