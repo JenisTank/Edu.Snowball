@@ -16,6 +16,12 @@ import { Roles } from '../../common/auth/roles.decorator';
 import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import {
+  BookPtmSlotDto,
+  CreatePtmSessionDto,
+  GeneratePtmSlotsDto,
+  UpdatePtmRecordDto,
+} from './ptm.dto';
 
 @Controller('ptm')
 @UseGuards(AuthGuard)
@@ -140,11 +146,7 @@ export class PtmController {
   // ── Per-parent slot booking ──
   @Post(':id/slots')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR')
-  async generateSlots(
-    @Req() r: any,
-    @Param('id') id: string,
-    @Body() b: { startTime?: string; count?: number; minutes?: number },
-  ) {
+  async generateSlots(@Req() r: any, @Param('id') id: string, @Body() b: GeneratePtmSlotsDto) {
     const session = await this.prisma.ptmSession.findUnique({ where: { id } });
     if (!session) throw new NotFoundException();
     if (!HO_ROLES.includes(r.user.role) && session.unitId !== r.user.unitId)
@@ -188,7 +190,7 @@ export class PtmController {
    */
   @Post('slots/:slotId/book')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'PARENT')
-  async book(@Req() r: any, @Param('slotId') slotId: string, @Body() b: { studentId: string }) {
+  async book(@Req() r: any, @Param('slotId') slotId: string, @Body() b: BookPtmSlotDto) {
     const slot = await this.prisma.ptmSlot.findUnique({
       where: { id: slotId },
       include: { session: { select: { id: true, unitId: true } } },
@@ -199,7 +201,6 @@ export class PtmController {
     const studentId = b.studentId;
     if (isParent && !r.user.studentIds?.includes(studentId))
       throw new ForbiddenException('Not your child');
-    if (!studentId) throw new BadRequestException('studentId is required');
     const student = await this.prisma.student.findUnique({ where: { id: studentId } });
     if (!student) throw new NotFoundException('Student not found');
     if (!isParent && student.unitId !== slot.session.unitId)
@@ -214,7 +215,12 @@ export class PtmController {
 
     const updated = await this.prisma.ptmSlot.update({
       where: { id: slotId },
-      data: { studentId, bookedAt: new Date(), bookedById: r.user.sub },
+      data: {
+        studentId,
+        bookedAt: new Date(),
+        bookedById: r.user.sub,
+        notes: b.notes?.trim() || null,
+      },
     });
     await this.audit.log(r, 'ptm_slots', slotId, 'UPDATE', { studentId: null }, { studentId });
     return updated;
@@ -242,7 +248,11 @@ export class PtmController {
     return updated;
   }
 
-  @Patch('record/:id') async record(@Req() r: any, @Param('id') id: string, @Body() b: any) {
+  @Patch('record/:id') async record(
+    @Req() r: any,
+    @Param('id') id: string,
+    @Body() b: UpdatePtmRecordDto,
+  ) {
     const old = await this.prisma.ptmRecord.findUnique({
       where: { id },
       include: { session: true },
@@ -253,10 +263,11 @@ export class PtmController {
     const x = await this.prisma.ptmRecord.update({
       where: { id },
       data: {
-        attended: !!b.attended,
-        parentNames: b.parentNames || null,
-        teacherNotes: b.teacherNotes || null,
-        signedFormUrl: b.signedFormUrl || null,
+        // Partial update: a bare "mark attended" toggle must not erase notes.
+        ...(b.attended === undefined ? {} : { attended: b.attended }),
+        ...(b.parentNames === undefined ? {} : { parentNames: b.parentNames || null }),
+        ...(b.teacherNotes === undefined ? {} : { teacherNotes: b.teacherNotes || null }),
+        ...(b.signedFormUrl === undefined ? {} : { signedFormUrl: b.signedFormUrl || null }),
         recordedById: r.user.sub,
         recordedAt: new Date(),
       },

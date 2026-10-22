@@ -8,6 +8,7 @@ import { LanguageSwitch, useI18n } from '../lib/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BellRing,
+  CalendarClock,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -627,6 +628,123 @@ function ConversationCard({ childId }: { childId: string }) {
   );
 }
 
+function PtmCard({ childId }: { childId: string }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const [err, setErr] = useState('');
+  const { data: rows = [] } = useQuery({
+    queryKey: ['p-ptm', childId],
+    queryFn: () => papi(`/parent/child/${childId}/ptm`),
+  });
+  const refresh = () => qc.invalidateQueries({ queryKey: ['p-ptm', childId] });
+  const book = useMutation({
+    mutationFn: (slotId: string) =>
+      papi(`/ptm/slots/${slotId}/book`, {
+        method: 'POST',
+        body: JSON.stringify({ studentId: childId }),
+      }),
+    onSuccess: () => {
+      setErr('');
+      refresh();
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+  const release = useMutation({
+    mutationFn: (slotId: string) =>
+      papi(`/ptm/slots/${slotId}/release`, { method: 'POST', body: JSON.stringify({}) }),
+    onSuccess: () => {
+      setErr('');
+      refresh();
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const upcoming = rows.filter(
+    (r: any) => new Date(r.session.scheduledAt).getTime() > Date.now() - 86400000,
+  );
+  const shown = (upcoming.length ? upcoming : rows).slice(0, 3);
+
+  return (
+    <div className="card p-5">
+      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold">
+        <CalendarClock className="h-4 w-4 text-honey-700" />
+        {t('parent.ptm')}
+      </div>
+      {!shown.length && (
+        <div className="py-5 text-center text-[12px] font-semibold text-stone-400">
+          {t('parent.noPtm')}
+        </div>
+      )}
+      <div className="space-y-3">
+        {shown.map((r: any) => (
+          <div key={r.session.id} className="rounded-2xl bg-white/60 p-3">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <b className="text-[13px]">{r.session.title}</b>
+              <span className="text-[11px] font-bold text-stone-500">
+                {new Date(r.session.scheduledAt).toLocaleString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+              {r.record.attended && (
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">
+                  ✓
+                </span>
+              )}
+            </div>
+            {r.mySlot ? (
+              <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-100 px-3 py-2">
+                <span className="text-[12px] font-extrabold text-amber-900">
+                  {t('parent.mySlot')} ·{' '}
+                  {new Date(r.mySlot.startTime).toLocaleTimeString('en-IN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+                <button
+                  className="ml-auto text-[11px] font-extrabold text-stone-500 underline"
+                  disabled={release.isPending}
+                  onClick={() => release.mutate(r.mySlot.id)}
+                >
+                  {t('parent.release')}
+                </button>
+              </div>
+            ) : r.openSlots.length ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {r.openSlots.slice(0, 8).map((s: any) => (
+                  <button
+                    key={s.id}
+                    className="btn-neo !px-2.5 !py-1 text-[11px]"
+                    disabled={book.isPending}
+                    onClick={() => book.mutate(s.id)}
+                  >
+                    {new Date(s.startTime).toLocaleTimeString('en-IN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-[11px] font-semibold text-stone-400">
+                Slots open closer to the date.
+              </p>
+            )}
+            {r.record.teacherNotes && (
+              <p className="mt-2 rounded-xl bg-white/80 px-3 py-2 text-[11.5px] font-semibold text-stone-600">
+                {t('parent.teacherNotes')}: {r.record.teacherNotes}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+      {err && <p className="mt-2 text-[11px] font-bold text-rose-600">{err}</p>}
+    </div>
+  );
+}
+
 // ───────────────────── Portal shell ─────────────────────
 export default function ParentPortal() {
   const [authed, setAuthed] = useState(!!pstore.get());
@@ -767,6 +885,7 @@ export default function ParentPortal() {
               <FeesCard childId={kid.id} />
             </div>
             <ProfileCard childId={kid.id} />
+            <PtmCard childId={kid.id} />
             <div className="grid gap-4 md:grid-cols-2">
               <DocumentsCard childId={kid.id} />
               <ConversationCard childId={kid.id} />

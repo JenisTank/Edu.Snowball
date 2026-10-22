@@ -17,6 +17,15 @@ import { Roles } from '../../common/auth/roles.decorator';
 import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import {
+  CreateEveningActivityDto,
+  CreateEveningParticipantDto,
+  CreateEveningSessionDto,
+  EnrolExternalDto,
+  EnrolStudentDto,
+  EveningPaymentDto,
+  MarkEveningAttendanceDto,
+} from './evening.dto';
 
 @Controller('evening')
 @UseGuards(AuthGuard)
@@ -54,12 +63,9 @@ export class EveningController {
 
   @Post('participants')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'RECEPTIONIST')
-  async createParticipant(@Req() r: any, @Body() b: any) {
+  async createParticipant(@Req() r: any, @Body() b: CreateEveningParticipantDto) {
     const unitId = HO_ROLES.includes(r.user.role) ? (b.unitId ?? r.user.unitId) : r.user.unitId;
     if (!unitId) throw new BadRequestException('unitId is required for a Head Office user');
-    if (!b.fullName?.trim()) throw new BadRequestException("The child's name is required");
-    if (!b.guardianPhone?.replace(/[^\d]/g, '')?.length)
-      throw new BadRequestException('A guardian phone number is required for the evening centre');
     const x = await this.prisma.eveningParticipant.create({
       data: {
         unitId,
@@ -77,7 +83,7 @@ export class EveningController {
   /** Enrol an external child (no Student record involved). */
   @Post('activities/:id/enrol-external')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'RECEPTIONIST')
-  async enrolExternal(@Req() r: any, @Param('id') id: string, @Body() b: any) {
+  async enrolExternal(@Req() r: any, @Param('id') id: string, @Body() b: EnrolExternalDto) {
     const a = await this.prisma.eveningActivity.findUnique({
       where: { id },
       include: { _count: { select: { enrollments: true } } },
@@ -140,7 +146,7 @@ export class EveningController {
 
   @Post('activities/:id/sessions')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'TEACHER')
-  async createSession(@Req() r: any, @Param('id') id: string, @Body() b: any) {
+  async createSession(@Req() r: any, @Param('id') id: string, @Body() b: CreateEveningSessionDto) {
     const a = await this.prisma.eveningActivity.findUnique({ where: { id } });
     if (!a) throw new NotFoundException();
     if (!HO_ROLES.includes(r.user.role) && a.unitId !== r.user.unitId)
@@ -219,7 +225,7 @@ export class EveningController {
 
   @Post('sessions/:id/attendance')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'TEACHER')
-  async mark(@Req() r: any, @Param('id') id: string, @Body() b: any) {
+  async mark(@Req() r: any, @Param('id') id: string, @Body() b: MarkEveningAttendanceDto) {
     const session = await this.prisma.eveningSession.findUnique({
       where: { id },
       include: { activity: { select: { unitId: true } } },
@@ -284,7 +290,7 @@ export class EveningController {
   }
   @Post('activities') @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD') async activity(
     @Req() r: any,
-    @Body() b: any,
+    @Body() b: CreateEveningActivityDto,
   ) {
     const unitId = HO_ROLES.includes(r.user.role) ? b.unitId : r.user.unitId;
     if (!unitId || !b.name || Number(b.fee) < 0)
@@ -304,7 +310,7 @@ export class EveningController {
   @Post('activities/:id/enrol') async enrol(
     @Req() r: any,
     @Param('id') id: string,
-    @Body() b: any,
+    @Body() b: EnrolStudentDto,
   ) {
     const a = await this.prisma.eveningActivity.findUnique({
       where: { id },
@@ -331,7 +337,7 @@ export class EveningController {
   }
   @Post('enrolments/:id/pay')
   @Roles('FOUNDER', 'CENTRE_HEAD', 'COORDINATOR', 'RECEPTIONIST')
-  async pay(@Req() r: any, @Param('id') id: string, @Body() b: any) {
+  async pay(@Req() r: any, @Param('id') id: string, @Body() b: EveningPaymentDto) {
     const e = await this.prisma.eveningEnrollment.findUnique({
       where: { id },
       include: { activity: true, payments: true },
