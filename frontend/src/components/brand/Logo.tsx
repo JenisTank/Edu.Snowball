@@ -6,8 +6,24 @@ export function BeeMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" fill="none" className={cn('h-10 w-10', className)}>
       {/* wings */}
-      <ellipse cx="24" cy="18" rx="10" ry="7" fill="#AEDFF7" opacity="0.85" transform="rotate(-25 24 18)" />
-      <ellipse cx="40" cy="18" rx="10" ry="7" fill="#AEDFF7" opacity="0.85" transform="rotate(25 40 18)" />
+      <ellipse
+        cx="24"
+        cy="18"
+        rx="10"
+        ry="7"
+        fill="#AEDFF7"
+        opacity="0.85"
+        transform="rotate(-25 24 18)"
+      />
+      <ellipse
+        cx="40"
+        cy="18"
+        rx="10"
+        ry="7"
+        fill="#AEDFF7"
+        opacity="0.85"
+        transform="rotate(25 40 18)"
+      />
       {/* body */}
       <ellipse cx="32" cy="38" rx="16" ry="18" fill="#F5D547" />
       {/* stripes */}
@@ -17,10 +33,28 @@ export function BeeMark({ className }: { className?: string }) {
       {/* face */}
       <circle cx="27" cy="25" r="1.8" fill="#1F1B13" />
       <circle cx="37" cy="25" r="1.8" fill="#1F1B13" />
-      <path d="M28 28.5 q4 3 8 0" stroke="#1F1B13" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+      <path
+        d="M28 28.5 q4 3 8 0"
+        stroke="#1F1B13"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        fill="none"
+      />
       {/* antennae */}
-      <path d="M27 17 q-2 -5 -5 -6" stroke="#1F1B13" strokeWidth="1.8" strokeLinecap="round" fill="none" />
-      <path d="M37 17 q2 -5 5 -6" stroke="#1F1B13" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+      <path
+        d="M27 17 q-2 -5 -5 -6"
+        stroke="#1F1B13"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M37 17 q2 -5 5 -6"
+        stroke="#1F1B13"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        fill="none"
+      />
       <circle cx="21.5" cy="10.5" r="2" fill="#C8922A" />
       <circle cx="42.5" cy="10.5" r="2" fill="#C8922A" />
     </svg>
@@ -36,7 +70,9 @@ export function Logo({ compact = false }: { compact?: boolean }) {
           <div className="font-heading font-900 text-lg font-extrabold tracking-tight">
             BumbleB <span className="text-honey-500">Kidz</span>
           </div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-stone-500 font-body">ERP · Hive Control</div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-stone-500 font-body">
+            ERP · Hive Control
+          </div>
         </div>
       )}
     </div>

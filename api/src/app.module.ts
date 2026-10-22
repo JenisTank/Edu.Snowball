@@ -1,24 +1,73 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { AuthModule } from './auth/auth';
-import { ErpModule } from './modules/erp.controller';
-import { AdminModule } from './modules/admin.controller';
-import { CrmModule } from './modules/crm.controller';
-import { AdmissionsModule } from './modules/admissions.controller';
-import { AttendanceModule } from './modules/attendance.controller';
-import { FeesModule } from './modules/fees.controller';
-import { ParentModule } from './modules/parent.controller';
-import { CertificatesModule } from './modules/certs.controller';
-import { CommsModule } from './modules/comms.controller';
-import { LifecycleModule } from './modules/lifecycle.controller';
-import { AcademicModule } from './modules/academic.controller';
-import { InventoryModule } from './modules/inventory.controller';
-import { PtmModule } from './modules/ptm.controller';
-import { EveningModule } from './modules/evening.controller';
-import { HrModule } from './modules/hr.controller';
-import { AnalyticsModule } from './modules/analytics.controller';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
+import { AuditModule } from './common/audit/audit.module';
+import { PrismaModule } from './common/database/prisma.module';
+import { PdfModule } from './common/pdf/pdf.module';
+import { AcademicModule } from './modules/academic/academic.module';
+import { AdmissionsModule } from './modules/admissions/admissions.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
+import { AuditLogModule } from './modules/audit/audit.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { CertificatesModule } from './modules/certificates/certificates.module';
+import { CommsModule } from './modules/comms/comms.module';
+import { CrmModule } from './modules/crm/crm.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { EveningModule } from './modules/evening/evening.module';
+import { FeesModule } from './modules/fees/fees.module';
+import { HealthModule } from './modules/health/health.module';
+import { HrModule } from './modules/hr/hr.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { LifecycleModule } from './modules/lifecycle/lifecycle.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ParentModule } from './modules/parents/parents.module';
+import { PtmModule } from './modules/ptm/ptm.module';
+import { StudentsModule } from './modules/students/students.module';
+import { ThemeModule } from './modules/theme/theme.module';
+import { UnitsModule } from './modules/units/units.module';
+import { UsersModule } from './modules/users/users.module';
+
+/**
+ * BumbleB Kidz ERP — application root.
+ *
+ * Global infrastructure (database, audit log, notifications, auth) is wired
+ * once here; feature modules only declare their own controllers.
+ */
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, ErpModule, AdminModule, CrmModule, AdmissionsModule, AttendanceModule, FeesModule, ParentModule, CertificatesModule, CommsModule, LifecycleModule, AcademicModule, InventoryModule, PtmModule, EveningModule, HrModule, AnalyticsModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    // Global rate limit; auth endpoints override it with stricter limits.
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 120 }]),
+    PrismaModule,
+    AuditModule,
+    NotificationsModule,
+    PdfModule,
+    AuthModule,
+    UsersModule,
+    UnitsModule,
+    StudentsModule,
+    DashboardModule,
+    CrmModule,
+    AdmissionsModule,
+    AttendanceModule,
+    FeesModule,
+    ParentModule,
+    CertificatesModule,
+    CommsModule,
+    LifecycleModule,
+    AcademicModule,
+    InventoryModule,
+    PtmModule,
+    EveningModule,
+    HrModule,
+    HealthModule,
+    AnalyticsModule,
+    AuditLogModule,
+    ThemeModule,
+  ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

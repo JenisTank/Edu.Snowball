@@ -27,12 +27,14 @@ sudo -u postgres psql -c "CREATE DATABASE bumblebkidz_erp OWNER bumbleb;" 2>/dev
 echo "── 4/5 node deps + prisma"
 cd "$ROOT/api" && npm install --no-audit --no-fund
 npx prisma generate
+# local env file (never committed)
+[ -f "$ROOT/api/.env" ] || cp "$ROOT/.env.example" "$ROOT/api/.env"
 if [ -f "$ROOT/backups/latest.sql" ]; then
   echo "   restoring from backups/latest.sql"
   PGPASSWORD=bumbleb_dev psql -h localhost -U bumbleb -d bumblebkidz_erp -q -f "$ROOT/backups/latest.sql"
 else
-  echo "   no backup found → schema push + demo seed"
-  npx prisma db push
+  echo "   no backup found → migrations + demo seed"
+  npx prisma migrate deploy
   npx ts-node --transpile-only prisma/seed.ts
 fi
 cd "$ROOT/frontend" && npm install --no-audit --no-fund

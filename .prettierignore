@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+coverage
+package-lock.json
+backups
+*.sql
+api/prisma/schema.prisma
+frontend/public/sw.js

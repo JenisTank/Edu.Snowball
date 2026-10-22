@@ -21,7 +21,13 @@ export const ROLE_LABELS: Record<string, string> = {
   HR_MANAGER: 'HR Manager',
 };
 
-export const HO_ROLES = ['FOUNDER', 'ACADEMIC_DIR', 'CURRICULUM_LEAD', 'RECEPTIONIST', 'HR_MANAGER'];
+export const HO_ROLES = [
+  'FOUNDER',
+  'ACADEMIC_DIR',
+  'CURRICULUM_LEAD',
+  'RECEPTIONIST',
+  'HR_MANAGER',
+];
 
 interface AuthCtx {
   user: SessionUser | null;
@@ -38,10 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   async function login(email: string, password: string) {
-    const res = await api<{ accessToken: string; refreshToken: string; user: SessionUser }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
+    const res = await api<{ accessToken: string; refreshToken: string; user: SessionUser }>(
+      '/auth/login',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      },
+    );
     store.set('bb_token', res.accessToken);
     store.set('bb_refresh', res.refreshToken);
     store.set('bb_user', JSON.stringify(res.user));
