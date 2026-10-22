@@ -88,6 +88,26 @@ error report.
 
 ---
 
+## 3b. Changing the schema (offline-safe)
+
+`prisma generate` downloads engine binaries, which fails on restricted networks.
+Two workarounds used while developing this repo:
+
+```bash
+# 1. Generate a typed client without the query engine (enough for tsc + tests)
+PRISMA_QUERY_ENGINE_LIBRARY=/bin/true \
+PRISMA_SCHEMA_ENGINE_BINARY=/bin/true \
+npx prisma generate --no-engine
+
+# 2. Validate the schema without a database, using Prisma's own WASM parser
+npx --yes @prisma/prisma-schema-wasm   # or call validate() from the package
+```
+
+The baseline migration in `prisma/migrations/` is produced by
+`prisma/generate-init-migration.py`. CI enforces that the committed SQL equals a
+fresh run of that script **and** that `prisma migrate diff` finds no drift
+against `schema.prisma`, so never hand-edit the migration.
+
 ## 4. Backups and the restore drill
 
 ```bash
