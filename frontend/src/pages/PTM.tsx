@@ -231,6 +231,71 @@ function NotesModal({
   );
 }
 
+/**
+ * Student-wise view. The roster answers "who came to this meeting"; a parent or
+ * teacher on the phone usually asks the opposite question — "what has happened
+ * for this child so far". This modal answers that from one endpoint
+ * (`GET /ptm/student/:id`).
+ */
+function StudentHistory({ student, onClose }: { student: any; onClose: () => void }) {
+  const { t } = useI18n();
+  const { data, isLoading } = useQuery({
+    queryKey: ['ptm-student', student.id],
+    queryFn: () => api(`/ptm/student/${student.id}`),
+  });
+  const meetings: any[] = data?.meetings ?? [];
+  return (
+    <Modal
+      title={`${student.firstName} ${student.lastName} · ${t('ptm.history')}`}
+      onClose={onClose}
+    >
+      {isLoading && (
+        <div className="text-sm font-semibold text-stone-500">{t('common.loading')}</div>
+      )}
+      {!isLoading && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="chip">{student.admissionNo}</span>
+            <span className="chip">
+              {data?.stats?.attended ?? 0}/{data?.stats?.invited ?? 0} {t('ptm.invited')}
+            </span>
+            <span className="chip">
+              {data?.upcomingSlot
+                ? `${t('ptm.upcomingSlot')} · ${time(data.upcomingSlot.startTime)}`
+                : t('ptm.noUpcomingSlot')}
+            </span>
+          </div>
+          {meetings.length === 0 && (
+            <div className="rounded-xl bg-white/60 p-4 text-sm font-semibold text-stone-500">
+              {t('ptm.historyEmpty')}
+            </div>
+          )}
+          {meetings.map((m) => (
+            <div className="rounded-xl bg-white/60 p-3" key={m.id}>
+              <div className="flex flex-wrap items-center gap-2">
+                <b className="flex-1 truncate text-sm">{m.title}</b>
+                <Badge tone={m.attended ? 'green' : 'honey'}>
+                  {m.attended ? t('ptm.attended') : t('ptm.markAttended')}
+                </Badge>
+              </div>
+              <div className="mt-1 text-[12px] font-semibold text-stone-500">
+                {fmtDate(m.scheduledAt)}
+                {m.slot ? ` · ${time(m.slot.startTime)}–${time(m.slot.endTime)}` : ''}
+                {m.signedFormUrl ? ` · ${t('ptm.signedForm')}` : ''}
+              </div>
+              {(m.teacherNotes || m.parentNames) && (
+                <p className="mt-1 whitespace-pre-wrap text-[12.5px] text-stone-700">
+                  {m.teacherNotes || m.parentNames}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 export default function PTM() {
   const qc = useQueryClient();
   const { t } = useI18n();
@@ -238,6 +303,7 @@ export default function PTM() {
   const [f, setF] = useState<any>({ title: '', scheduledAt: '' });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [notesFor, setNotesFor] = useState<any>(null);
+  const [historyFor, setHistoryFor] = useState<any>(null);
 
   const { data: rows = [] } = useQuery({ queryKey: ['ptm'], queryFn: () => api('/ptm') });
   const refresh = () => {
@@ -313,12 +379,16 @@ export default function PTM() {
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               {s.records.map((r: any) => (
                 <div className="flex items-center gap-2 rounded-xl bg-white/60 p-3" key={r.id}>
-                  <div className="min-w-0 flex-1">
+                  <button
+                    className="min-w-0 flex-1 text-left"
+                    title={t('ptm.history')}
+                    onClick={() => setHistoryFor(r.student)}
+                  >
                     <b className="block truncate text-sm">
                       {r.student.firstName} {r.student.lastName}
                     </b>
                     <div className="text-xs text-stone-500">{r.student.admissionNo}</div>
-                  </div>
+                  </button>
                   <button
                     className="btn-neo !px-2.5 !py-1.5"
                     title={t('ptm.notes')}
@@ -350,6 +420,8 @@ export default function PTM() {
       {notesFor && (
         <NotesModal record={notesFor} onClose={() => setNotesFor(null)} onSaved={refresh} />
       )}
+
+      {historyFor && <StudentHistory student={historyFor} onClose={() => setHistoryFor(null)} />}
 
       {open && (
         <Modal title={t('ptm.schedule')} onClose={() => setOpen(false)}>

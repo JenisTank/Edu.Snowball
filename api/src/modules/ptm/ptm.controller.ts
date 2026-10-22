@@ -143,6 +143,72 @@ export class PtmController {
     };
   }
 
+  /**
+   * Student-wise view: every meeting this child was invited to, whether the
+   * family attended, and the slot they hold. Staff see their own unit only; a
+   * parent may read their own children (the portal uses `/parents/child/:id/ptm`
+   * for the richer card, but this keeps the guarantee in one place).
+   */
+  @Get('student/:studentId')
+  async student(@Req() r: any, @Param('studentId') studentId: string) {
+    const isParent = r.user.role === 'PARENT';
+    if (isParent && !(r.user.studentIds ?? []).includes(studentId))
+      throw new ForbiddenException('Not your child');
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: { id: true, firstName: true, lastName: true, admissionNo: true, unitId: true },
+    });
+    if (!student) throw new NotFoundException('Student not found');
+    if (!isParent && !HO_ROLES.includes(r.user.role) && student.unitId !== r.user.unitId)
+      throw new ForbiddenException();
+
+    const [records, slots] = await Promise.all([
+      this.prisma.ptmRecord.findMany({
+        where: { studentId },
+        include: {
+          session: { select: { id: true, title: true, scheduledAt: true, unitId: true } },
+        },
+        orderBy: { session: { scheduledAt: 'desc' } },
+        take: 50,
+      }),
+      this.prisma.ptmSlot.findMany({
+        where: { studentId },
+        include: { session: { select: { id: true } } },
+        orderBy: { startTime: 'asc' },
+        take: 50,
+      }),
+    ]);
+
+    const now = Date.now();
+    const meetings = records.map((rec: any) => {
+      const slot = slots.find((x: any) => x.session.id === rec.session.id) ?? null;
+      return {
+        id: rec.id,
+        sessionId: rec.session.id,
+        title: rec.session.title,
+        scheduledAt: rec.session.scheduledAt,
+        attended: rec.attended,
+        parentNames: rec.parentNames,
+        teacherNotes: rec.teacherNotes,
+        signedFormUrl: rec.signedFormUrl,
+        slot: slot ? { id: slot.id, startTime: slot.startTime, endTime: slot.endTime } : null,
+      };
+    });
+
+    const upcoming = slots.find((x: any) => new Date(x.startTime).getTime() >= now) ?? null;
+    return {
+      student,
+      meetings,
+      upcomingSlot: upcoming
+        ? { id: upcoming.id, startTime: upcoming.startTime, endTime: upcoming.endTime }
+        : null,
+      stats: {
+        invited: meetings.length,
+        attended: meetings.filter((m: any) => m.attended).length,
+      },
+    };
+  }
+
   // ── Per-parent slot booking ──
   @Post(':id/slots')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR')
