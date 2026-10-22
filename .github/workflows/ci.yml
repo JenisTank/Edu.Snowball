@@ -79,12 +79,22 @@ jobs:
         env:
           DATABASE_URL: postgresql://bumbleb:bumbleb@localhost:5432/bumblebkidz_erp
 
-      - run: |
-          npx prisma migrate diff \
+      # 2. migrations must still describe schema.prisma exactly.
+      #    The diff is echoed as a GitHub annotation on failure, so the drift is
+      #    visible without downloading logs.
+      - name: Schema drift check
+        run: |
+          set +e
+          DIFF=$(npx prisma migrate diff \
             --from-migrations prisma/migrations \
             --to-schema-datamodel prisma/schema.prisma \
             --shadow-database-url "$SHADOW_DATABASE_URL" \
-            --exit-code
+            --script 2>&1)
+          if [ -z "$DIFF" ]; then echo "✔ no schema drift"; exit 0; fi
+          ESCAPED=$(printf '%s' "$DIFF" | head -c 4000 | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
+          echo "::error title=Schema drift::$ESCAPED"
+          echo "$DIFF"
+          exit 1
 
   web:
     name: Frontend — build
