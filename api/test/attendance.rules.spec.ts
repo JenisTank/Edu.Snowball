@@ -3,6 +3,10 @@ import {
   IST,
   isLocked,
   lockTimes,
+  MAX_REPORT_DAYS,
+  reportRange,
+  summariseAttendance,
+  summariseTotals,
 } from '../src/modules/attendance/attendance.rules';
 
 describe('attendance timing (system rule 5 — dynamic per batch)', () => {
@@ -39,5 +43,79 @@ describe('attendance timing (system rule 5 — dynamic per batch)', () => {
 
   it('escalates after three consecutive absences', () => {
     expect(CONSECUTIVE_ABSENCE_ESCALATION).toBe(3);
+  });
+});
+
+describe('attendance reports', () => {
+  const rows = [
+    { studentId: 'a', status: 'PRESENT' },
+    { studentId: 'a', status: 'PRESENT' },
+    { studentId: 'a', status: 'ABSENT' },
+    { studentId: 'b', status: 'PRESENT' },
+    { studentId: 'b', status: 'LEAVE' },
+    { studentId: 'b', status: 'ABSENT' },
+    { studentId: 'b', status: 'ABSENT' },
+  ];
+
+  it('counts present/absent/leave and rates over marked days only', () => {
+    const [b, a] = summariseAttendance(rows);
+    expect(a).toMatchObject({
+      studentId: 'a',
+      present: 2,
+      absent: 1,
+      leave: 0,
+      marked: 3,
+      percent: 67,
+    });
+    expect(b).toMatchObject({
+      studentId: 'b',
+      present: 1,
+      absent: 2,
+      leave: 1,
+      marked: 4,
+      percent: 25,
+    });
+  });
+
+  it('sorts the weakest first so the report surfaces the child who needs a call', () => {
+    expect(summariseAttendance(rows).map((r) => r.studentId)).toEqual(['b', 'a']);
+  });
+
+  it('never divides by zero when a register was never opened', () => {
+    expect(summariseAttendance([])).toEqual([]);
+    expect(summariseTotals([])).toEqual({
+      students: 0,
+      present: 0,
+      absent: 0,
+      leave: 0,
+      marked: 0,
+      percent: 0,
+    });
+  });
+
+  it('rolls up totals across students', () => {
+    expect(summariseTotals(rows)).toMatchObject({
+      students: 2,
+      present: 3,
+      absent: 3,
+      leave: 1,
+      marked: 7,
+      percent: 43,
+    });
+  });
+
+  it('defaults to the last 30 days when no range is given', () => {
+    const r = reportRange(undefined, undefined, '2026-10-31');
+    expect(r).toEqual({ from: '2026-10-02', to: '2026-10-31' });
+  });
+
+  it('rejects malformed, inverted and oversized ranges', () => {
+    expect(reportRange('2026-13-01', '2026-10-31')).toEqual({ error: 'Dates must be YYYY-MM-DD' });
+    expect(reportRange('2026-10-31', '2026-10-01')).toEqual({
+      error: 'The range cannot end before it starts',
+    });
+    expect(reportRange('2020-01-01', '2026-10-31')).toEqual({
+      error: `A report may cover at most ${MAX_REPORT_DAYS} days`,
+    });
   });
 });

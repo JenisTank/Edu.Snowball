@@ -2,6 +2,11 @@ import { Logger } from '@nestjs/common';
 
 import { bbQueue } from './queue';
 import {
+  AUTO_LWP_STATUS,
+  leaveCutoffOutcome,
+  PENDING_LEAVE_STATUSES,
+} from '../modules/hr/leave.rules';
+import {
   dailyScanPlan,
   delayUntil,
   istDateKey,
@@ -28,6 +33,7 @@ import {
 const LAST_SCAN_KEY = 'scheduler.last_daily_scan';
 const LAST_COMMS_KEY = 'scheduler.last_comms_sweep';
 const LAST_RETENTION_KEY = 'scheduler.last_retention';
+const LAST_LEAVE_CUTOFF_KEY = 'scheduler.last_leave_cutoff';
 const TICK_MS = 60_000;
 /** Parent-reply SLA + delivery retries run every 15 minutes. */
 const COMMS_SWEEP_MS = 15 * 60_000;
@@ -157,6 +163,48 @@ export async function runRetentionTick(prisma: any, now: Date = new Date()) {
   return result;
 }
 
+/**
+ * Auto-LWP cut-off (HR spec): a leave nobody decided by its last day is
+ * unapproved absence. Runs in the same daily tick as the attendance plan, with
+ * its own date stamp so a restart cannot double-apply it.
+ */
+export async function runLeaveCutoffTick(prisma: any, now: Date = new Date(), force = false) {
+  const dateISO = istDateKey(now);
+  const setting = await prisma.appSetting.findUnique({ where: { key: LAST_LEAVE_CUTOFF_KEY } });
+  const already = (setting?.value as any)?.dateISO === dateISO;
+  if (already && !force) return { dateISO, autoLwp: 0, employees: 0, skipped: true };
+
+  const pending = await prisma.staffLeave.findMany({
+    where: {
+      status: { in: [...PENDING_LEAVE_STATUSES] },
+      toDate: { lt: new Date(`${dateISO}T00:00:00Z`) },
+    },
+    select: { id: true, employeeId: true, status: true, toDate: true },
+  });
+  const outcome = leaveCutoffOutcome(pending, dateISO);
+
+  if (outcome.leaveIds.length) {
+    await prisma.staffLeave.updateMany({
+      where: { id: { in: outcome.leaveIds } },
+      data: { status: AUTO_LWP_STATUS, isLwp: true },
+    });
+    if (outcome.leaveIds.length) log.log(`Auto-LWP applied to ${outcome.autoLwp} leave(s)`);
+  }
+
+  await prisma.appSetting
+    .upsert({
+      where: { key: LAST_LEAVE_CUTOFF_KEY },
+      update: { value: { dateISO, at: now.toISOString(), autoLwp: outcome.autoLwp } },
+      create: {
+        key: LAST_LEAVE_CUTOFF_KEY,
+        value: { dateISO, at: now.toISOString(), autoLwp: outcome.autoLwp },
+      },
+    })
+    .catch(() => null);
+
+  return { dateISO, autoLwp: outcome.autoLwp, employees: outcome.employees, skipped: false };
+}
+
 export function startScheduler(prisma: any): () => void {
   let busy = false;
 
@@ -175,6 +223,9 @@ export function startScheduler(prisma: any): () => void {
       );
       await runRetentionTick(prisma).catch((err: any) =>
         log.warn(`Retention check failed: ${err?.message ?? err}`),
+      );
+      await runLeaveCutoffTick(prisma).catch((err: any) =>
+        log.warn(`Leave cut-off failed: ${err?.message ?? err}`),
       );
     } catch (err: any) {
       log.warn(`Daily attendance plan not derived: ${err?.message ?? err}`);

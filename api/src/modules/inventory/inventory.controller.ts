@@ -16,6 +16,7 @@ import { Roles } from '../../common/auth/roles.decorator';
 import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { openingStockValue, validateOpeningStock } from './opening-stock.rules';
 
 const CATS = [
   'ACADEMIC',
@@ -68,6 +69,79 @@ export class InventoryController {
     await this.audit.log(r, 'inventory_items', x.id, 'INSERT', null, x);
     return x;
   }
+  /**
+   * Opening stock for a new unit (or a new item). Recorded as one
+   * `ADJUSTMENT_IN` movement per line, and only for items that have no movement
+   * in the unit yet — opening stock is a starting point, not a correction.
+   */
+  @Post('opening-stock')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR')
+  async openingStock(@Req() r: any, @Body() b: { unitId?: string; items?: any[] }) {
+    const unitId = HO_ROLES.includes(r.user.role) ? b.unitId || r.user.unitId : r.user.unitId;
+    if (!unitId) throw new BadRequestException('Unit required');
+    if (!HO_ROLES.includes(r.user.role) && b.unitId && b.unitId !== r.user.unitId)
+      throw new ForbiddenException();
+    const lines = (b.items ?? []).map((l: any) => ({
+      itemId: l?.itemId,
+      quantity: Number(l?.quantity),
+      unitCost: l?.unitCost == null || l.unitCost === '' ? null : Number(l.unitCost),
+    }));
+    const invalid = validateOpeningStock(lines);
+    if (invalid) throw new BadRequestException(invalid);
+
+    const items = await this.prisma.inventoryItem.findMany({
+      where: { id: { in: lines.map((l) => l.itemId) } },
+      select: { id: true, unitId: true, name: true },
+    });
+    const byId = new Map(items.map((i: any) => [i.id, i]));
+    const missing = lines.filter((l) => !byId.has(l.itemId));
+    if (missing.length) throw new BadRequestException(`${missing.length} item(s) not found`);
+    const foreign = items.filter((i: any) => i.unitId && i.unitId !== unitId);
+    if (foreign.length) throw new BadRequestException('Some items belong to another unit');
+
+    const already = await this.prisma.inventoryMovement.groupBy({
+      by: ['itemId'],
+      where: { unitId, itemId: { in: lines.map((l) => l.itemId) } },
+      _count: true,
+    });
+    if (already.length)
+      throw new BadRequestException(
+        `Opening stock already recorded for ${already.length} item(s) — use an adjustment instead`,
+      );
+
+    const created = await this.prisma.$transaction(
+      lines.map((l) =>
+        this.prisma.inventoryMovement.create({
+          data: {
+            itemId: l.itemId,
+            unitId,
+            type: 'ADJUSTMENT_IN',
+            quantity: l.quantity,
+            unitCost: l.unitCost ?? null,
+            reference: 'OPENING-STOCK',
+            notes: 'Opening stock',
+            createdById: r.user.sub,
+          },
+        }),
+      ),
+    );
+    for (const l of lines) {
+      await this.prisma.inventoryItem.update({
+        where: { id: l.itemId },
+        data: { quantity: { increment: l.quantity } },
+      });
+    }
+    const summary = {
+      ok: true,
+      unitId,
+      lines: created.length,
+      value: openingStockValue(lines),
+      movementIds: created.map((m: any) => m.id),
+    };
+    await this.audit.log(r, 'inventory_movements', unitId, 'INSERT', null, summary);
+    return summary;
+  }
+
   @Post(':id/movement') async move(@Req() r: any, @Param('id') id: string, @Body() b: any) {
     const item = await this.prisma.inventoryItem.findUnique({ where: { id } });
     if (!item) throw new NotFoundException();

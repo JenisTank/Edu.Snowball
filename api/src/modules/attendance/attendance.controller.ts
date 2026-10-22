@@ -2,12 +2,14 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Query,
   Req,
   UseGuards,
   BadRequestException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { AuthGuard } from '../../common/auth/auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
@@ -17,7 +19,7 @@ import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { bbQueue } from '../../jobs/queue';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto';
-import { lockTimes } from './attendance.rules';
+import { lockTimes, reportRange, summariseAttendance, summariseTotals } from './attendance.rules';
 import { approvedLeaveMap } from '../leaves/leaves.query';
 import { runDailyScan } from '../../jobs/scheduler';
 
@@ -199,6 +201,111 @@ export class AttendanceController {
         marked: a.PRESENT + a.ABSENT + a.LEAVE,
       };
     });
+  }
+
+  // ── Reports: per batch and per student over a date range ──
+  //
+  // Before this, the only "report" was a single day's summary pinned to the
+  // dashboard. A Centre Head needs the term view: who is drifting, and does the
+  // family know. Percentages are over *marked* days, so holidays and registers
+  // nobody opened never count as absences.
+
+  @Get('reports/batch/:batchId')
+  @Roles('TEACHER', 'COORDINATOR', 'CENTRE_HEAD', 'FOUNDER', 'ACADEMIC_DIR')
+  async batchReport(
+    @Req() req: any,
+    @Param('batchId') batchId: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const range = reportRange(from, to);
+    if ('error' in range) throw new BadRequestException(range.error);
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      include: { unit: { select: { code: true } }, programme: { select: { name: true } } },
+    });
+    if (!batch) throw new NotFoundException('Batch not found');
+    if (!HO_ROLES.includes(req.user.role) && batch.unitId !== req.user.unitId)
+      throw new ForbiddenException();
+    const rows = await this.prisma.attendanceRecord.findMany({
+      where: {
+        batchId,
+        date: { gte: new Date(`${range.from}T00:00:00Z`), lte: new Date(`${range.to}T00:00:00Z`) },
+      },
+      select: { studentId: true, status: true },
+    });
+    const students = await this.prisma.student.findMany({
+      where: { batchId, status: 'ACTIVE' },
+      select: { id: true, firstName: true, lastName: true, admissionNo: true },
+    });
+    const byStudent = summariseAttendance(rows as any[]);
+    const seen = new Map(byStudent.map((s) => [s.studentId, s]));
+    // A student with no rows still appears — silence is the finding.
+    const summaries = students.map((stu: any) => {
+      const sum = seen.get(stu.id);
+      return {
+        studentId: stu.id,
+        admissionNo: stu.admissionNo,
+        name: `${stu.firstName} ${stu.lastName}`,
+        present: sum?.present ?? 0,
+        absent: sum?.absent ?? 0,
+        leave: sum?.leave ?? 0,
+        marked: sum?.marked ?? 0,
+        percent: sum?.percent ?? 0,
+      };
+    });
+    return {
+      batch: {
+        id: batch.id,
+        name: batch.name,
+        unit: batch.unit.code,
+        programme: batch.programme.name,
+      },
+      range,
+      totals: summariseTotals(rows as any[]),
+      students: summaries.sort((a, b) => a.percent - b.percent),
+    };
+  }
+
+  @Get('reports/student/:studentId')
+  async studentReport(
+    @Req() req: any,
+    @Param('studentId') studentId: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const range = reportRange(from, to);
+    if ('error' in range) throw new BadRequestException(range.error);
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: { id: true, firstName: true, lastName: true, admissionNo: true, unitId: true },
+    });
+    if (!student) throw new NotFoundException('Student not found');
+    const isParent = req.user.role === 'PARENT';
+    if (isParent) {
+      if (!(req.user.studentIds ?? []).includes(studentId)) throw new ForbiddenException();
+    } else if (!HO_ROLES.includes(req.user.role) && student.unitId !== req.user.unitId) {
+      throw new ForbiddenException();
+    }
+    const rows = await this.prisma.attendanceRecord.findMany({
+      where: {
+        studentId,
+        date: { gte: new Date(`${range.from}T00:00:00Z`), lte: new Date(`${range.to}T00:00:00Z`) },
+      },
+      select: { date: true, status: true, batchId: true, overrideReason: true },
+      orderBy: { date: 'asc' },
+    });
+    return {
+      student,
+      range,
+      totals: summariseTotals(rows as any[]),
+      days: (rows as any[]).map((r) => ({
+        date: new Date(r.date).toISOString().slice(0, 10),
+        status: r.status,
+        batchId: r.batchId,
+        overrideReason: r.overrideReason ?? null,
+      })),
+    };
   }
 
   // ── The 05:00 plan, for ops verification (spec: "daily lock jobs") ──
