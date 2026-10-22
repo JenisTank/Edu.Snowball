@@ -21,6 +21,7 @@ import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { certificateNo, nextSerial } from './certificates.rules';
+import { buildSchedule, num } from '../fees/fees.rules';
 import type { Response } from 'express';
 
 const AY = '2026-27';
@@ -72,6 +73,24 @@ export const TEMPLATES = [
     icon: '📜',
     body: 'This is to certify that {child} ({admissionNo}), enrolled in the {programme} programme, has been relieved from BumbleB Kidz, {unit}, on {date}. All dues are cleared and we wish {child} the very best.',
   },
+  {
+    type: 'NO_DUES',
+    name: 'No Dues Certificate',
+    icon: '✅',
+    body: 'This is to certify that {child} ({admissionNo}), enrolled in the {programme} programme at BumbleB Kidz, {unit}, has no outstanding dues towards fees, kit, transport or library as on {date}.',
+  },
+  {
+    type: 'FEE_STATEMENT',
+    name: 'Fee Statement',
+    icon: '🧾',
+    body: 'Fee statement for {child} ({admissionNo}) — {programme}, {unit}, Academic Year {ay}. Annual fee {net}; received {paid}; balance {balance}. Payment plan: {plan}. Instalments: {instalments}.',
+  },
+  {
+    type: 'ADMISSION_CONFIRMATION',
+    name: 'Admission Confirmation Letter',
+    icon: '📝',
+    body: 'We are delighted to confirm the admission of {child} ({admissionNo}) to the {programme} programme at BumbleB Kidz, {unit}, for Academic Year {ay}. Batch: {batch}. Orientation: {orientationDate}. Annual fee {net}, payment plan {plan}.',
+  },
 ];
 
 @Controller('certificates')
@@ -82,6 +101,40 @@ export class CertificatesController {
     private audit: AuditService,
     private pdf: PdfService,
   ) {}
+
+  /**
+   * One source of truth for a child's money position: the instalment schedule,
+   * what has been received, and any unpaid add-ons. Used by the No-Dues and
+   * Fee-Statement documents so a certificate can never disagree with the ledger.
+   */
+  private async financials(s: any) {
+    const structure = await this.prisma.feeStructure.findUnique({
+      where: {
+        unitId_programmeId_academicYear: {
+          unitId: s.unitId,
+          programmeId: s.programmeId,
+          academicYear: AY,
+        },
+      },
+    });
+    const schedule = buildSchedule(structure, s.instalmentPlan ?? 'PLAN_C', !!s.siblingGroup);
+    const paid = (s.feeTransactions ?? [])
+      .filter((t: any) => !t.isCancelled && t.ledgerType === 'PRESCHOOL')
+      .reduce((a: number, t: any) => a + num(t.amount), 0);
+    const addons = await this.prisma.feeAddon
+      .findMany({ where: { studentId: s.id, status: 'PENDING' } })
+      .catch(() => []);
+    const addonDue = (addons as any[]).reduce((a, x) => a + num(x.amount), 0);
+    return {
+      ...schedule,
+      plan: s.instalmentPlan ?? 'PLAN_C',
+      paid,
+      balance: schedule.net - paid,
+      addonDue,
+      totalDue: Math.max(0, schedule.net - paid) + addonDue,
+      addons: addons as any[],
+    };
+  }
 
   @Get('templates')
   templates() {
@@ -125,11 +178,26 @@ export class CertificatesController {
     if (!tpl) throw new BadRequestException('Unknown certificate type');
     const s = await this.prisma.student.findUnique({
       where: { id: b.studentId },
-      include: { programme: true, unit: true, feeTransactions: true },
+      include: { programme: true, unit: true, batch: true, feeTransactions: true },
     });
     if (!s) throw new NotFoundException('Student not found');
     if (!HO_ROLES.includes(req.user.role) && req.user.unitId !== s.unitId)
       throw new ForbiddenException('Cross-unit access denied');
+
+    // ── Document types carry live financial data, so they are gated ──
+    const fin = await this.financials(s);
+    if (b.type === 'NO_DUES') {
+      if (fin.totalDue > 0)
+        throw new BadRequestException(
+          `No-Dues blocked: ₹${fin.totalDue.toLocaleString('en-IN')} pending (fees ₹${Math.max(0, fin.balance).toLocaleString('en-IN')}, add-ons ₹${fin.addonDue.toLocaleString('en-IN')}).`,
+        );
+    }
+    if (b.type === 'ADMISSION_CONFIRMATION') {
+      if (s.status !== 'ACTIVE' || !s.batchId)
+        throw new BadRequestException(
+          'Confirm the admission before issuing the confirmation letter',
+        );
+    }
 
     // ── TC gate (spec): fees fully cleared + explicit No-Dues confirmation ──
     if (b.type === 'TC') {
@@ -173,7 +241,29 @@ export class CertificatesController {
         type: b.type,
         serialNo,
         issuedById: req.user.sub,
-        payload: { event: b.event ?? null, reason: b.reason ?? null, ay: AY },
+        payload: {
+          event: b.event ?? null,
+          reason: b.reason ?? null,
+          ay: AY,
+          ...(b.type === 'NO_DUES' ||
+          b.type === 'FEE_STATEMENT' ||
+          b.type === 'ADMISSION_CONFIRMATION'
+            ? {
+                net: fin.net,
+                paid: fin.paid,
+                balance: Math.max(0, fin.balance),
+                discount: fin.discount,
+                plan: fin.plan,
+                batch: s.batch?.name ?? null,
+                admissionDate: s.admissionDate ?? null,
+                orientationDate: s.orientationDate ?? null,
+                instalments: fin.instalments.map(
+                  (i: any) =>
+                    `${i.no}) ${new Date(`${i.dueDate}T00:00:00Z`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} ₹${i.amount.toLocaleString('en-IN')}`,
+                ),
+              }
+            : {}),
+        },
       },
     });
     if (b.type === 'TC') {
@@ -235,6 +325,22 @@ export class CertificatesController {
       .replaceAll('{ay}', AY)
       .replaceAll('{event}', p.event ?? 'the school event')
       .replaceAll('{reason}', p.reason ?? 'their wonderful spirit')
+      .replaceAll('{net}', `₹${num(p.net).toLocaleString('en-IN')}`)
+      .replaceAll('{paid}', `₹${num(p.paid).toLocaleString('en-IN')}`)
+      .replaceAll('{balance}', `₹${num(p.balance).toLocaleString('en-IN')}`)
+      .replaceAll('{plan}', String(p.plan ?? 'PLAN_C').replace('PLAN_', 'Plan '))
+      .replaceAll('{instalments}', (p.instalments ?? []).join(' · ') || '—')
+      .replaceAll('{batch}', p.batch ?? 'to be allocated')
+      .replaceAll(
+        '{orientationDate}',
+        p.orientationDate
+          ? new Date(p.orientationDate).toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+            })
+          : 'to be announced',
+      )
       .replaceAll(
         '{date}',
         new Date(c.issuedAt).toLocaleDateString('en-IN', {

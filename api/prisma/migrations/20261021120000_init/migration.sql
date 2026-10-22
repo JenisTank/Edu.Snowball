@@ -249,6 +249,7 @@ CREATE TABLE "students" (
     "programme_id" TEXT,
     "batch_id" TEXT,
     "admission_date" TIMESTAMP(3),
+    "orientation_date" TIMESTAMP(3),
     "instalment_plan" "InstalmentPlan",
     "status" "StudentStatus" DEFAULT 'ACTIVE' NOT NULL,
     "academic_year" TEXT NOT NULL,
@@ -361,6 +362,28 @@ CREATE TABLE "fee_transactions" (
 );
 
 CREATE UNIQUE INDEX "fee_transactions_receipt_no_key" ON "fee_transactions"("receipt_no");
+
+-- CreateTable
+CREATE TABLE "fee_addons" (
+    "id" TEXT NOT NULL,
+    "student_id" TEXT NOT NULL,
+    "unit_id" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "amount" DECIMAL(65,30) NOT NULL,
+    "ledger_type" "LedgerType" DEFAULT 'PRESCHOOL' NOT NULL,
+    "status" TEXT DEFAULT 'PENDING' NOT NULL,
+    "payment_mode" "PaymentMode",
+    "reference" TEXT,
+    "notes" TEXT,
+    "billed_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "settled_at" TIMESTAMP(3),
+    "settled_by_id" TEXT,
+    "created_by_id" TEXT,
+    CONSTRAINT "fee_addons_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "fee_addons_unit_id_status_idx" ON "fee_addons"("unit_id", "status");
+CREATE INDEX "fee_addons_student_id_billed_at_idx" ON "fee_addons"("student_id", "billed_at");
 
 -- CreateTable
 CREATE TABLE "audit_log" (
@@ -958,6 +981,8 @@ ALTER TABLE "fee_structures" ADD CONSTRAINT "fee_structures_unit_id_fkey" FOREIG
 ALTER TABLE "fee_structures" ADD CONSTRAINT "fee_structures_programme_id_fkey" FOREIGN KEY ("programme_id") REFERENCES "programmes"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "fee_transactions" ADD CONSTRAINT "fee_transactions_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "fee_transactions" ADD CONSTRAINT "fee_transactions_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "fee_addons" ADD CONSTRAINT "fee_addons_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "fee_addons" ADD CONSTRAINT "fee_addons_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "audit_log" ADD CONSTRAINT "audit_log_changed_by_id_fkey" FOREIGN KEY ("changed_by_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "certificates" ADD CONSTRAINT "certificates_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "message_logs" ADD CONSTRAINT "message_logs_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

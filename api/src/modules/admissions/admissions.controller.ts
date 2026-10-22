@@ -2,21 +2,27 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { AuthGuard } from '../../common/auth/auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
 import { unitScope } from '../../common/auth/unit-scope';
 import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { PdfService } from '../../common/pdf/pdf.service';
+import { sendWebPush } from '../notifications/push.service';
+import { buildSchedule, num } from '../fees/fees.rules';
 import { suggestPlan } from './admissions.rules';
 
 const AY = '2026-27';
@@ -32,7 +38,116 @@ export class AdmissionsController {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
+    private pdf: PdfService,
   ) {}
+
+  /**
+   * The letter a parent receives at enrolment: batch, plan, fee summary and
+   * the orientation date. Rendered from the same numbers as the fee ledger.
+   */
+  private async confirmationLetter(studentId: string, req: any) {
+    const s = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        programme: true,
+        batch: true,
+        unit: true,
+        feeTransactions: true,
+      },
+    });
+    if (!s) throw new NotFoundException('Student not found');
+    if (!HO_ROLES.includes(req.user.role) && s.unitId !== req.user.unitId)
+      throw new ForbiddenException('Cross-unit access denied');
+    if (s.status === 'REGISTERED' || !s.admissionNo.startsWith('BB-'))
+      throw new BadRequestException('Confirm the admission first — there is no seat yet');
+
+    const structure = await this.prisma.feeStructure.findUnique({
+      where: {
+        unitId_programmeId_academicYear: {
+          unitId: s.unitId,
+          programmeId: s.programmeId,
+          academicYear: AY,
+        },
+      },
+    });
+    const schedule = buildSchedule(structure, s.instalmentPlan ?? 'PLAN_C', !!s.siblingGroup);
+    const paid = s.feeTransactions
+      .filter((t: any) => !t.isCancelled && t.ledgerType === 'PRESCHOOL')
+      .reduce((a: number, t: any) => a + num(t.amount), 0);
+    return {
+      student: s,
+      schedule,
+      paid,
+      balance: Math.max(0, schedule.net - paid),
+      child: `${s.firstName} ${s.lastName}`,
+      planLabel: String(s.instalmentPlan ?? 'PLAN_C').replace('PLAN_', 'Plan '),
+    };
+  }
+
+  private letterHtml(d: Awaited<ReturnType<AdmissionsController['confirmationLetter']>>) {
+    const { student: s, schedule, child } = d;
+    const date = (v: any) =>
+      v
+        ? new Date(v).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          })
+        : '—';
+    const esc = (v: any) =>
+      String(v ?? '').replace(
+        /[&<>"']/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+      );
+    const rows = schedule.instalments
+      .map(
+        (i) =>
+          `<tr><td>Instalment ${i.no}</td><td>${date(`${i.dueDate}T00:00:00Z`)}</td><td class="r">₹${i.amount.toLocaleString('en-IN')}</td></tr>`,
+      )
+      .join('');
+    return `<!doctype html><html><head><meta charset="utf-8"><title>Admission Confirmation · ${esc(d.child)}</title><style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'Segoe UI',system-ui,sans-serif;background:#faf7ef;color:#1F1B13;display:flex;justify-content:center;padding:36px}
+      .sheet{width:760px;background:#fff;border:1px solid #E5D9B5;border-radius:14px;overflow:hidden}
+      .head{background:linear-gradient(145deg,#F8EDCD,#EBDBAC);padding:26px 34px}
+      .brand{font-size:24px;font-weight:800;color:#8A6410}
+      .sub{font-size:12px;color:#6b5a2e;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+      .body{padding:30px 34px}
+      h1{font-size:19px;color:#1F1B13;margin-bottom:14px}
+      p{font-size:14px;line-height:1.75;color:#44403c;margin-bottom:12px}
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin:18px 0}
+      .grid div{display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid #F3EAD0;padding:6px 0}
+      .grid span{color:#78716c;font-weight:600}
+      table{width:100%;border-collapse:collapse;margin:14px 0}
+      th,td{font-size:13px;padding:8px 0;border-bottom:1px solid #F3EAD0;text-align:left}
+      th{color:#78716c;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+      .r{text-align:right}
+      .total{display:flex;justify-content:space-between;background:linear-gradient(145deg,#DCA93C,#A97716);color:#fff;padding:14px 18px;border-radius:10px;font-weight:800;margin-top:12px}
+      .sign{margin-top:40px;display:flex;justify-content:space-between;font-size:12px;color:#57534e}
+      .sign div{border-top:1px solid #a8a29e;padding-top:6px;width:200px;text-align:center}
+      @media print{body{padding:0;background:#fff}.sheet{border:none}}
+    </style></head><body><div class="sheet">
+      <div class="head"><div class="brand">🐝 BumbleB Kidz</div><div class="sub">${esc(s.unit.name)} · Admission Confirmation</div></div>
+      <div class="body">
+        <h1>Welcome to the hive, ${esc(child)}!</h1>
+        <p>Dear ${esc(s.fatherName || s.motherName || 'Parent')}, we are delighted to confirm ${esc(child)}'s admission for Academic Year ${esc(AY)}. This letter confirms the seat, the batch and the fee plan.</p>
+        <div class="grid">
+          <div><span>Admission No.</span><b>${esc(s.admissionNo)}</b></div>
+          <div><span>Programme</span><b>${esc(s.programme?.name ?? '—')}</b></div>
+          <div><span>Batch</span><b>${esc(s.batch?.name ?? '—')}</b></div>
+          <div><span>Class timing</span><b>${esc(s.batch?.startTime ?? '—')}</b></div>
+          <div><span>Admission date</span><b>${date(s.admissionDate)}</b></div>
+          <div><span>Orientation</span><b>${date(s.orientationDate)}</b></div>
+          <div><span>Payment plan</span><b>${esc(d.planLabel)}</b></div>
+          <div><span>Sibling concession</span><b>₹${num(schedule.discount).toLocaleString('en-IN')}</b></div>
+        </div>
+        <table><thead><tr><th>Instalment</th><th>Due date</th><th class="r">Amount</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="total"><span>Annual fee payable</span><span>₹${num(schedule.net).toLocaleString('en-IN')}</span></div>
+        <p style="margin-top:16px">Fees are payable on or before each due date. Receipts are issued for every payment and appear in the parent portal. Please bring this letter on orientation day.</p>
+        <div class="sign"><div>Centre Head</div><div>Founder — BumbleB Kidz</div></div>
+      </div>
+    </div><script>setTimeout(()=>window.print&&window.print(),400)</script></body></html>`;
+  }
 
   private async nextSerial(prefix: string) {
     const last = await this.prisma.student.findFirst({
@@ -235,7 +350,8 @@ export class AdmissionsController {
   async confirm(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() body: { batchId: string; instalmentPlan?: string },
+    @Body()
+    body: { batchId: string; instalmentPlan?: string; orientationDate?: string },
   ) {
     const student = await this.prisma.student.findUnique({
       where: { id },
@@ -276,6 +392,9 @@ export class AdmissionsController {
         status: 'ACTIVE',
         batchId: batch.id,
         admissionDate: new Date(),
+        orientationDate: body.orientationDate
+          ? new Date(`${body.orientationDate}T00:00:00Z`)
+          : null,
         instalmentPlan: (body.instalmentPlan as any) || student.instalmentPlan || suggestPlan(),
       },
       include: { programme: true, batch: true, unit: { select: { code: true, name: true } } },
@@ -300,10 +419,77 @@ export class AdmissionsController {
       { status: 'REGISTERED', admissionNo: student.admissionNo },
       { status: 'ACTIVE', admissionNo, batchId: batch.id },
     );
-    // Fee ledger + parent portal account activate in Slices 5 & 6 — flagged here
+    // Enrolment activates everything at once: attendance roster, fee ledger and
+    // the parent portal account (the phone number is the login).
+    const phone = student.fatherPhone || student.motherPhone;
+    if (phone) {
+      await this.prisma.messageLog
+        .create({
+          data: {
+            type: 'ADMISSION_CONFIRMATION',
+            recipient: phone,
+            studentId: id,
+            unitId: student.unitId,
+            payload: {
+              child: `${student.firstName} ${student.lastName}`,
+              admissionNo,
+              batch: batch.name,
+              orientationDate: body.orientationDate ?? null,
+              letterPdf: `/api/students/${id}/confirmation-letter/pdf`,
+            },
+          },
+        })
+        .catch(() => null);
+      await sendWebPush(this.prisma, phone, {
+        title: `Admission confirmed — ${student.firstName}`,
+        body: `${admissionNo} · ${batch.name}. Tap to view the confirmation letter.`,
+        url: '/parent',
+        tag: `admission-${id}`,
+      }).catch(() => null);
+    }
+    await this.audit.log(req, 'students', id, 'UPDATE', null, {
+      letter: 'ADMISSION_CONFIRMATION',
+      orientationDate: body.orientationDate ?? null,
+    });
     return {
       ...updated,
-      activated: { attendance: true, feeLedger: 'Slice 5', parentPortal: 'Slice 6' },
+      activated: { attendance: true, feeLedger: true, parentPortal: true },
+      confirmationLetter: `/api/students/${id}/confirmation-letter`,
     };
+  }
+
+  // ── Admission confirmation letter (spec module 3) ──
+  @Get('students/:id/confirmation-letter')
+  @Roles(...ADMIT_ROLES)
+  @Header('Content-Type', 'text/html')
+  async confirmationLetterPrint(@Req() req: any, @Param('id') id: string) {
+    return this.letterHtml(await this.confirmationLetter(id, req));
+  }
+
+  @Get('students/:id/confirmation-letter/pdf')
+  @Roles(...ADMIT_ROLES)
+  async confirmationLetterPdf(@Req() req: any, @Param('id') id: string, @Res() res: Response) {
+    const d = await this.confirmationLetter(id, req);
+    const body =
+      `This letter confirms the admission of ${d.child} (admission no. ${d.student.admissionNo}) to the ` +
+      `${d.student.programme?.name ?? ''} programme in batch ${d.student.batch?.name ?? '-'} for academic year ${AY}. ` +
+      `Annual fee INR ${num(d.schedule.net).toLocaleString('en-IN')} on ${d.planLabel.replace('Plan ', 'plan ')}. ` +
+      `Orientation: ${d.student.orientationDate ? new Date(d.student.orientationDate).toLocaleDateString('en-IN') : 'to be announced'}.`;
+    const file = await this.pdf.certificatePdf({
+      serialNo: d.student.admissionNo,
+      title: 'Admission Confirmation',
+      body,
+      childName: d.child,
+      admissionNo: d.student.admissionNo,
+      programme: d.student.programme?.name ?? null,
+      unitName: d.student.unit.name,
+      issuedAt: d.student.admissionDate ?? new Date(),
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${d.student.admissionNo}-confirmation.pdf"`,
+    );
+    return res.send(file);
   }
 }

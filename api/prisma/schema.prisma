@@ -122,6 +122,7 @@ model Unit {
   feeTransactions   FeeTransaction[]
   attendanceRecords AttendanceRecord[]
   studentLeaves    StudentLeave[]
+  feeAddons        FeeAddon[]
   discoveryFlights  DiscoveryFlight[]
   areaMappings      AreaMaster[]
 
@@ -288,6 +289,7 @@ model Student {
   programmeId   String?       @map("programme_id") @db.Uuid
   batchId       String?       @map("batch_id") @db.Uuid
   admissionDate DateTime?     @map("admission_date") @db.Date
+  orientationDate DateTime?   @map("orientation_date") @db.Date // set at confirmation (spec, module 3)
   instalmentPlan InstalmentPlan? @map("instalment_plan")
   status        StudentStatus @default(ACTIVE)
   academicYear  String        @map("academic_year")
@@ -303,6 +305,7 @@ model Student {
 
   attendanceRecords AttendanceRecord[]
   leaves            StudentLeave[]
+  feeAddons         FeeAddon[]
   feeTransactions   FeeTransaction[]
   discoveryFlights  DiscoveryFlight[]
   messageLogs       MessageLog[]
@@ -433,6 +436,33 @@ model FeeTransaction {
   unit    Unit    @relation(fields: [unitId], references: [id])
 
   @@map("fee_transactions")
+}
+
+// Add-on charges (kit, transport, event fee) are billed separately from the
+// annual tuition schedule so the instalment maths stays exact. A settled
+// add-on is money received; it never re-allocates tuition instalments.
+model FeeAddon {
+  id            String      @id @default(uuid()) @db.Uuid
+  studentId     String      @map("student_id") @db.Uuid
+  unitId        String      @map("unit_id") @db.Uuid
+  label         String
+  amount        Decimal     @db.Decimal(10, 2)
+  ledgerType    LedgerType  @default(PRESCHOOL) @map("ledger_type")
+  status        String      @default("PENDING") // PENDING | PAID | WAIVED
+  paymentMode   PaymentMode? @map("payment_mode")
+  reference     String?
+  notes         String?
+  billedAt      DateTime    @default(now()) @map("billed_at")
+  settledAt     DateTime?   @map("settled_at")
+  settledById   String?     @map("settled_by_id") @db.Uuid
+  createdById   String?     @map("created_by_id") @db.Uuid
+
+  student Student @relation(fields: [studentId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@index([unitId, status])
+  @@index([studentId, billedAt])
+  @@map("fee_addons")
 }
 
 // ─────────────────────────── DPDP / AUDIT ───────────────────────────
