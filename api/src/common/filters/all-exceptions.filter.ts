@@ -1,6 +1,8 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 
+import { captureException } from '../observability/sentry';
+
 /**
  * Keeps one predictable error body for the frontend (`{ statusCode, message }`)
  * while logging unexpected failures with a stack trace.
@@ -18,6 +20,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.error(
         exception instanceof Error ? (exception.stack ?? exception.message) : String(exception),
       );
+      // 5xx means we broke something — send it to Sentry (no-op without a DSN).
+      captureException(exception, { statusCode: status });
     }
 
     if (typeof payload === 'string') {

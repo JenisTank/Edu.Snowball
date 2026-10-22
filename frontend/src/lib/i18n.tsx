@@ -94,6 +94,10 @@ const en = {
   'ptm.create': 'Create & populate roster',
   'ptm.empty': 'No meetings scheduled yet.',
 
+  'parent.payNow': 'Pay online',
+  'parent.paying': 'Opening gateway…',
+  'parent.paySoon':
+    'Online payment starts once the centre activates Razorpay — pay at your centre for now.',
   'parent.ptm': 'Parent–teacher meeting',
   'parent.book': 'Book this slot',
   'parent.release': 'Cancel booking',
@@ -184,6 +188,10 @@ const gu: Partial<Record<TKey, string>> = {
   'ptm.create': 'બનાવો અને યાદી ભરો',
   'ptm.empty': 'હજી કોઈ મુલાકાત ગોઠવાઈ નથી.',
 
+  'parent.payNow': 'ઓનલાઈન ચૂકવો',
+  'parent.paying': 'ગેટવે ખૂલી રહ્યું છે…',
+  'parent.paySoon':
+    'કેન્દ્ર દ્વારા Razorpay ચાલુ થતાં જ ઓનલાઈન ચુકવણી શરૂ થશે — હાલ કેન્દ્રમાં ચૂકવો.',
   'parent.ptm': 'વાલી-શિક્ષક મુલાકાત',
   'parent.book': 'આ સ્લોટ બુક કરો',
   'parent.release': 'બુકિંગ રદ કરો',

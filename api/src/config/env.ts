@@ -50,6 +50,19 @@ export const env = {
   get razorpayMock() {
     return !this.razorpayKeyId || !this.razorpayKeySecret;
   },
+  // ── Observability ─────────────────────────────────────────────────────────
+  /** Sentry DSN for API error tracking; empty keeps reporting off. */
+  get sentryDsn() {
+    return process.env.SENTRY_DSN ?? '';
+  },
+  /** Release tag shown next to every crash (git sha or image tag). */
+  get release() {
+    return process.env.APP_RELEASE ?? `bumbleb-api@${process.env.npm_package_version ?? 'dev'}`;
+  },
+  /** 0 disables tracing; 0.1 samples a tenth of transactions. */
+  get sentryTracesSampleRate() {
+    return Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? 0.1);
+  },
   get waBspKey() {
     return process.env.WA_BSP_KEY ?? '';
   },

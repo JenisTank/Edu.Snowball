@@ -27,6 +27,7 @@
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/throttler": "^6.7.1",
     "@prisma/client": "^5.22.0",
+    "@sentry/node": "^8.55.2",
     "bcryptjs": "^2.4.3",
     "bullmq": "^6.3.11",
     "class-transformer": "^0.5.1",

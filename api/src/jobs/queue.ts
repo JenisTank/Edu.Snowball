@@ -14,6 +14,27 @@ const connection = { url: env.redisUrl } as any;
 
 export const bbQueue = new Queue('bb-jobs', { connection });
 
+/**
+ * Queue depth for the health probe. Returns null when Redis is unreachable so
+ * `/api/health` reports "redis down" instead of hanging on a socket.
+ */
+export async function queueHealth() {
+  try {
+    const counts = await Promise.race([
+      bbQueue.getJobCounts('waiting', 'active', 'failed', 'delayed'),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500)),
+    ]);
+    return {
+      waiting: Number((counts as any).waiting ?? 0),
+      active: Number((counts as any).active ?? 0),
+      failed: Number((counts as any).failed ?? 0),
+      delayed: Number((counts as any).delayed ?? 0),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function startWorker(prisma: PrismaClient) {
   const worker = new Worker(
     'bb-jobs',

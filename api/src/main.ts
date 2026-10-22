@@ -10,9 +10,12 @@ import { createValidationPipe } from './common/validation/validation';
 import { env, validateEnv } from './config/env';
 import { startWorker } from './jobs/queue';
 import { startScheduler } from './jobs/scheduler';
+import { initSentry } from './common/observability/sentry';
 
 async function bootstrap() {
   validateEnv();
+  // Error reporting first: a crash during bootstrap should still be reported.
+  if (initSentry()) new Logger('Bootstrap').log('🔭 Sentry error reporting enabled');
 
   // rawBody: the Razorpay webhook is verified against the exact bytes received.
   const app = await NestFactory.create(AppModule, { rawBody: true });

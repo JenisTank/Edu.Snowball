@@ -316,9 +316,7 @@ function FeesCard({ childId }: { childId: string }) {
           ))}
         </div>
       )}
-      <p className="mt-3 text-center text-[10px] font-semibold text-stone-400">
-        Online payment (UPI / Razorpay) activates at go-live — pay at your centre for now.
-      </p>
+      <PayOnline childId={childId} balance={Number(f.balance || 0)} />
     </div>
   );
 }
@@ -624,6 +622,105 @@ function ConversationCard({ childId }: { childId: string }) {
         </button>
       </div>
       {err && <p className="mt-2 text-[11px] font-bold text-rose-600">{err}</p>}
+    </div>
+  );
+}
+
+function loadRazorpay(): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const w = window as any;
+    if (w.Razorpay) return resolve(w.Razorpay);
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve((window as any).Razorpay);
+    script.onerror = () => reject(new Error('Could not reach the payment gateway'));
+    document.body.appendChild(script);
+  });
+}
+
+/**
+ * Online fee payment.
+ *
+ * The gateway is only offered when the centre's merchant account is live
+ * (`/fees/online/config`). Until KYC completes the card explains that instead
+ * of showing a button that cannot work.
+ */
+function PayOnline({ childId, balance }: { childId: string; balance: number }) {
+  const qc = useQueryClient();
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
+  const { data: cfg } = useQuery({
+    queryKey: ['p-pay-config'],
+    queryFn: () => papi('/fees/online/config'),
+    staleTime: 5 * 60_000,
+  });
+
+  async function pay() {
+    setBusy(true);
+    setErr('');
+    setMsg('');
+    try {
+      const order = await papi('/fees/online/order', {
+        method: 'POST',
+        body: JSON.stringify({ studentId: childId, amount: balance }),
+      });
+      const Razorpay = await loadRazorpay();
+      const checkout = new Razorpay({
+        key: order.keyId,
+        order_id: order.orderId,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'BumbleB Kidz',
+        description: `Fees for ${order.studentName}`,
+        prefill: { contact: order.prefillPhone },
+        theme: { color: '#F2A93B' },
+        handler: async (response: any) => {
+          try {
+            const done = await papi(`/fees/online/${order.intentId}/verify`, {
+              method: 'POST',
+              body: JSON.stringify({
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              }),
+            });
+            setMsg(`Paid ✅ Receipt ${done.receiptNo ?? ''}`.trim());
+            qc.invalidateQueries({ queryKey: ['p-fees', childId] });
+            qc.invalidateQueries({ queryKey: ['p-docs', childId] });
+          } catch (e: any) {
+            setErr(e.message);
+          } finally {
+            setBusy(false);
+          }
+        },
+        modal: { ondismiss: () => setBusy(false) },
+      });
+      checkout.open();
+    } catch (e: any) {
+      setErr(e.message);
+      setBusy(false);
+    }
+  }
+
+  if (!cfg) return null;
+  if (!cfg.enabled) {
+    return (
+      <p className="mt-3 text-center text-[10px] font-semibold text-stone-400">
+        {t('parent.paySoon')}
+      </p>
+    );
+  }
+  return (
+    <div className="mt-3">
+      <button className="btn-primary w-full" disabled={busy || balance <= 0} onClick={pay}>
+        {busy ? t('parent.paying') : `${t('parent.payNow')} · ${inr(balance)}`}
+      </button>
+      {msg && <p className="mt-2 text-[11px] font-bold text-emerald-700">{msg}</p>}
+      {err && <p className="mt-2 text-[11px] font-bold text-rose-600">{err}</p>}
+      <p className="mt-1.5 text-center text-[10px] font-semibold text-stone-400">
+        UPI · cards · netbanking — secured by Razorpay
+      </p>
     </div>
   );
 }
