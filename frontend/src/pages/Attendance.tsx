@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlarmClock,
+  BarChart3,
   CalendarDays,
   CheckCircle2,
   Lock,
@@ -260,6 +261,109 @@ function LeavePanel() {
           </p>
         )}
       </aside>
+    </div>
+  );
+}
+
+// ───────────────────────── Term report: per batch, per child ─────────────────────────
+/**
+ * The daily cards answer "what happened today". This panel answers the question
+ * a Centre Head actually gets asked on a call — "how has my child been attending
+ * this term, and who should we be ringing?" — straight from
+ * `GET /attendance/reports/batch/:id`.
+ */
+function ReportsPanel({ batches }: { batches: { batchId: string; name: string; unit: string }[] }) {
+  const [batchId, setBatchId] = useState('');
+  const [from, setFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 29);
+    return d.toISOString().slice(0, 10);
+  });
+  const [to, setTo] = useState(todayISO());
+  useEffect(() => {
+    if (!batchId && batches.length) setBatchId(batches[0].batchId);
+  }, [batches, batchId]);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['att-report', batchId, from, to],
+    queryFn: () => api(`/attendance/reports/batch/${batchId}?from=${from}&to=${to}`),
+    enabled: !!batchId,
+  });
+
+  const pctTone = (p: number) => (p >= 90 ? 'green' : p >= 75 ? 'honey' : 'red');
+
+  return (
+    <div className="card mt-4 p-5">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <BarChart3 className="h-4 w-4 text-honey-700" />
+        <span className="font-heading text-[14px] font-extrabold">Attendance report</span>
+        {data?.totals && (
+          <span className="chip ml-auto">
+            {data.totals.present}/{data.totals.marked} present · {data.totals.percent}%
+          </span>
+        )}
+      </div>
+      <div className="mb-4 grid gap-2 sm:grid-cols-3">
+        <label className="text-[11.5px] font-bold text-stone-600">
+          Batch
+          <select
+            className="input mt-1"
+            value={batchId}
+            onChange={(e) => setBatchId(e.target.value)}
+          >
+            {batches.map((b) => (
+              <option key={b.batchId} value={b.batchId}>
+                {b.unit} · {b.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-[11.5px] font-bold text-stone-600">
+          From
+          <input
+            type="date"
+            className="input mt-1"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </label>
+        <label className="text-[11.5px] font-bold text-stone-600">
+          To
+          <input
+            type="date"
+            className="input mt-1"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </label>
+      </div>
+      {error && <ErrorNote msg={(error as Error).message} />}
+      {isLoading && <div className="py-4 text-[13px] font-semibold text-stone-500">Loading…</div>}
+      {data?.students?.length > 0 && (
+        <div className="divide-y divide-honey-300/40">
+          {data.students.map((s: any) => (
+            <div key={s.studentId} className="flex items-center gap-3 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[13px] font-bold">{s.name}</div>
+                <div className="text-[11px] font-semibold text-stone-500">{s.admissionNo}</div>
+              </div>
+              <span className="text-[11.5px] font-semibold text-stone-500">
+                P {s.present} · A {s.absent} · L {s.leave}
+              </span>
+              <Badge tone={pctTone(s.percent)}>{s.percent}%</Badge>
+            </div>
+          ))}
+        </div>
+      )}
+      {data?.students?.length === 0 && (
+        <div className="py-6 text-center text-[12.5px] font-semibold text-stone-500">
+          No students in this batch.
+        </div>
+      )}
+      <p className="mt-3 text-[11px] font-semibold text-stone-500">
+        Percentages are over marked days — holidays and unopened registers never count as absences.
+        Weakest attendance is listed first.
+      </p>
     </div>
   );
 }
@@ -602,6 +706,7 @@ export default function Attendance() {
         )}
       </div>
       <LeavePanel />
+      <ReportsPanel batches={summary} />
       {isHO && (
         <div className="mt-4 flex items-center gap-1.5 text-[11.5px] font-semibold text-stone-500">
           <Users className="h-3.5 w-3.5" /> HO view — you're seeing batches across all units. Unit

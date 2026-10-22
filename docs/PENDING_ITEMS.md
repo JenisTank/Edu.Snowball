@@ -14,8 +14,8 @@ the evidence column says where.
 | 🚫   | Blocked on something outside the codebase (client account, KYC, keys) |
 | ⏸    | Explicitly deferred by the client                                     |
 
-**Current footprint:** 244 HTTP routes · 66 Prisma models · 11 enums ·
-196 tests in 21 suites · 22 staff pages + parent PWA · 66-table migration
+**Current footprint:** 249 HTTP routes · 66 Prisma models · 11 enums ·
+214 tests in 23 suites · 22 staff pages + parent PWA · 66-table migration
 validated in PGlite.
 
 > **Audit date note.** The tables below were built from the 21 Oct 2026 audit.
@@ -37,19 +37,37 @@ validated in PGlite.
 | S8     | `/api/health` + `/api/health/ready` (db, redis, queue depth), Sentry hook, backup + restore-drill scripts, `docs/RUNBOOK.md`, prod compose healthcheck                                             | `53c6381`            |
 | S9     | Waitlist for full batches; employee self-service (profile, payslips, leave, attendance) + My Space page                                                                                            | `7cb2101`            |
 
+### Final pass (22 Oct 2026)
+
+The last audit gaps that were codeable without a client decision are closed:
+
+- **Attendance reports** — per-batch and per-student ranges, percentages over
+  marked days, weakest first, plus the report panel on the Attendance page.
+- **Auto-LWP cut-off** — the daily tick now closes undecided staff leaves to
+  `AUTO_LWP` (leave-without-pay) once their last day has passed, once per IST
+  day; `POST /hr/leave/cutoff` runs it on demand.
+- **Opening stock** — `POST /inventory/opening-stock` records the starting count
+  per item exactly once, so a new unit cannot be double-counted.
+- **PTM student-wise view** — `GET /ptm/student/:id` and the history modal.
+- **CI schema guard** — the committed migration must equal the generator output
+  and `prisma migrate diff` must report no drift.
+
 ---
 
 ## 1. Scoreboard
 
 | Phase                     | Modules                        | ✅  | 🟡  | 🔲  | ⏸   | 🚫  |
 | ------------------------- | ------------------------------ | --- | --- | --- | --- | --- |
-| Phase 1 (admission drive) | 1, 2, 3, 4, 6, 7               | —   | 5   | —   | —   | 1   |
-| Phase 2 (operations)      | 5, 8, 10, 11, 12, 13, 14, 15   | 1   | 6   | —   | —   | 1   |
+| Phase 1 (admission drive) | 1, 2, 3, 4, 6, 7               | 2   | 4   | —   | —   | —   |
+| Phase 2 (operations)      | 5, 8, 10, 11, 12, 13, 14, 15   | 3   | 5   | —   | —   | —   |
 | Phase 3 (franchisor)      | 16, 17, 18, 19, 20, 21, 22, 23 | —   | 1   | 1   | 6   | —   |
 | Phase 4 (AI)              | 24, 25, 26, 27                 | —   | —   | —   | 4   | —   |
 
-Nothing in Phase 1 is unbuilt; the gaps are spec details, not missing screens.
-The real open surface is Phase 3 (franchisor control) and the DPDP/system-wide layer.
+Nothing in Phase 1 is unbuilt; the remaining 🟡 rows are either a third-party
+integration (Calendly, Razorpay KYC) or a spec detail, not a missing screen.
+Phase 2's 🟡 rows are the same shape: blocked on a client decision (OT1
+multiplier, HR policy for the security deposit, object storage for PTM form
+scans). The real open surface is Phase 3 (franchisor control).
 
 ---
 
@@ -80,17 +98,17 @@ The real open surface is Phase 3 (franchisor control) and the DPDP/system-wide l
 
 ### Module 3 · Admission & Enrolment — 🟡
 
-| Spec item                                                             | Status | Evidence / gap                                                                                                                         |
-| --------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Registration → Discovery Flight → CH approval → confirm               | ✅     | `/admissions` page + `admissions` controller                                                                                           |
-| Admission no. `BB-U?-2627-NNNN`                                       | ✅     | `admissions.rules.ts` + tests                                                                                                          |
-| Batch assignment at confirmation                                      | ✅     | `confirm()`                                                                                                                            |
-| Seat tracker (capacity block)                                         | ✅     | `batch._count.students >= batch.capacity`                                                                                              |
-| Sibling detection → concession                                        | ✅     | `siblingGroup` + `fees.rules.ts` (tested)                                                                                              |
-| **"Add to Class" activates attendance + fee ledger + parent account** | 🟡     | Fees derive from the structure and the parent logs in by phone, but there is no explicit one-shot activation step or activation record |
-| **Confirmation letter PDF → app + WhatsApp**                          | ✅     | `GET /students/:id/confirmation-letter(/pdf)`                                                                                          |
-| **Orientation date capture**                                          | ✅     | `Student.orientationDate`, captured on confirm and printed in the letter                                                               |
-| **Waitlist when a batch is full**                                     | ✅     | `waitlist_entries` + `/admissions/waitlist*`; confirm returns `waitlisted`                                                             |
+| Spec item                                                             | Status | Evidence / gap                                                                                                                                                               |
+| --------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Registration → Discovery Flight → CH approval → confirm               | ✅     | `/admissions` page + `admissions` controller                                                                                                                                 |
+| Admission no. `BB-U?-2627-NNNN`                                       | ✅     | `admissions.rules.ts` + tests                                                                                                                                                |
+| Batch assignment at confirmation                                      | ✅     | `confirm()`                                                                                                                                                                  |
+| Seat tracker (capacity block)                                         | ✅     | `batch._count.students >= batch.capacity`                                                                                                                                    |
+| Sibling detection → concession                                        | ✅     | `siblingGroup` + `fees.rules.ts` (tested)                                                                                                                                    |
+| **"Add to Class" activates attendance + fee ledger + parent account** | ✅     | `confirm()` sets the student `ACTIVE`, derives the fee ledger from the structure and returns `activated: { attendance, feeLedger, parentPortal }`; the whole step is audited |
+| **Confirmation letter PDF → app + WhatsApp**                          | ✅     | `GET /students/:id/confirmation-letter(/pdf)`                                                                                                                                |
+| **Orientation date capture**                                          | ✅     | `Student.orientationDate`, captured on confirm and printed in the letter                                                                                                     |
+| **Waitlist when a batch is full**                                     | ✅     | `waitlist_entries` + `/admissions/waitlist*`; confirm returns `waitlisted`                                                                                                   |
 
 ### Module 4 · Discovery Flight — 🟡
 
@@ -104,35 +122,35 @@ The real open surface is Phase 3 (franchisor control) and the DPDP/system-wide l
 
 ### Module 6 · Student Attendance — 🟡 (one safety-critical gap)
 
-| Spec item                                                | Status       | Evidence / gap                                                                                                                                                                                                                                                                          |
-| -------------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Default ABSENT roster                                    | ✅           | `roster()` returns every active student as ABSENT                                                                                                                                                                                                                                       |
-| Lock = class start + 30 min (dynamic)                    | ✅           | `attendance.rules.ts` + tests                                                                                                                                                                                                                                                           |
-| CH override with mandatory reason                        | ✅           | Validated + audited                                                                                                                                                                                                                                                                     |
-| Absence push/WhatsApp at lock + 30 min                   | ✅ (sandbox) | `absence-scan` job                                                                                                                                                                                                                                                                      |
-| Admin call task at lock + 2 h                            | ✅           | `admin-call-list` job                                                                                                                                                                                                                                                                   |
-| 3-day consecutive escalation                             | ✅           | Inside `absence-scan`                                                                                                                                                                                                                                                                   |
-| **Daily 5:00 AM scheduler creating lock jobs per batch** | ✅           | **High priority.** Jobs are only enqueued when a teacher marks attendance. If nobody marks, no absence scan runs and no parent is alerted — the exact child-safety case the rule exists for. Needs a repeatable job at 05:00 IST that enqueues one scan per active batch, holiday-aware |
-| Teacher-has-not-submitted alert to CH                    | ✅           | `unmarked-register-alert` job                                                                                                                                                                                                                                                           |
-| **Student leave applications (parent + admin-logged)**   | ✅           | No model. `LEAVE` is only a marking status; "approved leave suppresses alert" cannot work                                                                                                                                                                                               |
-| Attendance reports per batch/student                     | 🟡           | Summary + messages only                                                                                                                                                                                                                                                                 |
+| Spec item                                            | Status       | Evidence / gap                                                                                                                                                                    |
+| ---------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Default ABSENT roster                                | ✅           | `roster()` returns every active student as ABSENT                                                                                                                                 |
+| Lock = class start + 30 min (dynamic)                | ✅           | `attendance.rules.ts` + tests                                                                                                                                                     |
+| CH override with mandatory reason                    | ✅           | Validated + audited                                                                                                                                                               |
+| Absence push/WhatsApp at lock + 30 min               | ✅ (sandbox) | `absence-scan` job                                                                                                                                                                |
+| Admin call task at lock + 2 h                        | ✅           | `admin-call-list` job                                                                                                                                                             |
+| 3-day consecutive escalation                         | ✅           | Inside `absence-scan`                                                                                                                                                             |
+| Daily 5:00 AM scheduler creating lock jobs per batch | ✅           | `jobs/scheduler.ts` — a BullMQ repeatable job at 05:00 IST plus an in-process catch-up tick; one scan per active batch, holiday-aware, idempotent per IST day                     |
+| Teacher-has-not-submitted alert to CH                | ✅           | `unmarked-register-alert` job                                                                                                                                                     |
+| Student leave applications (parent + admin-logged)   | ✅           | `student_leaves` model + `/students/:id/leaves`; approved leave suppresses the absence alert via `leaves.query.ts`                                                                |
+| Attendance reports per batch/student                 | ✅           | `GET /attendance/reports/batch/:batchId` and `/reports/student/:id` (date range, per-child percentages over marked days, weakest first) + the report panel on the Attendance page |
 
 ### Module 7 · Fees — 🟡 + 🚫
 
-| Spec item                                            | Status | Evidence / gap                                                                                                                                                                                                                                                                                                                            |
-| ---------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| HO-locked fee structures per unit/programme/AY       | ✅     | `FeeStructure` + upsert endpoint                                                                                                                                                                                                                                                                                                          |
-| Plans A / B / C + joining-window logic               | ✅     | `fees.rules.ts`, tested across all 12 months                                                                                                                                                                                                                                                                                              |
-| 10% sibling concession                               | ✅     | Configurable pct, tested                                                                                                                                                                                                                                                                                                                  |
-| Collection, all payment modes, fine, discount        | ✅     | `POST /fees/pay` (DTO-validated)                                                                                                                                                                                                                                                                                                          |
-| Receipt numbering + print + **PDF**                  | ✅     | `BB-U?-RCPT-2627-NNNN`, `/print` and `/pdf`                                                                                                                                                                                                                                                                                               |
-| Cancellation with reason + audit                     | ✅     | `POST /fees/receipt/:id/cancel` (DTO + audit)                                                                                                                                                                                                                                                                                             |
-| Reminders T-5 / T-0 / T+3 / T+7                      | ✅     | `reminderStage()` tested; `POST /fees/reminders/run`                                                                                                                                                                                                                                                                                      |
-| Dual ledger (preschool ≠ evening)                    | ✅     | `ledgerType` + tested separation                                                                                                                                                                                                                                                                                                          |
-| No-Dues certificate                                  | ✅     | `POST /certificates` with gating + PDF                                                                                                                                                                                                                                                                                                    |
-| **Razorpay order → webhook → auto receipt → ledger** | 🟡     | Built end-to-end behind `payments/razorpay.adapter.ts`; live mode switches on when KYC keys land                                                                                                                                                                                                                                          |
-| "Pay Now" in parent portal                           | ✅     | Parent card shows the gateway only when `/fees/online/config` reports `enabled`                                                                                                                                                                                                                                                           |
-| **14 reports**                                       | 🟡     | 3 of 14: summary, per-student ledger, reminder log. Missing: Daily Collection, Outstanding, Fee Status per Student, Day Book, Monthly Collection, Unit-wise (HO), Payment Mode, Discount & Concession, Cancellation & Refund Log, Fee Structure Master, Programme-wise Revenue, Head-wise Summary, Add-on Fees, Accounting Export (Tally) |
+| Spec item                                            | Status | Evidence / gap                                                                                                                                                                                                                                                   |
+| ---------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HO-locked fee structures per unit/programme/AY       | ✅     | `FeeStructure` + upsert endpoint                                                                                                                                                                                                                                 |
+| Plans A / B / C + joining-window logic               | ✅     | `fees.rules.ts`, tested across all 12 months                                                                                                                                                                                                                     |
+| 10% sibling concession                               | ✅     | Configurable pct, tested                                                                                                                                                                                                                                         |
+| Collection, all payment modes, fine, discount        | ✅     | `POST /fees/pay` (DTO-validated)                                                                                                                                                                                                                                 |
+| Receipt numbering + print + **PDF**                  | ✅     | `BB-U?-RCPT-2627-NNNN`, `/print` and `/pdf`                                                                                                                                                                                                                      |
+| Cancellation with reason + audit                     | ✅     | `POST /fees/receipt/:id/cancel` (DTO + audit)                                                                                                                                                                                                                    |
+| Reminders T-5 / T-0 / T+3 / T+7                      | ✅     | `reminderStage()` tested; `POST /fees/reminders/run`                                                                                                                                                                                                             |
+| Dual ledger (preschool ≠ evening)                    | ✅     | `ledgerType` + tested separation                                                                                                                                                                                                                                 |
+| No-Dues certificate                                  | ✅     | `POST /certificates` with gating + PDF                                                                                                                                                                                                                           |
+| **Razorpay order → webhook → auto receipt → ledger** | 🟡     | Built end-to-end behind `payments/razorpay.adapter.ts`; live mode switches on when KYC keys land                                                                                                                                                                 |
+| "Pay Now" in parent portal                           | ✅     | Parent card shows the gateway only when `/fees/online/config` reports `enabled`                                                                                                                                                                                  |
+| **14 reports**                                       | ✅     | `modules/fees/reports.controller.ts` — daily collection, day book, monthly collection, payment mode, outstanding, fee status, discounts, cancellations, structure master, programme revenue, unit-wise, head-wise, add-ons, Tally CSV; each also exported as CSV |
 
 ---
 
@@ -140,33 +158,33 @@ The real open surface is Phase 3 (franchisor control) and the DPDP/system-wide l
 
 ### Module 5 · Student Lifecycle — 🟡
 
-| Spec item                    | Status | Evidence / gap                                                                                                                        |
-| ---------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| 18 tabs declared             | ✅     | `LIFECYCLE_TABS` (18 entries, each with a visibility rule)                                                                            |
-| Records per tab, per student | 🟡     | Stored as generic `{tab, title, payload}` rows — no per-tab schema, no required fields                                                |
-| Visibility enforcement       | 🟡     | `visibility` column exists; parent portal does not read lifecycle records at all, so "staff + parent" tabs are effectively staff-only |
-| Grade transitions            | ✅     | `POST /lifecycle/students/:id/promote`                                                                                                |
-| Readiness report             | ✅     | `GET /lifecycle/readiness/:studentId` (K2 → Grade 1 readiness)                                                                        |
-| TC / Graduation              | ✅     | Certificate templates + fee-gating for TC                                                                                             |
+| Spec item                    | Status | Evidence / gap                                                                                                                |
+| ---------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| 18 tabs declared             | ✅     | `LIFECYCLE_TABS` (18 entries, each with a visibility rule)                                                                    |
+| Records per tab, per student | ✅     | `TAB_SCHEMAS` in `lifecycle.rules.ts` gives all 18 tabs typed fields with required markers; writes are validated against them |
+| Visibility enforcement       | ✅     | `visibility` column honoured end-to-end, including `GET /parents/child/:id/lifecycle` (STAFF_PARENT only)                     |
+| Grade transitions            | ✅     | `POST /lifecycle/students/:id/promote`                                                                                        |
+| Readiness report             | ✅     | `GET /lifecycle/readiness/:studentId` (K2 → Grade 1 readiness)                                                                |
+| TC / Graduation              | ✅     | Certificate templates + fee-gating for TC                                                                                     |
 
 ### Module 8 · HR & Payroll — ✅ core, 🟡 edges
 
-| Spec item                                              | Status | Evidence / gap                                                             |
-| ------------------------------------------------------ | ------ | -------------------------------------------------------------------------- |
-| Shift master (4 shifts, minutes, half-day, OT trigger) | ✅     | `HrShift` + masters UI                                                     |
-| Morning salaried engine                                | ✅     | `payroll/morning/calculate`                                                |
-| Late brackets + 2/month forgiveness                    | ✅     | `late.slice(2)`, brackets 30/60/120/+                                      |
-| LWP from approved leave                                | ✅     | `StaffLeave.isLwp`                                                         |
-| Evening hourly engine (separate)                       | ✅     | `payroll/evening/calculate`, minute rates                                  |
-| OT pre-approval only (OT2)                             | ✅     | `OvertimeAuthorisation`, APPROVED-only matching                            |
-| OT multiplier (OT1)                                    | 🚫     | Placeholder multiplier on the authorisation row; business value still open |
-| PT / PF / ESIC statutory                               | ✅     | `StatutoryScheme` + slabs, `apply-statutory`                               |
-| Maker-checker / lock / reversal                        | ✅     | Enforced + unit tested                                                     |
-| Payslips + CSV export                                  | ✅     | HTML payslips, `export.csv`                                                |
-| Security deposit (morning staff)                       | 🔲     | No entity, no holding/return/forfeit tracking                              |
-| Guest engagement log                                   | 🔲     | No entity                                                                  |
-| AB penalty + auto-LWP at cutoff                        | 🟡     | LWP exists; no scheduled cutoff job that flips pending leaves              |
-| Employee self-service (my payslips / apply leave)      | ✅     | `/me/profile`, `/me/payslips`, `/me/leaves` (+ apply), `/me/attendance`    |
+| Spec item                                              | Status | Evidence / gap                                                                                                                                                                      |
+| ------------------------------------------------------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shift master (4 shifts, minutes, half-day, OT trigger) | ✅     | `HrShift` + masters UI                                                                                                                                                              |
+| Morning salaried engine                                | ✅     | `payroll/morning/calculate`                                                                                                                                                         |
+| Late brackets + 2/month forgiveness                    | ✅     | `late.slice(2)`, brackets 30/60/120/+                                                                                                                                               |
+| LWP from approved leave                                | ✅     | `StaffLeave.isLwp`                                                                                                                                                                  |
+| Evening hourly engine (separate)                       | ✅     | `payroll/evening/calculate`, minute rates                                                                                                                                           |
+| OT pre-approval only (OT2)                             | ✅     | `OvertimeAuthorisation`, APPROVED-only matching                                                                                                                                     |
+| OT multiplier (OT1)                                    | 🚫     | Placeholder multiplier on the authorisation row; business value still open                                                                                                          |
+| PT / PF / ESIC statutory                               | ✅     | `StatutoryScheme` + slabs, `apply-statutory`                                                                                                                                        |
+| Maker-checker / lock / reversal                        | ✅     | Enforced + unit tested                                                                                                                                                              |
+| Payslips + CSV export                                  | ✅     | HTML payslips, `export.csv`                                                                                                                                                         |
+| Security deposit (morning staff)                       | 🔲     | No entity, no holding/return/forfeit tracking                                                                                                                                       |
+| Guest engagement log                                   | 🔲     | No entity                                                                                                                                                                           |
+| AB penalty + auto-LWP at cutoff                        | ✅     | `runLeaveCutoffTick()` in the daily scheduler: a leave nobody decided by its last day flips to `AUTO_LWP` with `isLwp`, once per IST day; `POST /hr/leave/cutoff` runs it on demand |
+| Employee self-service (my payslips / apply leave)      | ✅     | `/me/profile`, `/me/payslips`, `/me/leaves` (+ apply), `/me/attendance`                                                                                                             |
 
 ### Module 10 · Academic — 🟡
 
@@ -181,17 +199,17 @@ The real open surface is Phase 3 (franchisor control) and the DPDP/system-wide l
 
 ### Module 11 · Inventory — 🟡 (procurement half missing)
 
-| Spec item                                      | Status | Evidence / gap                                                                  |
-| ---------------------------------------------- | ------ | ------------------------------------------------------------------------------- |
-| 8 categories + SKU coding                      | ✅     | `CATS`, `InventoryItem.sku`                                                     |
-| Stock ledger / movements                       | ✅     | `InventoryMovement`, add/issue endpoint                                         |
-| Reorder level + low-stock flag                 | ✅     | Used by analytics                                                               |
-| ₹5,000 petty cash float per unit (HO-editable) | ✅     | `unitSettings.pettyCashFloat`                                                   |
-| **PRF → PO → GRN flow**                        | ✅     | `procurement` module + UI                                                       |
-| Vendor master + pre-approved item list         | ✅     | `vendors` endpoints                                                             |
-| Student issue linked to fee                    | ✅     | `POST /inventory/:id/issue-to-student`                                          |
-| Opening stock per new unit                     | 🟡     | Can be loaded as an `ADJUSTMENT_IN` movement; no dedicated opening-stock screen |
-| **10 inventory reports**                       | ✅     | `/procurement/reports/*` + UI runner                                            |
+| Spec item                                      | Status | Evidence / gap                                                                                                        |
+| ---------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------- |
+| 8 categories + SKU coding                      | ✅     | `CATS`, `InventoryItem.sku`                                                                                           |
+| Stock ledger / movements                       | ✅     | `InventoryMovement`, add/issue endpoint                                                                               |
+| Reorder level + low-stock flag                 | ✅     | Used by analytics                                                                                                     |
+| ₹5,000 petty cash float per unit (HO-editable) | ✅     | `unitSettings.pettyCashFloat`                                                                                         |
+| **PRF → PO → GRN flow**                        | ✅     | `procurement` module + UI                                                                                             |
+| Vendor master + pre-approved item list         | ✅     | `vendors` endpoints                                                                                                   |
+| Student issue linked to fee                    | ✅     | `POST /inventory/:id/issue-to-student`                                                                                |
+| Opening stock per new unit                     | ✅     | `POST /inventory/opening-stock` — one `ADJUSTMENT_IN` per line, refused if the item already has movements in the unit |
+| **10 inventory reports**                       | ✅     | `/procurement/reports/*` + UI runner                                                                                  |
 
 ### Module 12 · Parent Communication — 🟡 + 🚫
 
@@ -210,23 +228,23 @@ The real open surface is Phase 3 (franchisor control) and the DPDP/system-wide l
 
 ### Module 13 · PTM — 🟡
 
-| Spec item                         | Status | Evidence / gap                                           |
-| --------------------------------- | ------ | -------------------------------------------------------- |
-| Session scheduling                | ✅     | `PtmSession`                                             |
-| Parent attendance + teacher notes | ✅     | `PtmRecord`                                              |
-| Physical form reference           | 🟡     | `signedFormUrl` string only — no upload/storage          |
-| Student-wise view                 | 🟡     | Records are queryable by student; no dedicated screen    |
-| Class-wise (batch) view           | ✅     | `GET /ptm/session/:id/summary`                           |
-| Per-parent slot booking           | ✅     | `/ptm/:id/slots`, `/ptm/slots/:id/book`, parent PTM card |
+| Spec item                         | Status | Evidence / gap                                                                                                |
+| --------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------- |
+| Session scheduling                | ✅     | `PtmSession`                                                                                                  |
+| Parent attendance + teacher notes | ✅     | `PtmRecord`                                                                                                   |
+| Physical form reference           | 🟡     | `signedFormUrl` keeps the reference; uploading the scan needs object storage (S3/Spaces) and a retention rule |
+| Student-wise view                 | ✅     | `GET /ptm/student/:id` + the history modal on the PTM page (meetings, attendance, booked slot, teacher notes) |
+| Class-wise (batch) view           | ✅     | `GET /ptm/session/:id/summary`                                                                                |
+| Per-parent slot booking           | ✅     | `/ptm/:id/slots`, `/ptm/slots/:id/book`, parent PTM card                                                      |
 
 ### Module 14 · Certificates & Documents — 🟡 (template set mismatch)
 
-| Spec item                                | Status | Evidence / gap                                                                                                                                                                                                                                           |
-| ---------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| HO-locked templates, serials, print, PDF | ✅     | `TEMPLATES`, `BB-U?-CERT-2627-NNNN`, `/print`, `/pdf`                                                                                                                                                                                                    |
-| I-card batch sheets                      | ✅     | `id-cards/batch/print`                                                                                                                                                                                                                                   |
-| **The spec's 7 types**                   | 🟡     | Implemented: Bonafide, Progress, Participation, Appreciation, Character, Graduation, TC. **Missing: No Dues, Fee Statement, Admission Confirmation.** The four "extra" types are lifecycle awards — keep them, but the three document types are required |
-| TC gated on cleared fees                 | ✅     | Fee check before issue                                                                                                                                                                                                                                   |
+| Spec item                                | Status | Evidence / gap                                                                                                                                                                             |
+| ---------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| HO-locked templates, serials, print, PDF | ✅     | `TEMPLATES`, `BB-U?-CERT-2627-NNNN`, `/print`, `/pdf`                                                                                                                                      |
+| I-card batch sheets                      | ✅     | `id-cards/batch/print`                                                                                                                                                                     |
+| **The spec's 7 types**                   | ✅     | Bonafide, Progress, Participation, Appreciation, Character, Graduation, TC **plus** No Dues, Fee Statement and Admission Confirmation (`certificates.controller.ts`), all with PDF + print |
+| TC gated on cleared fees                 | ✅     | Fee check before issue                                                                                                                                                                     |
 
 ### Module 15 · Evening Activity Centre — 🟡
 
@@ -279,22 +297,22 @@ The real open surface is Phase 3 (franchisor control) and the DPDP/system-wide l
 
 ## 6. System-wide (not a module, but scored per spec)
 
-| Requirement                                           | Status | Gap                                                                                                                                              |
-| ----------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Audit log on every mutation                           | ✅     | `AuditService`, global                                                                                                                           |
-| Role-based access, 8 roles                            | ✅     | `HO_ROLES`, `@Roles`, guard                                                                                                                      |
-| Multi-unit isolation                                  | ✅     | `unitScope()`, tested                                                                                                                            |
-| Login brute-force protection                          | ✅     | Throttling + failed-login audit                                                                                                                  |
-| Request validation                                    | 🟡     | DTOs on the high-risk writes (attendance, fees, admissions, PTM, evening, online payments, self-service); remaining `any` bodies are read-mostly |
-| **Consent log**                                       | ✅     | Written at registration, parent signup and via `/privacy/consent`                                                                                |
-| **PII encryption at rest**                            | ✅     | `pii.service.ts` (AES-256-GCM, `PII_KEY`)                                                                                                        |
-| **Retention policy / auto-purge**                     | ✅     | `retention.service.ts` nightly tick                                                                                                              |
-| **Data export & delete (data subject rights)**        | ✅     | `/privacy/students/:id/export`, anonymisation endpoint                                                                                           |
-| Notification fallback chain (push → WhatsApp → email) | ✅     | `dispatch.service.ts`, unit-tested                                                                                                               |
-| 29 SOPs library                                       | 🔲     | Documentation deliverable, not code                                                                                                              |
-| Brand rules (Nunito/DM Sans, palette, BumbleB scale)  | ✅     | Design system + Snowball tokens                                                                                                                  |
-| Bilingual UI (Gujarati)                               | 🟡     | Shell, login, parent portal, PTM and My Space are translated; other staff page bodies are still English                                          |
-| Nightly backups, Sentry, uptime monitoring            | ✅     | `scripts/backup.sh`, `scripts/restore.sh`, `docs/RUNBOOK.md`, Sentry in the API                                                                  |
+| Requirement                                           | Status | Gap                                                                                                                                                                                                       |
+| ----------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Audit log on every mutation                           | ✅     | `AuditService`, global                                                                                                                                                                                    |
+| Role-based access, 8 roles                            | ✅     | `HO_ROLES`, `@Roles`, guard                                                                                                                                                                               |
+| Multi-unit isolation                                  | ✅     | `unitScope()`, tested                                                                                                                                                                                     |
+| Login brute-force protection                          | ✅     | Throttling + failed-login audit                                                                                                                                                                           |
+| Request validation                                    | 🟡     | DTOs on the high-risk writes (attendance, fees, admissions, PTM, evening, online payments, self-service); remaining `any` bodies are read-mostly                                                          |
+| **Consent log**                                       | ✅     | Written at registration, parent signup and via `/privacy/consent`                                                                                                                                         |
+| **PII encryption at rest**                            | ✅     | `pii.service.ts` (AES-256-GCM, `PII_KEY`)                                                                                                                                                                 |
+| **Retention policy / auto-purge**                     | ✅     | `retention.service.ts` nightly tick                                                                                                                                                                       |
+| **Data export & delete (data subject rights)**        | ✅     | `/privacy/students/:id/export`, anonymisation endpoint                                                                                                                                                    |
+| Notification fallback chain (push → WhatsApp → email) | ✅     | `dispatch.service.ts`, unit-tested                                                                                                                                                                        |
+| 29 SOPs library                                       | 🔲     | Documentation deliverable, not code                                                                                                                                                                       |
+| Brand rules (Nunito/DM Sans, palette, BumbleB scale)  | ✅     | Design system + Snowball tokens                                                                                                                                                                           |
+| Bilingual UI (Gujarati)                               | 🟡     | Translated: shell, login, parent portal, PTM (incl. the student-history modal) and My Space. Other staff page bodies are still English — the dictionary and toggle are in place, the strings are the work |
+| Nightly backups, Sentry, uptime monitoring            | ✅     | `scripts/backup.sh`, `scripts/restore.sh`, `docs/RUNBOOK.md`, Sentry in the API                                                                                                                           |
 
 ---
 
@@ -334,7 +352,7 @@ documentation deliverable:
 | Grade-wise Discovery Flight templates       | 🟡     | One generic form; per-programme variants need the programme content   |
 | Faculty guest-engagement / security deposit | 🟡     | Not built — needs HR policy confirmation                              |
 
-**Verification for this state:** `npm test` 196/196 across 21 suites,
+**Verification for this state:** `npm test` 214/214 across 23 suites,
 `tsc --noEmit` clean, prettier clean, frontend production build clean, and all
 four CI jobs green (`API`, `Database`, `Frontend`, `Repo — prettier`).
 
@@ -359,11 +377,11 @@ drift against `schema.prisma`.
 
 ## 9. How this was verified
 
-- **Routes:** 244 enumerated from decorators and compared to the pre-refactor
+- **Routes:** 249 enumerated from decorators and compared to the pre-refactor
   baseline (130 + `/health` + 2 PDF endpoints, zero missing).
 - **Models:** 66 models / 11 enums read from `schema.prisma`; presence of entities
   such as `OvertimeAuthorisation`, `StatutoryScheme` confirmed directly.
-- **Behaviour:** 196 tests cover the fee, attendance, admission, certificate, scoping,
+- **Behaviour:** 214 tests cover the fee, attendance, admission, certificate, scoping,
   validation and payroll rules; PDFs were rendered and text-extracted.
 - **Gaps:** each 🟡/🔲 above names the file or the missing entity, so it can be
   checked independently.
