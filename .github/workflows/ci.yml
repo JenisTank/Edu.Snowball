@@ -91,8 +91,11 @@ jobs:
             --shadow-database-url "$SHADOW_DATABASE_URL" \
             --script 2>&1)
           if [ -z "$DIFF" ]; then echo "✔ no schema drift"; exit 0; fi
-          ESCAPED=$(printf '%s' "$DIFF" | head -c 4000 | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
-          echo "::error title=Schema drift::$ESCAPED"
+          escape() { printf '%s' "$1" | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}'; }
+          TAIL=$(printf '%s' "$DIFF" | tail -c 3500)
+          COLS=$(printf '%s' "$DIFF" | grep 'ALTER COLUMN' | head -10 | paste -sd ';' -)
+          echo "::error title=Drift tail::$(escape "$TAIL")"
+          echo "::error title=Drift columns::$(escape "$COLS")"
           echo "$DIFF"
           exit 1
 
