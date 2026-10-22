@@ -20,6 +20,13 @@ import { unitScope } from '../../common/auth/unit-scope';
 import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import {
+  canTransitionWaitlist,
+  isLapsed,
+  offerExpiry,
+  positionFor,
+  toOffer,
+} from './waitlist.rules';
 import { PdfService } from '../../common/pdf/pdf.service';
 import { sendWebPush } from '../notifications/push.service';
 import { buildSchedule, num } from '../fees/fees.rules';
@@ -369,7 +376,14 @@ export class AdmissionsController {
     @Req() req: any,
     @Param('id') id: string,
     @Body()
-    body: { batchId: string; instalmentPlan?: string; orientationDate?: string },
+    body: {
+      batchId: string;
+      instalmentPlan?: string;
+      orientationDate?: string;
+      /** Full batch: queue the child instead of failing the admission. */
+      waitlist?: boolean;
+      waitlistNote?: string;
+    },
   ) {
     const student = await this.prisma.student.findUnique({
       where: { id },
@@ -395,10 +409,42 @@ export class AdmissionsController {
     if (!batch || batch.unitId !== student.unitId)
       throw new BadRequestException("Pick a batch of the student's unit");
     if (!batch.isActive) throw new BadRequestException('Batch is inactive');
-    if (batch._count.students >= batch.capacity)
+    if (batch._count.students >= batch.capacity) {
+      if (body.waitlist) {
+        // Front desk keeps the family in the conversation instead of a dead end.
+        const siblings = await this.prisma.waitlistEntry.findMany({
+          where: { batchId: batch.id },
+          select: { id: true, position: true, status: true, offerExpiresAt: true },
+        });
+        const entry = await this.prisma.waitlistEntry.create({
+          data: {
+            unitId: student.unitId,
+            batchId: batch.id,
+            studentId: student.id,
+            childName: `${student.firstName} ${student.lastName}`,
+            guardianPhone:
+              student.fatherPhone || student.motherPhone || student.guardianEmail || '',
+            position: positionFor(siblings),
+            note: body.waitlistNote ?? null,
+          },
+        });
+        await this.audit.log(req, 'waitlist_entries', entry.id, 'INSERT', null, entry);
+        return {
+          waitlisted: true,
+          entry,
+          batch: {
+            id: batch.id,
+            name: batch.name,
+            capacity: batch.capacity,
+            filled: batch._count.students,
+          },
+          message: `Batch is full — ${student.firstName} is number ${entry.position} on the waitlist`,
+        };
+      }
       throw new BadRequestException(
-        `Batch is full (${batch._count.students}/${batch.capacity}) — seat tracker blocked this admission`,
+        `Batch is full (${batch._count.students}/${batch.capacity}) — add the child to the waitlist or pick another batch`,
       );
+    }
 
     const admPrefix = `BB-${student.unit.code}-${AY_SHORT}-`;
     const admissionNo = `${admPrefix}${String(await this.nextSerial(admPrefix)).padStart(4, '0')}`;
@@ -474,6 +520,125 @@ export class AdmissionsController {
       activated: { attendance: true, feeLedger: true, parentPortal: true },
       confirmationLetter: `/api/students/${id}/confirmation-letter`,
     };
+  }
+
+  // ── Waitlist (spec module 3: a full batch must not lose the family) ──
+  @Get('waitlist')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'RECEPTIONIST')
+  async waitlist(@Req() req: any, @Query('batchId') batchId?: string) {
+    const where: any = batchId
+      ? { batchId }
+      : HO_ROLES.includes(req.user.role)
+        ? {}
+        : { unitId: req.user.unitId };
+    const rows = await this.prisma.waitlistEntry.findMany({
+      where,
+      include: {
+        batch: { select: { id: true, name: true, capacity: true, startTime: true } },
+        unit: { select: { code: true, name: true } },
+      },
+      orderBy: [{ batchId: 'asc' }, { position: 'asc' }],
+      take: 300,
+    });
+    const now = new Date();
+    return rows.map((r: any) => ({ ...r, lapsed: isLapsed(r, now) }));
+  }
+
+  /** Batches with a free seat, plus the next families to call. */
+  @Get('waitlist/vacancies')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'RECEPTIONIST')
+  async waitlistVacancies(@Req() req: any) {
+    const batches = await this.prisma.batch.findMany({
+      where: {
+        isActive: true,
+        ...(HO_ROLES.includes(req.user.role) ? {} : { unitId: req.user.unitId }),
+      },
+      include: {
+        _count: { select: { students: true } },
+        waitlistEntries: { where: { status: 'WAITING' }, orderBy: { position: 'asc' } },
+      },
+    });
+    return batches
+      .map((b: any) => {
+        const seats = Math.max(0, b.capacity - b._count.students);
+        return {
+          batchId: b.id,
+          batch: b.name,
+          unitId: b.unitId,
+          seats,
+          waiting: b.waitlistEntries.length,
+          offerNext: toOffer(seats, b.waitlistEntries),
+        };
+      })
+      .filter((b: any) => b.seats > 0 || b.waiting > 0)
+      .sort((a: any, b: any) => b.waiting - a.waiting);
+  }
+
+  @Post('waitlist/:id/offer')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'RECEPTIONIST')
+  async offerSeat(@Req() req: any, @Param('id') id: string) {
+    const entry = await this.prisma.waitlistEntry.findUnique({
+      where: { id },
+      include: { batch: { include: { _count: { select: { students: true } } } } },
+    });
+    if (!entry) throw new NotFoundException('Waitlist entry not found');
+    if (!HO_ROLES.includes(req.user.role) && entry.unitId !== req.user.unitId)
+      throw new ForbiddenException('Cross-unit access denied');
+    if (!canTransitionWaitlist(entry.status, 'OFFERED'))
+      throw new BadRequestException(`Cannot offer a seat to a ${entry.status} entry`);
+    if (entry.batch._count.students >= entry.batch.capacity)
+      throw new BadRequestException('That batch is still full — free a seat first');
+
+    const updated = await this.prisma.waitlistEntry.update({
+      where: { id },
+      data: { status: 'OFFERED', offeredAt: new Date(), offerExpiresAt: offerExpiry(new Date()) },
+    });
+    await this.audit.log(req, 'waitlist_entries', id, 'UPDATE', entry, updated);
+    return updated;
+  }
+
+  /**
+   * The family accepted. Admission itself still runs through
+   * `POST admissions/students/:id/confirm`, which owns the admission number,
+   * seat check and activation — this route only closes the waitlist row.
+   */
+  @Post('waitlist/:id/convert')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'RECEPTIONIST')
+  async convertWaitlist(@Req() req: any, @Param('id') id: string) {
+    const entry = await this.prisma.waitlistEntry.findUnique({
+      where: { id },
+      include: { student: true },
+    });
+    if (!entry) throw new NotFoundException('Waitlist entry not found');
+    if (!HO_ROLES.includes(req.user.role) && entry.unitId !== req.user.unitId)
+      throw new ForbiddenException('Cross-unit access denied');
+    if (!entry.student || entry.student.status !== 'ACTIVE')
+      throw new BadRequestException(
+        'Confirm the admission first — then the waitlist entry can be marked converted',
+      );
+    const updated = await this.prisma.waitlistEntry.update({
+      where: { id },
+      data: { status: 'CONVERTED' },
+    });
+    await this.audit.log(req, 'waitlist_entries', id, 'UPDATE', entry, updated);
+    return updated;
+  }
+
+  @Post('waitlist/:id/decline')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'RECEPTIONIST')
+  async declineWaitlist(@Req() req: any, @Param('id') id: string, @Body() b: { reason?: string }) {
+    const entry = await this.prisma.waitlistEntry.findUnique({ where: { id } });
+    if (!entry) throw new NotFoundException('Waitlist entry not found');
+    if (!HO_ROLES.includes(req.user.role) && entry.unitId !== req.user.unitId)
+      throw new ForbiddenException('Cross-unit access denied');
+    if (!canTransitionWaitlist(entry.status, 'DECLINED'))
+      throw new BadRequestException(`Cannot decline a ${entry.status} entry`);
+    const updated = await this.prisma.waitlistEntry.update({
+      where: { id },
+      data: { status: 'DECLINED', note: b.reason?.trim() || entry.note },
+    });
+    await this.audit.log(req, 'waitlist_entries', id, 'UPDATE', entry, updated);
+    return updated;
   }
 
   // ── Admission confirmation letter (spec module 3) ──

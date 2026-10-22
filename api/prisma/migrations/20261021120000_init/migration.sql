@@ -265,6 +265,26 @@ CREATE TABLE "students" (
 CREATE UNIQUE INDEX "students_admission_no_key" ON "students"("admission_no");
 
 -- CreateTable
+CREATE TABLE "waitlist_entries" (
+    "id" TEXT NOT NULL,
+    "unit_id" TEXT NOT NULL,
+    "batch_id" TEXT NOT NULL,
+    "student_id" TEXT,
+    "child_name" TEXT NOT NULL,
+    "guardian_phone" TEXT NOT NULL,
+    "position" INTEGER NOT NULL,
+    "status" TEXT DEFAULT 'WAITING' NOT NULL,
+    "note" TEXT,
+    "offered_at" TIMESTAMP(3),
+    "offer_expires_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "waitlist_entries_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "waitlist_entries_unit_id_status_position_idx" ON "waitlist_entries"("unit_id", "status", "position");
+CREATE INDEX "waitlist_entries_batch_id_status_idx" ON "waitlist_entries"("batch_id", "status");
+
+-- CreateTable
 CREATE TABLE "discovery_flights" (
     "id" TEXT NOT NULL,
     "lead_id" TEXT,
@@ -1234,6 +1254,9 @@ ALTER TABLE "students" ADD CONSTRAINT "students_unit_id_fkey" FOREIGN KEY ("unit
 ALTER TABLE "students" ADD CONSTRAINT "students_programme_id_fkey" FOREIGN KEY ("programme_id") REFERENCES "programmes"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "students" ADD CONSTRAINT "students_batch_id_fkey" FOREIGN KEY ("batch_id") REFERENCES "batches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "students" ADD CONSTRAINT "students_lead_id_fkey" FOREIGN KEY ("lead_id") REFERENCES "leads"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "waitlist_entries" ADD CONSTRAINT "waitlist_entries_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "waitlist_entries" ADD CONSTRAINT "waitlist_entries_batch_id_fkey" FOREIGN KEY ("batch_id") REFERENCES "batches"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "waitlist_entries" ADD CONSTRAINT "waitlist_entries_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "discovery_flights" ADD CONSTRAINT "discovery_flights_lead_id_fkey" FOREIGN KEY ("lead_id") REFERENCES "leads"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "discovery_flights" ADD CONSTRAINT "discovery_flights_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "discovery_flights" ADD CONSTRAINT "discovery_flights_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

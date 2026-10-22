@@ -23,6 +23,7 @@ const Lifecycle = lazy(() => import('./pages/Lifecycle'));
 const Academic = lazy(() => import('./pages/Academic'));
 const Inventory = lazy(() => import('./pages/Inventory'));
 const PTM = lazy(() => import('./pages/PTM'));
+const Me = lazy(() => import('./pages/Me'));
 const Evening = lazy(() => import('./pages/Evening'));
 const HR = lazy(() => import('./pages/HR'));
 const Analytics = lazy(() => import('./pages/Analytics'));
@@ -96,6 +97,14 @@ export default function App() {
                   element={
                     <Protected>
                       <Inventory />
+                    </Protected>
+                  }
+                />
+                <Route
+                  path="/me"
+                  element={
+                    <Protected>
+                      <Me />
                     </Protected>
                   }
                 />

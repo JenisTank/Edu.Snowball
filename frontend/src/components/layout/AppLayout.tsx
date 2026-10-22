@@ -25,6 +25,7 @@ import {
   ClipboardList,
   SunMoon,
   HelpCircle,
+  IdCard,
 } from 'lucide-react';
 import { Logo } from '../brand/Logo';
 import { useAuth, ROLE_LABELS, HO_ROLES } from '../../lib/auth';
@@ -63,6 +64,7 @@ const RAIL: NavItem[] = [
   { to: '/academic', key: 'nav.academic', icon: BookOpen },
   { to: '/inventory', key: 'nav.inventory', icon: Boxes },
   { to: '/ptm', key: 'nav.ptm', icon: ClipboardList },
+  { to: '/me', key: 'nav.me', icon: IdCard },
   { to: '/evening', key: 'nav.evening', icon: SunMoon },
   { to: '/hr', key: 'nav.hr', icon: Briefcase },
   { to: '/analytics', key: 'nav.analytics', icon: BarChart3 },

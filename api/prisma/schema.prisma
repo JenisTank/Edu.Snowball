@@ -125,6 +125,7 @@ model Unit {
   feeAddons        FeeAddon[]
   discoveryFlights  DiscoveryFlight[]
   areaMappings      AreaMaster[]
+  waitlistEntries   WaitlistEntry[]
   onlinePayments    OnlinePayment[]
 
   @@map("units")
@@ -178,6 +179,7 @@ model Batch {
   programme Programme @relation(fields: [programmeId], references: [id])
   students  Student[]
   attendanceRecords AttendanceRecord[]
+  waitlistEntries   WaitlistEntry[]
 
   @@map("batches")
 }
@@ -318,12 +320,40 @@ model Student {
   ptmRecords        PtmRecord[]
   eveningEnrollments EveningEnrollment[]
   eveningAttendance  EveningAttendance[]
+  waitlistEntries    WaitlistEntry[]
   onlinePayments     OnlinePayment[]
 
   @@map("students")
 }
 
 // ─────────────────────────── DISCOVERY FLIGHT ───────────────────────────
+
+// ─────────────────────────── WAITLIST ───────────────────────────
+
+// A full batch must not dead-end the admission conversation at the front desk.
+// The child keeps their place in line; the office offers the seat when one frees.
+model WaitlistEntry {
+  id             String    @id @default(uuid()) @db.Uuid
+  unitId         String    @map("unit_id") @db.Uuid
+  batchId        String    @map("batch_id") @db.Uuid
+  studentId      String?   @map("student_id") @db.Uuid
+  childName      String    @map("child_name")
+  guardianPhone  String    @map("guardian_phone")
+  position       Int
+  status         String    @default("WAITING") // WAITING | OFFERED | CONVERTED | DECLINED | EXPIRED
+  note           String?
+  offeredAt      DateTime? @map("offered_at")
+  offerExpiresAt DateTime? @map("offer_expires_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  unit    Unit     @relation(fields: [unitId], references: [id])
+  batch   Batch    @relation(fields: [batchId], references: [id])
+  student Student? @relation(fields: [studentId], references: [id])
+
+  @@index([unitId, status, position])
+  @@index([batchId, status])
+  @@map("waitlist_entries")
+}
 
 model DiscoveryFlight {
   id           String           @id @default(uuid()) @db.Uuid

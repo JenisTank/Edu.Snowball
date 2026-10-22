@@ -1,7 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { CalendarCheck2, CheckCircle2, EyeOff, Rocket, ShieldCheck, Sparkles } from 'lucide-react';
+import {
+  CalendarCheck2,
+  CheckCircle2,
+  Clock,
+  EyeOff,
+  Rocket,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from 'lucide-react';
 import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
@@ -54,6 +63,7 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
     instalmentPlan: student.instalmentPlan ?? 'PLAN_B',
   });
   const [confirmed, setConfirmed] = useState<any>(null);
+  const [waited, setWaited] = useState<any>(null);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['admissions'] });
   const schedule = useMutation({
@@ -87,10 +97,36 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
       api(`/students/${student.id}/confirm`, { method: 'POST', body: JSON.stringify(confirmForm) }),
     onSuccess: (r) => {
       qc.invalidateQueries();
-      setConfirmed(r);
+      if (r?.waitlisted) setWaited(r);
+      else setConfirmed(r);
     },
     onError: (e: any) => setErr(e.message),
   });
+
+  if (waited) {
+    return (
+      <Modal title="Added to the waitlist" onClose={onClose}>
+        <div className="space-y-3">
+          <div className="rounded-xl bg-honey-100/80 px-4 py-3 text-center">
+            <div className="font-heading text-lg font-extrabold text-honey-800">
+              #{waited.entry?.position} in line
+            </div>
+            <div className="text-xs font-semibold text-honey-700">
+              {student.firstName} {student.lastName} · {waited.batch?.name}
+            </div>
+          </div>
+          <p className="text-xs font-semibold text-stone-600">
+            The batch is full ({waited.batch?.filled}/{waited.batch?.capacity}). The office will be
+            prompted to offer a seat the moment one frees. The Discovery Flight approval stays on
+            record, so confirmation is one click when the seat opens.
+          </p>
+          <button className="btn-primary w-full" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </Modal>
+    );
+  }
 
   if (confirmed) {
     return (
@@ -111,11 +147,11 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
             </div>
             <div className="flex justify-between">
               <span className="font-semibold text-stone-500">Fee ledger</span>
-              <span className="font-bold">activates in Slice 5</span>
+              <span className="font-bold text-emerald-600">Activated</span>
             </div>
             <div className="flex justify-between">
               <span className="font-semibold text-stone-500">Parent portal account</span>
-              <span className="font-bold">activates in Slice 6</span>
+              <span className="font-bold text-emerald-600">Activated</span>
             </div>
           </div>
           <button className="btn-primary w-full" onClick={onClose}>
@@ -264,8 +300,8 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
                 {unitBatches.map((b: any) => {
                   const left = b.capacity - (b._count?.students ?? 0);
                   return (
-                    <option key={b.id} value={b.id} disabled={left <= 0}>
-                      {b.name} · {left > 0 ? `${left} seats left` : 'FULL'}
+                    <option key={b.id} value={b.id}>
+                      {b.name} · {left > 0 ? `${left} seats left` : 'FULL — waitlist'}
                     </option>
                   );
                 })}
@@ -285,13 +321,27 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
               </select>
             </Field>
           </div>
-          <button
-            className="btn-primary w-full"
-            disabled={!confirmForm.batchId || confirm.isPending}
-            onClick={() => confirm.mutate()}
-          >
-            <Rocket className="h-4 w-4" /> Confirm admission — generate admission number
-          </button>
+          {(() => {
+            const picked = unitBatches.find((b: any) => b.id === confirmForm.batchId);
+            const full = picked ? picked.capacity - (picked._count?.students ?? 0) <= 0 : false;
+            return full ? (
+              <button
+                className="btn-primary w-full"
+                disabled={confirm.isPending}
+                onClick={() => confirm.mutate()}
+              >
+                <Clock className="h-4 w-4" /> Batch full — add to waitlist
+              </button>
+            ) : (
+              <button
+                className="btn-primary w-full"
+                disabled={!confirmForm.batchId || confirm.isPending}
+                onClick={() => confirm.mutate()}
+              >
+                <Rocket className="h-4 w-4" /> Confirm admission — generate admission number
+              </button>
+            );
+          })()}
         </div>
       )}
 
@@ -299,6 +349,110 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
         <ErrorNote>{err}</ErrorNote>
       </div>
     </Modal>
+  );
+}
+
+/** The queue for full batches, plus which seats are about to open. */
+function WaitlistPanel() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const { data: rows = [] } = useQuery({
+    queryKey: ['waitlist'],
+    queryFn: () => api('/admissions/waitlist'),
+    enabled: open,
+  });
+  const { data: vacancies = [] } = useQuery({
+    queryKey: ['waitlist-vacancies'],
+    queryFn: () => api('/admissions/waitlist/vacancies'),
+    enabled: open,
+  });
+  const act = useMutation({
+    mutationFn: ({ id, action, reason }: any) =>
+      api(`/admissions/waitlist/${id}/${action}`, {
+        method: 'POST',
+        body: JSON.stringify(action === 'decline' ? { reason } : {}),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['waitlist'] });
+      qc.invalidateQueries({ queryKey: ['waitlist-vacancies'] });
+    },
+  });
+
+  const waiting = rows.filter((r: any) => r.status === 'WAITING').length;
+  return (
+    <div className="mb-4">
+      <button className="btn-neo !px-3 !py-1.5 text-[11.5px]" onClick={() => setOpen((v) => !v)}>
+        <Users className="mr-1 inline h-3.5 w-3.5" />
+        Waitlist{waiting ? ` · ${waiting} waiting` : ''}
+        {open ? ' ▴' : ' ▾'}
+      </button>
+      {open && (
+        <div className="card mt-2 p-4">
+          {vacancies.some((v: any) => v.seats > 0 && v.waiting > 0) && (
+            <div className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] font-bold text-emerald-700">
+              {vacancies
+                .filter((v: any) => v.seats > 0 && v.waiting > 0)
+                .map((v: any) => `${v.batch}: ${v.seats} seat(s) free, ${v.waiting} waiting`)
+                .join(' · ')}
+            </div>
+          )}
+          {!rows.length ? (
+            <p className="py-3 text-center text-[12px] font-semibold text-stone-400">
+              Nobody is waiting — a full batch adds families here automatically.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {rows.map((r: any) => (
+                <div
+                  key={r.id}
+                  className="flex flex-wrap items-center gap-2 rounded-xl bg-white/60 px-3 py-2 text-[12px]"
+                >
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-honey-100 text-[11px] font-extrabold text-honey-800">
+                    {r.position}
+                  </span>
+                  <b>{r.childName}</b>
+                  <span className="text-stone-500">{r.batch?.name}</span>
+                  <span className="text-stone-400">{r.guardianPhone}</span>
+                  <Badge tone={r.lapsed ? 'red' : r.status === 'CONVERTED' ? 'green' : 'honey'}>
+                    {r.lapsed ? 'OFFER LAPSED' : r.status}
+                  </Badge>
+                  <div className="ml-auto flex gap-1">
+                    {(r.status === 'WAITING' || r.lapsed) && (
+                      <button
+                        className="btn-neo !px-2 !py-1 text-[11px]"
+                        disabled={act.isPending}
+                        onClick={() => act.mutate({ id: r.id, action: 'offer' })}
+                      >
+                        Offer seat
+                      </button>
+                    )}
+                    {r.status === 'OFFERED' && (
+                      <button
+                        className="btn-primary !px-2 !py-1 text-[11px]"
+                        disabled={act.isPending}
+                        onClick={() => act.mutate({ id: r.id, action: 'convert' })}
+                      >
+                        Mark converted
+                      </button>
+                    )}
+                    {(r.status === 'WAITING' || r.status === 'OFFERED') && (
+                      <button
+                        className="btn-neo !px-2 !py-1 text-[11px]"
+                        disabled={act.isPending}
+                        onClick={() => act.mutate({ id: r.id, action: 'decline' })}
+                      >
+                        Decline
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <ErrorNote msg={(act.error as Error)?.message} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -409,6 +563,7 @@ export default function Admissions() {
         count={`${rows.length} in pipeline`}
         subtitle="Stage-2 registration → Discovery Flight → CH approval → confirmation"
       />
+      <WaitlistPanel />
       <div className="mb-4 flex flex-wrap gap-2.5">
         <span className="chip">
           Registered <b>{counts.total}</b>
