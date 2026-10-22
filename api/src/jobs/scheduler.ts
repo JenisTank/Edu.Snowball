@@ -26,7 +26,10 @@ import {
  */
 
 const LAST_SCAN_KEY = 'scheduler.last_daily_scan';
+const LAST_COMMS_KEY = 'scheduler.last_comms_sweep';
 const TICK_MS = 60_000;
+/** Parent-reply SLA + delivery retries run every 15 minutes. */
+const COMMS_SWEEP_MS = 15 * 60_000;
 const REPEAT_JOB_ID = 'daily-attendance-plan';
 
 const log = new Logger('AttendanceScheduler');
@@ -110,6 +113,26 @@ export async function runDailyScan(
  * Start the always-on tick. Safe to call once per process; returns a stop
  * function so tests and shutdown can clear the interval.
  */
+/**
+ * Parent-reply SLA + outbox retry sweep. Separate from the daily plan: it must
+ * run every 15 minutes, and a failure here must never stop the attendance jobs.
+ */
+export async function runCommsSweepTick(prisma: any, now: Date = new Date()) {
+  const { runCommsSweep } = await import('../modules/comms/dispatch.service');
+  const setting = await prisma.appSetting.findUnique({ where: { key: LAST_COMMS_KEY } });
+  const last = (setting?.value as any)?.at ? new Date((setting?.value as any).at) : null;
+  if (last && now.getTime() - last.getTime() < COMMS_SWEEP_MS) return null;
+  const result = await runCommsSweep(prisma, now);
+  await prisma.appSetting
+    .upsert({
+      where: { key: LAST_COMMS_KEY },
+      update: { value: { at: now.toISOString() } },
+      create: { key: LAST_COMMS_KEY, value: { at: now.toISOString() } },
+    })
+    .catch(() => null);
+  return result;
+}
+
 export function startScheduler(prisma: any): () => void {
   let busy = false;
 
@@ -122,6 +145,10 @@ export function startScheduler(prisma: any): () => void {
       if (shouldRunDailyScan(new Date(), lastRun)) {
         await runDailyScan(prisma, { now: new Date() });
       }
+      // Independent guard: a comms failure must not skip the attendance plan.
+      await runCommsSweepTick(prisma).catch((err: any) =>
+        log.warn(`Comms sweep failed: ${err?.message ?? err}`),
+      );
     } catch (err: any) {
       log.warn(`Daily attendance plan not derived: ${err?.message ?? err}`);
     } finally {

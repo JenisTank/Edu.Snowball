@@ -245,6 +245,7 @@ CREATE TABLE "students" (
     "father_phone" TEXT,
     "mother_name" TEXT,
     "mother_phone" TEXT,
+    "guardian_email" TEXT,
     "address_area" TEXT,
     "programme_id" TEXT,
     "batch_id" TEXT,
@@ -426,10 +427,33 @@ CREATE TABLE "message_logs" (
     "status" TEXT DEFAULT 'QUEUED' NOT NULL,
     "scheduled_for" TIMESTAMP(3),
     "sent_at" TIMESTAMP(3),
+    "attempts" INTEGER DEFAULT 0 NOT NULL,
+    "last_error" TEXT,
+    "delivered_via" TEXT,
+    "template_code" TEXT,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "message_logs_pkey" PRIMARY KEY ("id")
 );
 
+
+-- CreateTable
+CREATE TABLE "message_templates" (
+    "id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "channel" TEXT DEFAULT 'WHATSAPP' NOT NULL,
+    "language" TEXT DEFAULT 'en' NOT NULL,
+    "body" TEXT NOT NULL,
+    "meta_template" TEXT,
+    "approved" BOOLEAN DEFAULT false NOT NULL,
+    "active" BOOLEAN DEFAULT true NOT NULL,
+    "updated_by_id" TEXT,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "message_templates_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "message_templates_code_key" ON "message_templates"("code");
 
 -- CreateTable
 CREATE TABLE "consent_log" (
@@ -466,6 +490,8 @@ CREATE TABLE "parent_messages" (
     "sender" TEXT NOT NULL,
     "body" TEXT NOT NULL,
     "read_at" TIMESTAMP(3),
+    "replied_at" TIMESTAMP(3),
+    "escalated_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "parent_messages_pkey" PRIMARY KEY ("id")
 );

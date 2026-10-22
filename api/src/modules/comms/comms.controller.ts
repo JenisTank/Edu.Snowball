@@ -17,6 +17,9 @@ import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { PushService } from '../../modules/notifications/push.service';
+import { CommsDispatchService } from './dispatch.service';
+import { providerStatus } from './providers';
+import { DEFAULT_TEMPLATES, missingVariables, renderTemplate } from './comms.rules';
 
 // ─────────────────────────────────────────────────────────────
 // Communication Centre (Slice 7)
@@ -34,6 +37,7 @@ export class CommsController {
     private prisma: PrismaService,
     private audit: AuditService,
     private push: PushService,
+    private dispatch: CommsDispatchService,
   ) {}
 
   @Get('messages')
@@ -111,6 +115,11 @@ export class CommsController {
     const reply = await this.prisma.parentMessage.create({
       data: { studentId, unitId: student.unitId, sender: 'CENTRE_HEAD', body: b.body.trim() },
     });
+    // Answering the thread closes the SLA and clears any AD escalation.
+    await this.prisma.parentMessage.updateMany({
+      where: { studentId, sender: 'PARENT', repliedAt: null },
+      data: { repliedAt: new Date(), escalatedAt: null },
+    });
     const phone = student.fatherPhone || student.motherPhone;
     if (phone)
       await this.push.send(phone, {
@@ -167,28 +176,187 @@ export class CommsController {
     return { ok: true, queued };
   }
 
-  // ── Dispatch the queue (sandbox: marks SENT; live: hands to BSP) ──
+  // ── Delivery providers this deployment can use ──
+  @Get('providers')
+  providers() {
+    return providerStatus();
+  }
+
+  // ── Dispatch the queue: push already went out, now WhatsApp → email ──
   @Post('dispatch')
   @Roles(...ANNOUNCE_ROLES)
-  async dispatch(@Req() req: any) {
+  async dispatchQueue(@Req() req: any) {
     const scope = HO_ROLES.includes(req.user.role) ? {} : { unitId: req.user.unitId };
-    const pending = await this.prisma.messageLog.findMany({
-      where: { status: 'QUEUED', channel: 'WHATSAPP', ...scope },
-      take: 500,
+    // Keep the unit scoping that the single-outbox rule promises.
+    const pending = await this.prisma.messageLog.count({
+      where: { status: 'QUEUED', ...scope, unitId: { not: null } },
     });
-    const live = !!env.waBspKey;
-    // Sandbox mode: simulate a successful BSP handoff so the full pipeline
-    // (queue → send → delivery state) is testable before go-live.
-    for (const m of pending) {
-      await this.prisma.messageLog.update({
-        where: { id: m.id },
-        data: { status: 'SENT', sentAt: new Date() },
-      });
-    }
+    const summary = await this.dispatch.dispatchPending({ limit: 300 });
     await this.audit.log(req, 'message_logs', 'dispatch', 'UPDATE', null, {
-      sent: pending.length,
-      mode: live ? 'LIVE' : 'SANDBOX',
+      pending,
+      sent: summary.sent,
+      failed: summary.failed,
+      suppressed: summary.suppressed,
     });
-    return { ok: true, sent: pending.length, mode: live ? 'LIVE' : 'SANDBOX' };
+    return { ok: true, ...summary };
+  }
+
+  /** Re-queue FAILED messages after a credential or template fix. */
+  @Post('retry')
+  @Roles(...ANNOUNCE_ROLES)
+  async retry(@Req() req: any) {
+    const scope = HO_ROLES.includes(req.user.role) ? {} : { unitId: req.user.unitId };
+    const result = await this.prisma.messageLog.updateMany({
+      where: { ...scope, status: 'FAILED' },
+      data: { status: 'QUEUED', attempts: 0, scheduledFor: null, lastError: null },
+    });
+    await this.audit.log(req, 'message_logs', 'retry', 'UPDATE', null, { requeued: result.count });
+    return { ok: true, requeued: result.count };
+  }
+
+  // ── Templates (HO-locked wording, spec B2) ──
+  @Get('templates')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR')
+  async templates() {
+    await this.dispatch.ensureTemplates();
+    return this.prisma.messageTemplate.findMany({ orderBy: [{ channel: 'asc' }, { code: 'asc' }] });
+  }
+
+  @Post('templates')
+  @Roles('FOUNDER', 'ACADEMIC_DIR')
+  async createTemplate(
+    @Req() req: any,
+    @Body()
+    b: {
+      code: string;
+      name: string;
+      channel?: string;
+      language?: string;
+      body: string;
+      metaTemplate?: string;
+    },
+  ) {
+    if (!b.code?.trim() || !b.name?.trim() || !b.body?.trim())
+      throw new BadRequestException('Code, name and body are required');
+    const missing = missingVariables(b.body, { child: 'x' });
+    if (missing.length) {
+      // Unknown placeholders render literally, so catch them at authoring time.
+      const allowed = new Set([
+        'child',
+        'batch',
+        'date',
+        'amount',
+        'dueDate',
+        'receiptNo',
+        'admissionNo',
+        'orientationDate',
+        'fromDate',
+        'toDate',
+        'message',
+        'title',
+        'unit',
+      ]);
+      const bad = missing.filter((m) => !allowed.has(m));
+      if (bad.length)
+        throw new BadRequestException(`Unknown template variables: ${bad.join(', ')}`);
+    }
+    const row = await this.prisma.messageTemplate.create({
+      data: {
+        code: b.code.trim(),
+        name: b.name.trim(),
+        channel: b.channel ?? 'WHATSAPP',
+        language: b.language ?? 'en',
+        body: b.body,
+        metaTemplate: b.metaTemplate ?? null,
+        updatedById: req.user.sub,
+      },
+    });
+    await this.audit.log(req, 'message_templates', row.id, 'INSERT', null, row);
+    return row;
+  }
+
+  @Post('templates/:id/approve')
+  @Roles('FOUNDER', 'ACADEMIC_DIR')
+  async approveTemplate(@Req() req: any, @Param('id') id: string) {
+    const tpl = await this.prisma.messageTemplate.findUnique({ where: { id } });
+    if (!tpl) throw new NotFoundException('Template not found');
+    if (tpl.channel === 'WHATSAPP' && !(tpl as any).metaTemplate)
+      throw new BadRequestException('Set the BSP-approved template name before approving');
+    const row = await this.prisma.messageTemplate.update({
+      where: { id },
+      data: { approved: true, updatedById: req.user.sub },
+    });
+    await this.audit.log(
+      req,
+      'message_templates',
+      id,
+      'UPDATE',
+      { approved: false },
+      { approved: true },
+    );
+    return row;
+  }
+
+  @Post('templates/:id')
+  @Roles('FOUNDER', 'ACADEMIC_DIR')
+  async updateTemplate(@Req() req: any, @Param('id') id: string, @Body() b: any) {
+    const tpl = await this.prisma.messageTemplate.findUnique({ where: { id } });
+    if (!tpl) throw new NotFoundException('Template not found');
+    const row = await this.prisma.messageTemplate.update({
+      where: { id },
+      data: {
+        ...(b.name ? { name: String(b.name).trim() } : {}),
+        ...(b.body ? { body: String(b.body) } : {}),
+        ...(b.language ? { language: String(b.language) } : {}),
+        ...(b.metaTemplate !== undefined ? { metaTemplate: b.metaTemplate || null } : {}),
+        ...(b.active !== undefined ? { active: !!b.active } : {}),
+        // Editing the wording invalidates the approval.
+        approved: false,
+        updatedById: req.user.sub,
+      },
+    });
+    await this.audit.log(req, 'message_templates', id, 'UPDATE', tpl, row);
+    return row;
+  }
+
+  /** Preview a template with sample variables — no message is created. */
+  @Get('templates/:code/preview')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
+  async preview(@Param('code') code: string) {
+    const tpl = await this.prisma.messageTemplate.findUnique({ where: { code } });
+    const fallback = DEFAULT_TEMPLATES.find((t) => t.code === code);
+    if (!tpl && !fallback) throw new NotFoundException('Template not found');
+    const body = tpl?.body ?? fallback!.body;
+    return {
+      code,
+      body,
+      preview: renderTemplate(body, {
+        child: 'Aarav Patel',
+        batch: 'K1 Morning Gujarati',
+        date: new Date().toLocaleDateString('en-IN'),
+        amount: '12,000',
+        dueDate: '10 Oct 2026',
+        receiptNo: 'BB-U1-RCPT-2627-0001',
+        admissionNo: 'BB-U1-2627-0001',
+        orientationDate: '05 Jun 2026',
+        fromDate: '22 Oct 2026',
+        toDate: '24 Oct 2026',
+      }),
+    };
+  }
+
+  // ── Parent reply SLA ──
+  @Get('sla')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
+  async sla() {
+    return this.dispatch.slaBoard();
+  }
+
+  @Post('escalations/run')
+  @Roles('FOUNDER', 'ACADEMIC_DIR')
+  async escalations(@Req() req: any) {
+    const result = await this.dispatch.runEscalationScan();
+    await this.audit.log(req, 'parent_messages', 'escalation-scan', 'UPDATE', null, result);
+    return result;
   }
 }

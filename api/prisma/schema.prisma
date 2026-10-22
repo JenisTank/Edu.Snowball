@@ -285,6 +285,7 @@ model Student {
   fatherPhone   String?       @map("father_phone")
   motherName    String?       @map("mother_name")
   motherPhone   String?       @map("mother_phone")
+  guardianEmail String?       @map("guardian_email") // email fallback channel
   addressArea   String?       @map("address_area")
   programmeId   String?       @map("programme_id") @db.Uuid
   batchId       String?       @map("batch_id") @db.Uuid
@@ -508,14 +509,37 @@ model MessageLog {
   studentId    String?   @map("student_id") @db.Uuid
   unitId       String?   @map("unit_id") @db.Uuid
   payload      Json?
-  status       String    @default("QUEUED") // QUEUED | SENT | FAILED
+  status       String    @default("QUEUED") // QUEUED | SENT | FAILED | SUPPRESSED
   scheduledFor DateTime? @map("scheduled_for")
   sentAt       DateTime? @map("sent_at")
+  attempts     Int       @default(0)
+  lastError    String?   @map("last_error")
+  deliveredVia String?   @map("delivered_via") // PUSH | WHATSAPP | EMAIL (+ _SANDBOX)
+  templateCode String?   @map("template_code")
   createdAt    DateTime  @default(now()) @map("created_at")
 
   student Student? @relation(fields: [studentId], references: [id])
 
   @@map("message_logs")
+}
+
+// HO-managed message templates (spec: B2 template management). Wording is
+// locked at Head Office; units choose when to send, never what it says.
+model MessageTemplate {
+  id           String   @id @default(uuid()) @db.Uuid
+  code         String   @unique
+  name         String
+  channel      String   @default("WHATSAPP") // WHATSAPP | EMAIL | INTERNAL
+  language     String   @default("en") // en | gu
+  body         String
+  metaTemplate String?  @map("meta_template") // BSP-approved template name
+  approved     Boolean  @default(false)
+  active       Boolean  @default(true)
+  updatedById  String?  @map("updated_by_id") @db.Uuid
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("message_templates")
 }
 
 model ConsentLog {
@@ -549,10 +573,12 @@ model ParentMessage {
   id        String   @id @default(uuid()) @db.Uuid
   studentId String   @map("student_id") @db.Uuid
   unitId    String   @map("unit_id") @db.Uuid
-  sender    String   // PARENT | CENTRE_HEAD
-  body      String
-  readAt    DateTime? @map("read_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  sender      String    // PARENT | CENTRE_HEAD
+  body        String
+  readAt      DateTime? @map("read_at")
+  repliedAt   DateTime? @map("replied_at") // set when the CH replies to this thread
+  escalatedAt DateTime? @map("escalated_at") // AD escalation after the reply SLA
+  createdAt   DateTime @default(now()) @map("created_at")
 
   student Student @relation(fields: [studentId], references: [id])
 

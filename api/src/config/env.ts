@@ -30,6 +30,32 @@ export const env = {
   get waBspKey() {
     return process.env.WA_BSP_KEY ?? '';
   },
+  get waBspUrl() {
+    return process.env.WA_BSP_URL ?? 'https://graph.facebook.com/v20.0';
+  },
+  /** WhatsApp Business phone-number id (Cloud API) or the BSP's sender id. */
+  get waPhoneId() {
+    return process.env.WA_PHONE_ID ?? '';
+  },
+  /** SMTP connection string, e.g. smtps://user:pass@smtp.host:465 */
+  get smtpUrl() {
+    return process.env.SMTP_URL ?? '';
+  },
+  get mailFrom() {
+    return process.env.MAIL_FROM ?? 'BumbleB Kidz <no-reply@bumblebkidz.com>';
+  },
+  /** 32-byte key (base64/hex) used to encrypt statutory PII at rest. */
+  get piiKey() {
+    return process.env.PII_KEY ?? '';
+  },
+  /** How many days of message history to keep (DPDP retention). */
+  get retentionMessageDays() {
+    return Number(process.env.RETENTION_MESSAGE_DAYS ?? 730);
+  },
+  /** How many years of audit log to keep (companies act / DPDP). */
+  get retentionAuditDays() {
+    return Number(process.env.RETENTION_AUDIT_DAYS ?? 2555);
+  },
   get vapidPublicKey() {
     return process.env.VAPID_PUBLIC_KEY ?? '';
   },
@@ -63,6 +89,13 @@ export function validateEnv(): void {
 
   if (!env.waBspKey)
     console.warn('⚠️  WA_BSP_KEY not set — WhatsApp dispatch stays in sandbox mode');
+  if (!env.smtpUrl) console.warn('⚠️  SMTP_URL not set — email fallback stays disabled');
+  if (!env.piiKey)
+    console.warn(
+      '⚠️  PII_KEY not set — statutory identifiers are stored unencrypted (development only)',
+    );
+  else if (env.isProduction && env.piiKey.length < 32)
+    problems.push('PII_KEY must be at least 32 characters when set in production');
   if (!env.vapidPublicKey || !env.vapidPrivateKey) {
     console.warn('⚠️  VAPID keys not set — parent web push stays disabled');
   }
