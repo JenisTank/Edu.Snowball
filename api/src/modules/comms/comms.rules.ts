@@ -186,6 +186,15 @@ export const DEFAULT_TEMPLATES: {
     body: 'Your leave request for {{child}} ({{fromDate}} to {{toDate}}) is approved. Thank you for telling us.',
   },
   {
+    code: 'weekly_digest',
+    name: 'Weekly parent digest',
+    channel: 'EMAIL',
+    language: 'en',
+    // The digest body is generated per child (digest.rules.ts); this row exists
+    // so the template list is complete and HO can see the fallback wording.
+    body: "Dear parent, here is {{child}}'s week at BumbleB Kidz: {{summary}}",
+  },
+  {
     code: 'escalation_3day',
     name: 'Three-day absence escalation',
     channel: 'INTERNAL',

@@ -18,6 +18,8 @@ import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { PushService } from '../../modules/notifications/push.service';
 import { CommsDispatchService } from './dispatch.service';
+import { DigestService } from './digest.service';
+import { DIGEST_CADENCE, weekKey } from './digest.rules';
 import { providerStatus } from './providers';
 import { DEFAULT_TEMPLATES, missingVariables, renderTemplate } from './comms.rules';
 
@@ -38,6 +40,7 @@ export class CommsController {
     private audit: AuditService,
     private push: PushService,
     private dispatch: CommsDispatchService,
+    private digest: DigestService,
   ) {}
 
   @Get('messages')
@@ -343,6 +346,82 @@ export class CommsController {
         toDate: '24 Oct 2026',
       }),
     };
+  }
+
+  // ── Weekly parent digest (email + PDF) ──
+  /**
+   * Queue this week's digests. `dryRun=true` reports the numbers without
+   * writing to the outbox, so a Centre Head can sanity-check a whole unit first.
+   */
+  @Post('digest/run')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
+  async runDigest(
+    @Req() req: any,
+    @Query('unitId') unitId?: string,
+    @Query('dryRun') dryRun?: string,
+  ) {
+    const scope = HO_ROLES.includes(req.user.role) ? unitId : req.user.unitId;
+    const result = await this.digest.run({
+      unitId: scope || undefined,
+      dryRun: dryRun === 'true' || dryRun === '1',
+    });
+    await this.audit.log(req, 'message_logs', `digest:${result.week}`, 'UPDATE', null, {
+      queued: result.queued,
+      skipped: result.skipped,
+      empty: result.empty,
+      dryRun: dryRun === 'true' || dryRun === '1',
+    });
+    return result;
+  }
+
+  /** Preview one child's digest exactly as the parent will receive it. */
+  @Get('digest/:studentId/preview')
+  @Roles(...ANNOUNCE_ROLES)
+  async digestPreview(@Req() req: any, @Param('studentId') studentId: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: { unitId: true },
+    });
+    if (!student) throw new NotFoundException('Student not found');
+    if (!HO_ROLES.includes(req.user.role) && req.user.unitId !== student.unitId)
+      throw new BadRequestException('Cross-unit access denied');
+    const preview = await this.digest.preview(studentId);
+    if (!preview) throw new NotFoundException('Nothing to summarise for this student');
+    return preview;
+  }
+
+  /** Download the same digest as a PDF. */
+  @Get('digest/:studentId/pdf')
+  @Roles(...ANNOUNCE_ROLES)
+  async digestPdf(@Req() req: any, @Param('studentId') studentId: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: { unitId: true },
+    });
+    if (!student) throw new NotFoundException('Student not found');
+    if (!HO_ROLES.includes(req.user.role) && req.user.unitId !== student.unitId)
+      throw new BadRequestException('Cross-unit access denied');
+    const pdf = await this.digest.digestPdf(studentId);
+    if (!pdf) throw new NotFoundException('Nothing to summarise for this student');
+    return {
+      contentType: 'application/pdf',
+      filename: `digest-${weekKey()}.pdf`,
+      base64: pdf.toString('base64'),
+    };
+  }
+
+  /** Send the queue now instead of waiting for the next sweep. */
+  @Post('digest/flush')
+  @Roles('FOUNDER', 'ACADEMIC_DIR')
+  async flushDigest() {
+    return this.digest.flush();
+  }
+
+  /** Cadence + this week's key, so the UI can show "next digest Monday". */
+  @Get('digest/schedule')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
+  digestSchedule() {
+    return { cadence: DIGEST_CADENCE, week: weekKey() };
   }
 
   // ── Parent reply SLA ──

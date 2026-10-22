@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { Megaphone, Send, Smartphone, MessageCircle } from 'lucide-react';
+import { Megaphone, Send, Smartphone, MessageCircle, Newspaper } from 'lucide-react';
 import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
@@ -15,6 +15,7 @@ const TYPE_META: Record<string, { label: string; tone: any }> = {
   RECEIPT: { label: 'Receipt', tone: 'green' },
   ESCALATION_3DAY: { label: '3-day escalation', tone: 'violet' },
   ADMIN_CALL: { label: 'Admin call', tone: 'stone' },
+  WEEKLY_DIGEST: { label: 'Weekly digest', tone: 'honey' },
 };
 
 export default function Comms() {
@@ -205,6 +206,8 @@ export default function Comms() {
         </div>
       )}
 
+      {canSend && <DigestCard />}
+
       <DataTable
         columns={cols}
         data={msgs}
@@ -330,6 +333,87 @@ export default function Comms() {
             </button>
           </div>
         </Modal>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Weekly digest controls.
+ *
+ * The digest is generated from attendance, the fee ledger, PTM bookings and
+ * milestones — nothing is typed by hand. "Preview" is a dry run over the whole
+ * unit, so a Centre Head sees exactly who would receive mail before anything
+ * leaves the building.
+ */
+function DigestCard() {
+  const [preview, setPreview] = useState<any>(null);
+  const { data: schedule } = useQuery({
+    queryKey: ['digest-schedule'],
+    queryFn: () => api('/comms/digest/schedule'),
+  });
+  const run = useMutation({
+    mutationFn: (dryRun: boolean) =>
+      api(`/comms/digest/run?dryRun=${dryRun ? 'true' : 'false'}`, { method: 'POST' }),
+    onSuccess: (r: any, dryRun: boolean) => {
+      if (dryRun) setPreview(r);
+    },
+  });
+
+  return (
+    <div className="neo-inset mb-4 space-y-2 p-3.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Newspaper className="h-4 w-4 text-honey-700" />
+        <b className="font-heading text-[13px]">Weekly parent digest</b>
+        <span className="chip">
+          Every Monday {String(schedule?.cadence?.hourIST ?? 8).padStart(2, '0')}:00 IST
+        </span>
+        {schedule?.week && (
+          <span className="chip">
+            Week <b>{schedule.week}</b>
+          </span>
+        )}
+        <div className="ml-auto flex gap-2">
+          <button
+            className="btn-neo !px-2.5 !py-1 text-[11.5px]"
+            disabled={run.isPending}
+            onClick={() => run.mutate(true)}
+          >
+            {run.isPending ? 'Checking…' : 'Preview run'}
+          </button>
+          <button
+            className="btn-primary !px-2.5 !py-1 text-[11.5px]"
+            disabled={run.isPending}
+            onClick={() => run.mutate(false)}
+          >
+            Queue this week
+          </button>
+        </div>
+      </div>
+      <p className="text-[11.5px] text-stone-500">
+        Attendance, fee status, PTM slot and milestones in one email per family — the same content
+        is available as a PDF in the parent portal.
+      </p>
+      {preview && (
+        <div className="flex flex-wrap gap-2 text-[11.5px] font-semibold text-stone-700">
+          <span className="chip">
+            Eligible <b>{preview.eligible}</b>
+          </span>
+          <span className="chip">
+            Would send <b>{preview.queued}</b>
+          </span>
+          <span className="chip">
+            Skipped <b>{preview.skipped}</b>
+          </span>
+          <span className="chip">
+            Quiet week <b>{preview.empty}</b>
+          </span>
+        </div>
+      )}
+      {run.data && !preview && (
+        <p className="text-[12px] font-bold text-emerald-700">
+          Queued {(run.data as any).queued} digest(s) for week {(run.data as any).week}.
+        </p>
       )}
     </div>
   );

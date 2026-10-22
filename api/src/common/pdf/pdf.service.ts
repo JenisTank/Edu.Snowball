@@ -139,6 +139,64 @@ export class PdfService {
     });
   }
 
+  /**
+   * WinAnsi-safe text. PDF standard fonts cannot encode the rupee sign, the
+   * em dash or the middle dot, and pdf-lib throws rather than substituting, so
+   * every string bound for a PDF passes through here first.
+   */
+  private ansi(text: string): string {
+    return String(text ?? '')
+      .replace(/₹/g, 'INR ')
+      .replace(/[—–]/g, '-')
+      .replace(/[·•]/g, '-')
+      .replace(/[’‘]/g, "'")
+      .replace(/[“”]/g, '"')
+      .replace(/[^\x20-\x7E\n]/g, '');
+  }
+
+  /**
+   * Generic flowing text document (weekly digest, notes, letters). Kept
+   * deliberately simple: one column, automatic pagination, no layout language.
+   */
+  async textPdf(data: { title: string; subtitle: string; body: string }): Promise<Buffer> {
+    const doc = await PDFDocument.create();
+    doc.setTitle(this.ansi(data.title));
+    doc.setProducer('BumbleB Kidz ERP');
+    doc.setCreationDate(new Date());
+
+    const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const size = 10.5;
+    const leading = 16;
+
+    let page = doc.addPage([595, 842]);
+    const { width, height } = page.getSize();
+    this.header(page, bold, font, this.ansi(data.title), this.ansi(data.subtitle));
+
+    let y = height - 130;
+    const bottom = 90;
+
+    for (const block of this.ansi(data.body).split('\n')) {
+      if (!block.trim()) {
+        y -= leading * 0.5;
+        continue;
+      }
+      for (const line of this.wrap(block, font, size, width - 96)) {
+        if (y < bottom) {
+          this.footer(page, font, 'BumbleB Kidz');
+          page = doc.addPage([595, 842]);
+          y = height - 90;
+        }
+        page.drawText(line, { x: 48, y, size, font, color: INK });
+        y -= leading;
+      }
+    }
+
+    this.footer(page, font, 'BumbleB Kidz');
+    const bytes = await doc.save();
+    return Buffer.from(bytes);
+  }
+
   async receiptPdf(data: ReceiptData): Promise<Buffer> {
     const doc = await PDFDocument.create();
     doc.setTitle(`Fee receipt ${data.receiptNo}`);

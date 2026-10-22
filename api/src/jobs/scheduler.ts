@@ -34,6 +34,7 @@ const LAST_SCAN_KEY = 'scheduler.last_daily_scan';
 const LAST_COMMS_KEY = 'scheduler.last_comms_sweep';
 const LAST_RETENTION_KEY = 'scheduler.last_retention';
 const LAST_LEAVE_CUTOFF_KEY = 'scheduler.last_leave_cutoff';
+const LAST_DIGEST_KEY = 'scheduler.last_weekly_digest';
 const TICK_MS = 60_000;
 /** Parent-reply SLA + delivery retries run every 15 minutes. */
 const COMMS_SWEEP_MS = 15 * 60_000;
@@ -205,6 +206,47 @@ export async function runLeaveCutoffTick(prisma: any, now: Date = new Date(), fo
   return { dateISO, autoLwp: outcome.autoLwp, employees: outcome.employees, skipped: false };
 }
 
+/**
+ * Weekly parent digest (email + PDF).
+ *
+ * Guarded by the ISO week key rather than a timestamp: the tick runs every
+ * minute, and only the cadence window (Monday from 08:00 IST) opens the run.
+ * Queueing and sending are separate steps so a slow SMTP server cannot block
+ * the attendance plan behind it.
+ */
+export async function runDigestTick(prisma: any, now: Date = new Date()) {
+  const setting = await prisma.appSetting.findUnique({ where: { key: LAST_DIGEST_KEY } });
+  const lastWeek = (setting?.value as any)?.week ?? null;
+  const { digestWindowOpen } = await import('../modules/comms/digest.rules');
+  const gate = digestWindowOpen(now, lastWeek);
+  if (!gate.open) return { week: gate.week, skipped: true, reason: gate.reason };
+
+  const { DigestService } = await import('../modules/comms/digest.service');
+  const { PdfService } = await import('../common/pdf/pdf.service');
+  const digest = new DigestService(prisma, new PdfService());
+
+  const queued = await digest.run({ now });
+  const sent = await digest.flush(200);
+
+  // Only stamp the week once the queue step succeeded — a crash mid-run retries.
+  await prisma.appSetting
+    .upsert({
+      where: { key: LAST_DIGEST_KEY },
+      update: { value: { week: gate.week, at: now.toISOString(), queued: queued.queued } },
+      create: {
+        key: LAST_DIGEST_KEY,
+        value: { week: gate.week, at: now.toISOString(), queued: queued.queued },
+      },
+    })
+    .catch(() => null);
+
+  log.log(
+    `🗞  weekly digest ${gate.week}: queued=${queued.queued} sent=${sent.sent}` +
+      (sent.sandbox ? ' (SMTP not configured — queued only)' : ''),
+  );
+  return { week: gate.week, skipped: false, queued, sent };
+}
+
 export function startScheduler(prisma: any): () => void {
   let busy = false;
 
@@ -226,6 +268,9 @@ export function startScheduler(prisma: any): () => void {
       );
       await runLeaveCutoffTick(prisma).catch((err: any) =>
         log.warn(`Leave cut-off failed: ${err?.message ?? err}`),
+      );
+      await runDigestTick(prisma).catch((err: any) =>
+        log.warn(`Weekly digest failed: ${err?.message ?? err}`),
       );
     } catch (err: any) {
       log.warn(`Daily attendance plan not derived: ${err?.message ?? err}`);
