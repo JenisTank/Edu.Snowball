@@ -128,6 +128,38 @@ export async function api<T = any>(
   return res.json();
 }
 
+/**
+ * Download an authenticated file (CSV report, PDF) through the API client.
+ *
+ * A plain `<a href>` cannot carry the bearer token, and the token also rides in
+ * a cookie — but the blob route works in every browser and inside the preview
+ * iframe, so reports download the same way everywhere.
+ */
+export async function downloadFile(path: string, fallbackName = 'download.csv') {
+  const token = getToken();
+  const res = await fetch(`${BASE}${path}`, {
+    credentials: 'include',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}`, 'x-bb-token': token } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message || `Download failed (${res.status})`);
+  }
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const match = /filename="?([^";]+)"?/.exec(disposition);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = match?.[1] ?? fallbackName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
 export const fmtINR = (n: number | string) =>
   '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
 

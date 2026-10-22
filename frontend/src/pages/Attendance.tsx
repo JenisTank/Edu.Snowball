@@ -41,6 +41,229 @@ function initials(name: string) {
     .toUpperCase();
 }
 
+// ───────────────────────── Leave register + daily plan ─────────────────────────
+const LEAVE_TYPES = ['PLANNED', 'SICK', 'FAMILY', 'OTHER'];
+
+function LeavePanel() {
+  const qc = useQueryClient();
+  const [status, setStatus] = useState('PENDING');
+  const [form, setForm] = useState<any>({
+    studentId: '',
+    fromDate: todayISO(),
+    toDate: todayISO(),
+    type: 'PLANNED',
+    reason: '',
+  });
+  const [err, setErr] = useState('');
+  const [students, setStudents] = useState<any[]>([]);
+
+  useEffect(() => {
+    api('/students')
+      .then((rows: any[]) => setStudents(rows))
+      .catch(() => null);
+  }, []);
+
+  const { data: rows = [] } = useQuery({
+    queryKey: ['leaves', status],
+    queryFn: () => api(`/leaves${status ? `?status=${status}` : ''}`),
+  });
+  const { data: plan } = useQuery({
+    queryKey: ['att-daily-plan'],
+    queryFn: () => api('/attendance/daily-plan'),
+    staleTime: 60_000,
+  });
+
+  const create = useMutation({
+    mutationFn: () => api('/leaves', { method: 'POST', body: JSON.stringify(form) }),
+    onSuccess: () => {
+      setForm({ ...form, studentId: '', reason: '' });
+      qc.invalidateQueries({ queryKey: ['leaves'] });
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+  const decide = useMutation({
+    mutationFn: ({ id, kind }: any) =>
+      api(`/leaves/${id}/${kind}`, { method: 'POST', body: JSON.stringify({ note: '' }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leaves'] }),
+    onError: (e: any) => setErr(e.message),
+  });
+
+  return (
+    <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="card overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[color:var(--line)] px-4 py-3">
+          <div>
+            <b className="text-[13.5px]">Leave register</b>
+            <p className="text-[11px] text-[color:var(--txt3)]">
+              Approved leave silences the absence alert for those days.
+            </p>
+          </div>
+          <div className="seg">
+            {['PENDING', 'APPROVED', 'REJECTED', ''].map((v) => (
+              <button
+                key={v || 'all'}
+                className={cn('seg-item', status === v && 'seg-item-active')}
+                onClick={() => setStatus(v)}
+              >
+                {v ? v.toLowerCase() : 'all'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="max-h-[320px] divide-y divide-[color:var(--line)] overflow-auto">
+          {rows.map((l: any) => (
+            <div key={l.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[12.5px] font-bold">
+                  {l.student?.firstName} {l.student?.lastName}
+                  <span className="ml-2 font-semibold text-[color:var(--txt3)]">
+                    {l.student?.admissionNo}
+                  </span>
+                </div>
+                <div className="text-[11px] text-[color:var(--txt3)]">
+                  {new Date(l.fromDate).toLocaleDateString('en-IN')} →{' '}
+                  {new Date(l.toDate).toLocaleDateString('en-IN')} · {l.type.toLowerCase()} ·{' '}
+                  {l.source.toLowerCase()} · {l.reason}
+                </div>
+              </div>
+              <Badge
+                tone={
+                  l.status === 'APPROVED'
+                    ? 'green'
+                    : l.status === 'PENDING'
+                      ? 'honey'
+                      : l.status === 'REJECTED'
+                        ? 'red'
+                        : 'stone'
+                }
+              >
+                {l.status}
+              </Badge>
+              {l.status === 'PENDING' && (
+                <div className="flex gap-1">
+                  <button
+                    className="btn-neo !px-2 !py-1 text-[11.5px]"
+                    onClick={() => decide.mutate({ id: l.id, kind: 'approve' })}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    className="btn-neo !px-2 !py-1 text-[11.5px]"
+                    onClick={() => decide.mutate({ id: l.id, kind: 'reject' })}
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+          {!rows.length && (
+            <div className="px-4 py-8 text-center text-[12.5px] font-semibold text-[color:var(--txt3)]">
+              No leave applications in this view.
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-[color:var(--line)] px-4 py-3">
+          <b className="text-[12.5px]">Log a phone-in leave</b>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <select
+              className="input"
+              value={form.studentId}
+              onChange={(e) => setForm({ ...form, studentId: e.target.value })}
+            >
+              <option value="">Student…</option>
+              {students.map((s: any) => (
+                <option key={s.id} value={s.id}>
+                  {s.firstName} {s.lastName} · {s.admissionNo}
+                </option>
+              ))}
+            </select>
+            <input
+              type="date"
+              className="input"
+              value={form.fromDate}
+              onChange={(e) => setForm({ ...form, fromDate: e.target.value })}
+            />
+            <input
+              type="date"
+              className="input"
+              value={form.toDate}
+              onChange={(e) => setForm({ ...form, toDate: e.target.value })}
+            />
+            <select
+              className="input"
+              value={form.type}
+              onChange={(e) => setForm({ ...form, type: e.target.value })}
+            >
+              {LEAVE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t.toLowerCase()}
+                </option>
+              ))}
+            </select>
+            <input
+              className="input lg:col-span-3"
+              placeholder="Reason (visible to the family)"
+              value={form.reason}
+              onChange={(e) => setForm({ ...form, reason: e.target.value })}
+            />
+            <button
+              className="btn-primary"
+              disabled={!form.studentId || !form.reason.trim()}
+              onClick={() => {
+                setErr('');
+                create.mutate();
+              }}
+            >
+              Log leave
+            </button>
+          </div>
+          <ErrorNote msg={err} />
+        </div>
+      </div>
+
+      <aside className="card p-4">
+        <b className="text-[13px]">Today's attendance plan</b>
+        <p className="mt-1 text-[11px] text-[color:var(--txt3)]">
+          Derived at 05:00 IST for every active batch. If a register is never submitted, the child
+          safety chain still runs and the Centre Head is alerted.
+        </p>
+        <div className="mt-3 space-y-2">
+          {(plan?.plans ?? [])
+            .filter((p: any) => !p.skip)
+            .slice(0, 12)
+            .map((p: any) => (
+              <div
+                key={p.batchId}
+                className="rounded-lg border border-[color:var(--line)] px-3 py-2"
+              >
+                <div className="flex items-center justify-between text-[12px] font-bold">
+                  <span className="truncate">{p.name}</span>
+                  <span className={cn('chip', p.past && 'opacity-70')}>{fmtT(p.absenceMsgAt)}</span>
+                </div>
+                <div className="mt-0.5 text-[10.5px] font-semibold text-[color:var(--txt3)]">
+                  lock {fmtT(p.lockAt)} · alert {fmtT(p.absenceMsgAt)} · call {fmtT(p.adminCallAt)}
+                </div>
+              </div>
+            ))}
+          {!plan?.plans?.length && (
+            <div className="text-[12px] font-semibold text-[color:var(--txt3)]">
+              No active batches today.
+            </div>
+          )}
+        </div>
+        {plan?.queueAvailable === false && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800">
+            Redis is unavailable — the plan is computed but jobs stay in-process. Alert the ops
+            team.
+          </p>
+        )}
+      </aside>
+    </div>
+  );
+}
+
 export default function Attendance() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -378,6 +601,7 @@ export default function Attendance() {
           </div>
         )}
       </div>
+      <LeavePanel />
       {isHO && (
         <div className="mt-4 flex items-center gap-1.5 text-[11.5px] font-semibold text-stone-500">
           <Users className="h-3.5 w-3.5" /> HO view — you're seeing batches across all units. Unit

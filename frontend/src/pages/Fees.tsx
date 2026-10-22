@@ -1,8 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { BellRing, IndianRupee, Landmark, Printer, ReceiptText, Send, XCircle } from 'lucide-react';
-import { api, fmtDate } from '../lib/api';
+import {
+  BellRing,
+  Download,
+  FileSpreadsheet,
+  IndianRupee,
+  Landmark,
+  Printer,
+  ReceiptText,
+  Send,
+  XCircle,
+} from 'lucide-react';
+import { api, fmtDate, downloadFile } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
@@ -10,6 +20,7 @@ import { useAuth, HO_ROLES } from '../lib/auth';
 import { cn } from '../lib/utils';
 
 const inr = (n: number) => '₹' + Number(n || 0).toLocaleString('en-IN');
+const todayISO = () => new Date().toISOString().slice(0, 10);
 const PLAN_LABEL: Record<string, string> = {
   PLAN_A: 'Plan A · 3 inst.',
   PLAN_B: 'Plan B · 2 inst.',
@@ -26,6 +37,215 @@ const STATUS_TONE: Record<string, any> = {
 // Receipt opens in a new tab; the bb_token cookie authenticates it.
 function openReceipt(id: string) {
   window.open(`/api/fees/receipt/${id}/print`, '_blank');
+}
+
+// ───────────────────────── Reports (the 14 statutory reports) ─────────────────────────
+const REPORT_GROUPS: Record<string, string> = {
+  COLLECTIONS: 'Collections',
+  RECEIVABLES: 'Receivables',
+  MASTERS: 'Masters',
+  ANALYSIS: 'Analysis',
+  EXPORT: 'Export',
+};
+
+function ReportsTab() {
+  const [keys, setKeys] = useState<any[]>([]);
+  const [active, setActive] = useState('outstanding');
+  const [date, setDate] = useState(todayISO());
+  const [month, setMonth] = useState(todayISO().slice(0, 7));
+  const [result, setResult] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    api('/fees/reports')
+      .then(setKeys)
+      .catch(() => setErr('Could not load the report catalogue'));
+  }, []);
+
+  const buildUrl = (format?: string) => {
+    const q = new URLSearchParams();
+    if (active === 'daily-collection' || active === 'day-book') q.set('date', date);
+    if (active === 'monthly-collection') q.set('year', month.slice(0, 4));
+    if (active === 'payment-mode' || active === 'cancellations' || active === 'tally-export') {
+      q.set('from', `${month}-01`);
+      q.set('to', `${month}-31`);
+    }
+    if (format) q.set('format', format);
+    return `/fees/reports/${active}?${q.toString()}`;
+  };
+
+  const run = async () => {
+    setBusy(true);
+    setErr('');
+    try {
+      setResult(await api(buildUrl()));
+    } catch (e: any) {
+      setErr(e.message);
+      setResult(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rows: any[] =
+    result?.rows ??
+    result?.days?.map((d: any) => ({ date: d.date, receipts: d.count, amount: d.total })) ??
+    result?.months ??
+    result?.modes ??
+    result?.units ??
+    result?.programmes ??
+    result?.heads ??
+    result?.batches ??
+    result?.vendors ??
+    result?.items ??
+    result?.concessions ??
+    result?.categories ??
+    result?.preview ??
+    [];
+  const columns = rows.length ? Object.keys(rows[0]) : [];
+  const money = (k: string) =>
+    /amount|total|value|balance|paid|net|outstanding|billed|collected|due|discount/i.test(k);
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+      <aside className="card p-3">
+        <div className="mb-2 px-2 text-[11px] font-bold uppercase tracking-wide text-[color:var(--txt3)]">
+          {keys.length || 14} reports
+        </div>
+        <div className="space-y-3">
+          {Object.entries(REPORT_GROUPS).map(([group, label]) => {
+            const list = keys.filter((k: any) => k.group === group);
+            if (!list.length) return null;
+            return (
+              <div key={group}>
+                <div className="px-2 pb-1 text-[10.5px] font-bold uppercase tracking-wider text-[color:var(--txt3)]">
+                  {label}
+                </div>
+                {list.map((k: any) => (
+                  <button
+                    key={k.key}
+                    onClick={() => {
+                      setActive(k.key);
+                      setResult(null);
+                    }}
+                    className={cn(
+                      'mb-0.5 block w-full rounded-lg px-2 py-1.5 text-left text-[12.5px] font-semibold transition',
+                      active === k.key
+                        ? 'bg-[color:var(--accent)] text-white'
+                        : 'hover:bg-[color:var(--surface2)]',
+                    )}
+                  >
+                    {k.name}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </aside>
+
+      <section className="card p-4">
+        <div className="mb-3 flex flex-wrap items-end gap-2">
+          {['daily-collection', 'day-book'].includes(active) && (
+            <Field label="Date">
+              <input
+                type="date"
+                className="input"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </Field>
+          )}
+          {['monthly-collection', 'payment-mode', 'cancellations', 'tally-export'].includes(
+            active,
+          ) && (
+            <Field label="Month">
+              <input
+                type="month"
+                className="input"
+                value={month}
+                onChange={(e) => setMonth(e.target.value)}
+              />
+            </Field>
+          )}
+          <button className="btn-primary" onClick={run} disabled={busy}>
+            <FileSpreadsheet className="mr-1 inline h-4 w-4" />
+            {busy ? 'Running…' : 'Run report'}
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() =>
+              downloadFile(buildUrl('csv'), `${active}.csv`).catch((e) => setErr(e.message))
+            }
+          >
+            <Download className="mr-1 inline h-4 w-4" />
+            Download CSV
+          </button>
+        </div>
+        <ErrorNote msg={err} />
+        {result && (
+          <div className="mb-2 flex flex-wrap gap-2 text-[11.5px] font-semibold text-[color:var(--txt3)]">
+            <span className="chip">{rows.length} rows</span>
+            {result.totals?.outstanding != null && (
+              <span className="chip">Outstanding {inr(result.totals.outstanding)}</span>
+            )}
+            {result.total != null && typeof result.total === 'number' && (
+              <span className="chip">{inr(result.total)}</span>
+            )}
+            {result.value != null && <span className="chip">Value {inr(result.value)}</span>}
+            {result.counts && <span className="chip">{JSON.stringify(result.counts)}</span>}
+          </div>
+        )}
+        <div className="max-h-[62vh] overflow-auto rounded-xl border border-[color:var(--line)]">
+          <table className="w-full text-left text-[12.5px]">
+            <thead className="sticky top-0 bg-[color:var(--surface2)]">
+              <tr>
+                {columns.map((c) => (
+                  <th
+                    key={c}
+                    className="whitespace-nowrap px-2.5 py-2 text-[10.5px] font-bold uppercase tracking-wide text-[color:var(--txt3)]"
+                  >
+                    {c.replace(/([A-Z])/g, ' $1')}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 500).map((r: any, i: number) => (
+                <tr key={i} className="border-t border-[color:var(--line)]">
+                  {columns.map((c) => (
+                    <td key={c} className="px-2.5 py-1.5">
+                      {r[c] && typeof r[c] === 'object'
+                        ? JSON.stringify(r[c])
+                        : money(c) && r[c] !== '' && r[c] != null
+                          ? inr(r[c])
+                          : String(r[c] ?? '—')}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {!rows.length && (
+                <tr>
+                  <td
+                    className="px-3 py-8 text-center text-[color:var(--txt3)]"
+                    colSpan={Math.max(1, columns.length)}
+                  >
+                    {result ? 'No rows for this period.' : 'Run a report to see it here.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {rows.length > 500 && (
+          <p className="mt-2 text-[11px] text-[color:var(--txt3)]">
+            Showing the first 500 rows — download the CSV for the full report.
+          </p>
+        )}
+      </section>
+    </div>
+  );
 }
 
 // ───────────────────────── Student fee drawer ─────────────────────────
@@ -603,7 +823,7 @@ function RemindersTab() {
 // ───────────────────────── Page ─────────────────────────
 export default function Fees() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<'ledger' | 'structures' | 'reminders'>('ledger');
+  const [tab, setTab] = useState<'ledger' | 'structures' | 'reminders' | 'reports'>('ledger');
   const [selected, setSelected] = useState<any>(null);
 
   const { data: rows = [], isLoading } = useQuery({
@@ -693,7 +913,7 @@ export default function Fees() {
         subtitle="Dual ledger (preschool annual · evening monthly, never merged) · auto receipt numbering · sibling concessions · reminder queue"
         action={
           <div className="seg">
-            {(['ledger', 'structures', 'reminders'] as const).map((t) => (
+            {(['ledger', 'structures', 'reminders', 'reports'] as const).map((t) => (
               <button
                 key={t}
                 className={cn('seg-item capitalize', tab === t && 'seg-item-active')}
@@ -748,6 +968,7 @@ export default function Fees() {
       )}
       {tab === 'structures' && <StructuresTab />}
       {tab === 'reminders' && <RemindersTab />}
+      {tab === 'reports' && <ReportsTab />}
 
       {selected && <LedgerModal row={selected} onClose={() => setSelected(null)} />}
       {user!.role === 'TEACHER' && (
