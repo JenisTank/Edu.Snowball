@@ -26,6 +26,35 @@ blocked) and [`CODE_STRUCTURE.md`](./CODE_STRUCTURE.md) (how the code is laid ou
 
 ---
 
+## 1b. Running without Docker (dev sandboxes, laptops)
+
+`docker compose` is the normal path, but some environments have no Docker and no
+outbound access to `binaries.prisma.sh` (so `prisma generate` cannot download a
+query engine). `scripts/sandbox-preview.sh` stands the whole stack up anyway:
+
+```bash
+bash scripts/sandbox-preview.sh          # prepare Postgres + schema + demo data
+bash scripts/sandbox-preview.sh --serve  # also run the API (:3000) and web (:5173)
+```
+
+How it works, and why it never touches the committed code:
+
+- **Postgres** comes from the `embedded-postgres` npm package — real
+  `initdb`/`pg_ctl`/`postgres` binaries inside an npm tarball, so no root and no
+  Docker. Data lives in `/tmp/bb-preview/pgdata` (override with `WORK=`).
+- **The API runs from a throwaway copy** (`$WORK/api`) whose Prisma client uses
+  the node-postgres driver adapter plus the query compiler
+  (`engineType = "client"`, Prisma 6). That needs no engine binary at all. The
+  repository keeps the standard engine-based client, so production is unchanged.
+- **Redis is optional.** Without it the BullMQ queue stays idle and the health
+  probe reports `redis: down`; every read/write path, the scheduler's in-process
+  fallback and the parent portal keep working. If you want the queue, run a local
+  `redis-server` and set `REDIS_URL`.
+
+Demo logins are seeded (`bumbleb123`): `founder@bumblebkidz.com`,
+`ch.u1@bumblebkidz.com`, `teacher.u1@bumblebkidz.com`,
+`reception@bumblebkidz.com`. The parent portal is `/parent` on the same build.
+
 ## 2. First deployment
 
 ```bash

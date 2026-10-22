@@ -37,6 +37,10 @@ Custom multi-unit preschool ERP for the BumbleB Kidz chain (Rajkot).
 See [`docs/CODE_STRUCTURE.md`](docs/CODE_STRUCTURE.md) for the API conventions
 (where a new endpoint goes, how unit scoping and the audit log are applied).
 
+> **No Docker, or an offline sandbox?** `bash scripts/sandbox-preview.sh --serve`
+> brings up Postgres, the API and the web app with seeded demo data, using npm
+> binaries instead of containers. See `docs/RUNBOOK.md` §1b.
+
 ## Quick start (development)
 
 ```bash
