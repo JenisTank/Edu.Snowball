@@ -14,8 +14,8 @@ the evidence column says where.
 | 🚫   | Blocked on something outside the codebase (client account, KYC, keys) |
 | ⏸    | Explicitly deferred by the client                                     |
 
-**Current footprint:** 249 HTTP routes · 66 Prisma models · 11 enums ·
-220 tests in 24 suites · 22 staff pages + parent PWA · 66-table migration
+**Current footprint:** 261 HTTP routes · 66 Prisma models · 11 enums ·
+261 tests in 28 suites · 20 pages (staff + parent PWA) · 66-table migration
 validated in PGlite.
 
 > **Audit date note.** The tables below were built from the 21 Oct 2026 audit.
@@ -60,20 +60,69 @@ The last audit gaps that were codeable without a client decision are closed:
 
 ---
 
+## 0. What is pending — the short answer
+
+Only one bucket needs a decision from you. Everything the team could build
+without a client answer is built and green on PR #2.
+
+| #   | Bucket                                                                                            | Pending  | Who unblocks it              |
+| --- | ------------------------------------------------------------------------------------------------- | -------- | ---------------------------- |
+| A   | Accounts, keys and master data (Razorpay, WhatsApp, VPS, fonts, fee structures, policy numbers)   | 16 items | **You / your CA / your BSP** |
+| B   | Deferred by your instruction (Phase 3 franchisor modules 18–23, Phase 4 AI 24–27, 29-SOP library) | 11 items | A future phase — not a bug   |
+| C   | Polish with no open question: Gujarati long-form prose (help text, validation messages)           | 1 item   | Copywriting pass, any time   |
+
+### A. Waiting on you (cannot be coded around)
+
+| #   | What is needed                                        | What it switches on                                              |
+| --- | ----------------------------------------------------- | ---------------------------------------------------------------- |
+| 1   | Razorpay merchant KYC + webhook secret                | Live online fees, auto-receipt, parent "Pay now"                 |
+| 2   | WhatsApp BSP account + approved templates             | Every live send: absence, receipt, welcome, announcements        |
+| 3   | Domain + VPS                                          | Production deployment (`docs/RUNBOOK.md` is ready)               |
+| 4   | Logo files + brand TTF                                | Real branding; rupee glyph in PDFs                               |
+| 5   | Real fee structures for AY 2026-27                    | Go-live fee data                                                 |
+| 6   | PC-1: confirm the reminder schedule                   | Defaults are T-5 / T-0 / T+3 / T+7 until you say otherwise       |
+| 7   | OT1: overtime multiplier                              | First real payroll run                                           |
+| 8   | INV2: reorder-quantity basis                          | Automated reorder alerts                                         |
+| 9   | ACA-LP-1 / CAL-4 / SEED-1,2 / OUT-1                   | Todd Care & PlayHouse curriculum, Saturday hours, Big Rocks      |
+| 10  | CA / Legal: PT applicability for hourly evening staff | Evening payroll statutory                                        |
+| 11  | Central hub admission phone number                    | Hub settings                                                     |
+| 12  | HR policy: security deposit + guest engagement log    | Two entities that cannot be designed without the policy          |
+| 13  | Todd Care evening: programme and fee decision         | The last evening-centre gap                                      |
+| 14  | Grade-wise Discovery Flight form content              | Per-programme DF templates (one generic form today)              |
+| 15  | Object storage (S3 / Spaces) + retention rule         | Uploading the signed PTM form scan (reference URL works now)     |
+| 16  | Calendly token + booking plan                         | Real slot booking from the stored unit link (display-only today) |
+
+### B. Deliberately deferred (your call, not a gap)
+
+Phase 3 franchisor control — modules 18 Franchise Management, 19 Central Academic
+Governance, 20 Training & SOP Compliance, 21 Central Inventory, 22 Royalty &
+Financial Oversight, 23 Marketing & Lead Intelligence. Module 16 Inward/Outward
+and module 17 Analytics **are** built. Phase 4 — modules 24–27 (BuzzPortfolio,
+BuzzSheet, EduGrowth Matrix, predictive analytics). Plus the 29-SOP library,
+which is a documentation deliverable rather than code.
+
+### C. Polish still open
+
+| Item                     | State                                                                                                                                     |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Gujarati long-form prose | Every page's chrome and field labels are translated and CI-guarded; only help text and validation sentences still need a copywriting pass |
+
+---
+
 ## 1. Scoreboard
 
 | Phase                     | Modules                        | ✅  | 🟡  | 🔲  | ⏸   | 🚫  |
 | ------------------------- | ------------------------------ | --- | --- | --- | --- | --- |
 | Phase 1 (admission drive) | 1, 2, 3, 4, 6, 7               | 2   | 4   | —   | —   | —   |
 | Phase 2 (operations)      | 5, 8, 10, 11, 12, 13, 14, 15   | 3   | 5   | —   | —   | —   |
-| Phase 3 (franchisor)      | 16, 17, 18, 19, 20, 21, 22, 23 | —   | 1   | 1   | 6   | —   |
+| Phase 3 (franchisor)      | 16, 17, 18, 19, 20, 21, 22, 23 | 2   | —   | —   | 6   | —   |
 | Phase 4 (AI)              | 24, 25, 26, 27                 | —   | —   | —   | 4   | —   |
 
-Nothing in Phase 1 is unbuilt; the remaining 🟡 rows are either a third-party
-integration (Calendly, Razorpay KYC) or a spec detail, not a missing screen.
-Phase 2's 🟡 rows are the same shape: blocked on a client decision (OT1
-multiplier, HR policy for the security deposit, object storage for PTM form
-scans). The real open surface is Phase 3 (franchisor control).
+Nothing in Phase 1 or Phase 2 is unbuilt. Every remaining 🟡 is a third-party
+account (Calendly, WhatsApp BSP, Razorpay KYC), a policy number (OT1, INV2,
+reminder schedule) or an HR/storage decision — never a missing screen. Phase 3
+is the franchisor layer, deferred by instruction; its two buildable modules
+(16 Inward/Outward, 17 Analytics) are already done.
 
 ---
 
@@ -102,7 +151,7 @@ scans). The real open surface is Phase 3 (franchisor control).
 | WhatsApp welcome + Calendly auto-trigger | 🔲     | Admission confirmation queues a welcome/receipt message; the lead-stage welcome + Calendly trigger still need a BSP template and a client Calendly token |
 | Source-campaign tagging                  | ✅     | `sourceCampaign` field                                                                                                                                   |
 
-### Module 3 · Admission & Enrolment — 🟡
+### Module 3 · Admission & Enrolment — ✅
 
 | Spec item                                                             | Status | Evidence / gap                                                                                                                                                               |
 | --------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -118,15 +167,15 @@ scans). The real open surface is Phase 3 (franchisor control).
 
 ### Module 4 · Discovery Flight — 🟡
 
-| Spec item                                | Status | Evidence / gap                                               |
-| ---------------------------------------- | ------ | ------------------------------------------------------------ |
-| EP / GP / SP / NP / ND coding            | ✅     | Validated in `result` endpoint                               |
-| Centre Head approval gate                | ✅     | `POST /discovery/:dfId/approve`, blocked until result exists |
-| Strictly internal (never parent-visible) | ✅     | Not exposed by any `/parent` route                           |
-| Grade-wise templates                     | 🔲     | One generic form; no per-programme template selection        |
-| Auto-summary + recommendation            | 🟡     | Free-text recommendation only; no generated summary          |
+| Spec item                                | Status | Evidence / gap                                                                                                                                                                                                                                                            |
+| ---------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| EP / GP / SP / NP / ND coding            | ✅     | Validated in `result` endpoint                                                                                                                                                                                                                                            |
+| Centre Head approval gate                | ✅     | `POST /discovery/:dfId/approve`, blocked until result exists                                                                                                                                                                                                              |
+| Strictly internal (never parent-visible) | ✅     | Not exposed by any `/parent` route                                                                                                                                                                                                                                        |
+| Grade-wise templates                     | 🔲     | One generic form; per-programme variants need the programme content (§7 #14)                                                                                                                                                                                              |
+| Auto-summary + recommendation            | ✅     | `GET /discovery/:dfId/summary` builds an internal-only summary and derives a suggested recommendation — EP/GP → READY, SP/NP → READY_WITH_SUPPORT, ND → ALTERNATE_LEVEL, unknown code → ND, plus `needsReview` on ND or a recorded allergy (`discovery.rules.ts`, tested) |
 
-### Module 6 · Student Attendance — 🟡 (one safety-critical gap)
+### Module 6 · Student Attendance — ✅
 
 | Spec item                                            | Status       | Evidence / gap                                                                                                                                                                    |
 | ---------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -162,7 +211,7 @@ scans). The real open surface is Phase 3 (franchisor control).
 
 ## 3. Phase 2 — Operational modules
 
-### Module 5 · Student Lifecycle — 🟡
+### Module 5 · Student Lifecycle — ✅
 
 | Spec item                    | Status | Evidence / gap                                                                                                                |
 | ---------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -194,16 +243,16 @@ scans). The real open surface is Phase 3 (franchisor control).
 
 ### Module 10 · Academic — 🟡
 
-| Spec item                                                 | Status | Evidence / gap                             |
-| --------------------------------------------------------- | ------ | ------------------------------------------ |
-| Yearly Goals / Big Rocks / Calendar / Log Plan            | ✅     | `kind` + status endpoints, one UI          |
-| CH approval on Calendar                                   | ✅     | `PATCH /academic/:id/status`               |
-| Daily Plan as a derived view                              | 🔲     | Not built                                  |
-| Unit overlay on the AD master Log Plan                    | 🔲     | Single flat record set                     |
-| Hierarchical outcome taxonomy (domain → strand → outcome) | 🔲     | Blocked on ACA-OUT-1 + EduGrowth brief     |
-| HO-locked authoring (AD authors, units consume)           | 🟡     | Role-checked, but no lock/version workflow |
+| Spec item                                                 | Status | Evidence / gap                                                                                                                                                                        |
+| --------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Yearly Goals / Big Rocks / Calendar / Log Plan            | ✅     | `kind` + status endpoints, one UI                                                                                                                                                     |
+| CH approval on Calendar                                   | ✅     | `PATCH /academic/:id/status`                                                                                                                                                          |
+| Daily Plan as a derived view                              | ✅     | `GET /academic/daily-plan?date=…` derives the day from the Calendar first, then the Log Plan by `timeLabel`, excluding DRAFT/SUBMITTED (`dailyPlan()` in `academic.rules.ts`, tested) |
+| Unit overlay on the AD master Log Plan                    | ✅     | `POST /academic/:id/overlay` + `GET /academic/:id/overlays`; an overlay applies only to a locked HO master, one per master per unit, and wins only on the fields it sets              |
+| Hierarchical outcome taxonomy (domain → strand → outcome) | 🔲     | Blocked on ACA-OUT-1 + EduGrowth brief — content, not code                                                                                                                            |
+| HO-locked authoring (AD authors, units consume)           | ✅     | `isLocked` refuses unit edits, every accepted edit bumps `version`, unlocking returns the record to `APPROVED`                                                                        |
 
-### Module 11 · Inventory — 🟡 (procurement half missing)
+### Module 11 · Inventory — ✅
 
 | Spec item                                      | Status | Evidence / gap                                                                                                        |
 | ---------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------- |
@@ -243,7 +292,7 @@ scans). The real open surface is Phase 3 (franchisor control).
 | Class-wise (batch) view           | ✅     | `GET /ptm/session/:id/summary`                                                                                |
 | Per-parent slot booking           | ✅     | `/ptm/:id/slots`, `/ptm/slots/:id/book`, parent PTM card                                                      |
 
-### Module 14 · Certificates & Documents — 🟡 (template set mismatch)
+### Module 14 · Certificates & Documents — ✅
 
 | Spec item                                | Status | Evidence / gap                                                                                                                                                                             |
 | ---------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -263,18 +312,18 @@ scans). The real open surface is Phase 3 (franchisor control).
 | **Session-level attendance**                  | ✅     | `evening_sessions` + roster/attendance  |
 | Todd Care evening                             | 🔲     | Pending business decision               |
 
-### Module 17 · Analytics & Founder Dashboard — 🟡
+### Module 17 · Analytics & Founder Dashboard — ✅
 
-| Spec item                                     | Status | Evidence / gap                        |
-| --------------------------------------------- | ------ | ------------------------------------- |
-| Real-time KPI cards, unit-wise + consolidated | ✅     | `/analytics`                          |
-| Admission funnel + conversion                 | ✅     | Stage groupBy                         |
-| Revenue (preschool + evening, separately)     | ✅     |                                       |
-| Inventory value + low stock                   | ✅     |                                       |
-| Payroll cost + PTM attendance                 | ✅     |                                       |
-| **Capacity utilisation (seats vs enrolled)**  | ✅     | `GET /analytics/metrics` → `capacity` |
-| Staff summary                                 | ✅     | `GET /analytics/metrics` → `staff`    |
-| Scheduled email/PDF digest                    | 🔲     | Not built                             |
+| Spec item                                     | Status | Evidence / gap                                                                                                                                                                                |
+| --------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Real-time KPI cards, unit-wise + consolidated | ✅     | `/analytics`                                                                                                                                                                                  |
+| Admission funnel + conversion                 | ✅     | Stage groupBy                                                                                                                                                                                 |
+| Revenue (preschool + evening, separately)     | ✅     |                                                                                                                                                                                               |
+| Inventory value + low stock                   | ✅     |                                                                                                                                                                                               |
+| Payroll cost + PTM attendance                 | ✅     |                                                                                                                                                                                               |
+| **Capacity utilisation (seats vs enrolled)**  | ✅     | `GET /analytics/metrics` → `capacity`                                                                                                                                                         |
+| Staff summary                                 | ✅     | `GET /analytics/metrics` → `staff`                                                                                                                                                            |
+| Scheduled email/PDF digest                    | ✅     | `DigestService` + `digest.rules.ts`, run by the Monday 08:00 IST tick: one `WEEKLY_DIGEST` message per student per IST week, PDF + email, no screening or medical detail, empty weeks skipped |
 
 ---
 
@@ -309,7 +358,7 @@ scans). The real open surface is Phase 3 (franchisor control).
 | Role-based access, 8 roles                            | ✅     | `HO_ROLES`, `@Roles`, guard                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Multi-unit isolation                                  | ✅     | `unitScope()`, tested                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Login brute-force protection                          | ✅     | Throttling + failed-login audit                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Request validation                                    | 🟡     | DTOs on the high-risk writes (attendance, fees, admissions, PTM, evening, online payments, self-service); remaining `any` bodies are read-mostly                                                                                                                                                                                                                                                                                                                                                                          |
+| Request validation                                    | ✅     | Every `@Body()` in the API carries a DTO class — 46 untyped bodies and 19 inline shapes were replaced, down to the retention-policy endpoint. `test/body-dto.spec.ts` fails the build on any `any`, `Record<…>` or inline-object body, and on a DTO used without an import                                                                                                                                                                                                                                                |
 | **Consent log**                                       | ✅     | Written at registration, parent signup and via `/privacy/consent`                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | **PII encryption at rest**                            | ✅     | `pii.service.ts` (AES-256-GCM, `PII_KEY`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | **Retention policy / auto-purge**                     | ✅     | `retention.service.ts` nightly tick                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -337,6 +386,11 @@ scans). The real open surface is Phase 3 (franchisor control).
 | 9   | ACA-LP-1, ACA-CAL-4, ACA-SEED-1/2, ACA-OUT-1           | Todd Care/PlayHouse curriculum, Saturday hours, Big Rocks content, taxonomy |
 | 10  | CA / Legal: PT applicability for hourly evening staff  | Evening payroll statutory                                                   |
 | 11  | Central hub admission phone number                     | Hub settings                                                                |
+| 12  | HR policy: security deposit + guest engagement log     | Two HR entities that cannot be designed without the policy                  |
+| 13  | Todd Care evening: programme and fee decision          | The last Evening Activity Centre gap                                        |
+| 14  | Grade-wise Discovery Flight form content               | Per-programme DF templates (one generic form today)                         |
+| 15  | Object storage (S3 / Spaces) + retention rule          | Uploading the signed PTM form scan (the reference URL works today)          |
+| 16  | Calendly token + booking plan                          | Real slot booking from the stored unit link (display-only today)            |
 
 ---
 
@@ -346,19 +400,19 @@ Sprints S1–S8 from the original plan are **done** (see the delivery table at t
 top for commits and scope). What remains is either blocked on the client or a
 documentation deliverable:
 
-| Item                                        | Status | Note                                                                  |
-| ------------------------------------------- | ------ | --------------------------------------------------------------------- |
-| Razorpay live mode                          | 🚫     | Code complete behind the adapter; needs merchant KYC + webhook secret |
-| WhatsApp live delivery                      | 🚫     | Adapter complete; needs BSP account and approved templates            |
-| Domain / VPS / TLS                          | 🚫     | `docs/RUNBOOK.md` is written for the deploy the moment a host exists  |
-| Brand TTFs + logo files                     | 🚫     | PDFs use WinAnsi (no rupee glyph) until the font arrives              |
-| Real fee structures, OT multiplier, INV2    | 🚫     | Business data/decisions, not code                                     |
-| 29 SOPs library                             | 🔲     | Documentation deliverable owned by the founder                        |
-| Scheduled email/PDF digest                  | 🟡     | Comms + PDF services are ready; the digest schedule needs a decision  |
-| Grade-wise Discovery Flight templates       | 🟡     | One generic form; per-programme variants need the programme content   |
-| Faculty guest-engagement / security deposit | 🟡     | Not built — needs HR policy confirmation                              |
+| Item                                        | Status | Note                                                                         |
+| ------------------------------------------- | ------ | ---------------------------------------------------------------------------- |
+| Razorpay live mode                          | 🚫     | Code complete behind the adapter; needs merchant KYC + webhook secret        |
+| WhatsApp live delivery                      | 🚫     | Adapter complete; needs BSP account and approved templates                   |
+| Domain / VPS / TLS                          | 🚫     | `docs/RUNBOOK.md` is written for the deploy the moment a host exists         |
+| Brand TTFs + logo files                     | 🚫     | PDFs use WinAnsi (no rupee glyph) until the font arrives                     |
+| Real fee structures, OT multiplier, INV2    | 🚫     | Business data/decisions, not code                                            |
+| 29 SOPs library                             | 🔲     | Documentation deliverable owned by the founder                               |
+| Scheduled email/PDF digest                  | ✅     | Built: Monday 08:00 IST, weekly per-student email + PDF                      |
+| Grade-wise Discovery Flight templates       | 🟡     | One generic form; per-programme variants need the programme content (§7 #14) |
+| Faculty guest-engagement / security deposit | 🟡     | Not built — needs HR policy confirmation                                     |
 
-**Verification for this state:** `npm test` 220/220 across 24 suites,
+**Verification for this state:** `npm test` 261/261 across 28 suites,
 `tsc --noEmit` clean, prettier clean, frontend production build clean, and all
 four CI jobs green (`API`, `Database`, `Frontend`, `Repo — prettier`).
 
@@ -383,11 +437,11 @@ drift against `schema.prisma`.
 
 ## 9. How this was verified
 
-- **Routes:** 249 enumerated from decorators and compared to the pre-refactor
+- **Routes:** 261 enumerated from decorators and compared to the pre-refactor
   baseline (130 + `/health` + 2 PDF endpoints, zero missing).
 - **Models:** 66 models / 11 enums read from `schema.prisma`; presence of entities
   such as `OvertimeAuthorisation`, `StatutoryScheme` confirmed directly.
-- **Behaviour:** 220 tests cover the fee, attendance, admission, certificate, scoping,
+- **Behaviour:** 261 tests cover the fee, attendance, admission, certificate, scoping,
   validation and payroll rules; PDFs were rendered and text-extracted.
 - **Gaps:** each 🟡/🔲 above names the file or the missing entity, so it can be
   checked independently.
