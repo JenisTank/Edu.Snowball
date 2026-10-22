@@ -9,6 +9,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { createValidationPipe } from './common/validation/validation';
 import { env, validateEnv } from './config/env';
 import { startWorker } from './jobs/queue';
+import { startScheduler } from './jobs/scheduler';
 
 async function bootstrap() {
   validateEnv();
@@ -27,6 +28,13 @@ async function bootstrap() {
   // Reuses the Nest-managed Prisma client, so the process keeps one pool.
   startWorker(app.get(PrismaService) as any);
   new Logger('Bootstrap').log('📨 Message queue worker started');
+
+  // 05:00 IST daily attendance plan — the safety net no longer depends on a
+  // teacher opening the register (see jobs/scheduler.ts).
+  const stopScheduler = startScheduler(app.get(PrismaService) as any);
+  process.once('SIGTERM', stopScheduler);
+  process.once('SIGINT', stopScheduler);
+  new Logger('Bootstrap').log('📅 Attendance scheduler armed');
 }
 
 void bootstrap();

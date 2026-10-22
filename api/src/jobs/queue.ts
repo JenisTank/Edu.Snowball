@@ -1,4 +1,5 @@
 import { sendWebPush } from '../modules/notifications/push.service';
+import { approvedLeaveMap } from '../modules/leaves/leaves.query';
 import { env } from '../config/env';
 import { PrismaClient } from '@prisma/client';
 import { Queue, Worker } from 'bullmq';
@@ -17,6 +18,13 @@ export function startWorker(prisma: PrismaClient) {
   const worker = new Worker(
     'bb-jobs',
     async (job) => {
+      // ── 05:00 IST: derive today's plan for every active batch ──
+      if (job.name === 'daily-attendance-plan') {
+        const { runDailyScan } = await import('./scheduler');
+        const result = await runDailyScan(prisma, { force: true });
+        return { planned: result.planned, enqueued: result.enqueued };
+      }
+
       // ── Absence scan: runs at attendance-lock + 30 min (spec Rule 5) ──
       if (job.name === 'absence-scan') {
         const { batchId, date } = job.data as { batchId: string; date: string };
@@ -24,7 +32,23 @@ export function startWorker(prisma: PrismaClient) {
           where: { batchId, date: new Date(date), status: 'ABSENT' },
           include: { student: true, batch: true },
         });
+
+        // An APPROVED leave is the only thing that silences the chain. Leave
+        // days are written as LEAVE so the register tells the truth too.
+        const onLeave = await approvedLeaveMap(prisma, date, records[0]?.unitId ?? null);
+        let suppressed = 0;
         for (const r of records) {
+          const leave = onLeave.get(r.studentId);
+          if (leave) {
+            await prisma.attendanceRecord
+              .update({
+                where: { id: r.id },
+                data: { status: 'LEAVE', overrideReason: 'Approved leave' },
+              })
+              .catch(() => null);
+            suppressed += 1;
+            continue;
+          }
           const phone = r.student.fatherPhone || r.student.motherPhone;
           if (!phone) continue;
           // dedupe: one absence alert per student per day
@@ -83,8 +107,60 @@ export function startWorker(prisma: PrismaClient) {
           }
         }
         // ── Admin-call list: lock + 2h (spec) — queue the task marker ──
-        await bbQueue.add('admin-call-list', { batchId, date }, { delay: 90 * 60 * 1000 });
-        return { absentAlerts: records.length };
+        await bbQueue.add(
+          'admin-call-list',
+          { batchId, date },
+          { delay: 90 * 60 * 1000, jobId: `admin-call-${batchId}-${date}` },
+        );
+        return { absentAlerts: records.length - suppressed, onApprovedLeave: suppressed };
+      }
+
+      // ── The register was never submitted → Centre Head alert ──
+      // This is the job that makes the safety net independent of a teacher
+      // remembering to open the roster.
+      if (job.name === 'teacher-not-marked') {
+        const { batchId, date } = job.data as { batchId: string; date: string };
+        const [batch, marked] = await Promise.all([
+          prisma.batch.findUnique({
+            where: { id: batchId },
+            select: {
+              id: true,
+              name: true,
+              unitId: true,
+              startTime: true,
+              _count: { select: { students: { where: { status: 'ACTIVE' } } } },
+            },
+          }),
+          prisma.attendanceRecord.count({ where: { batchId, date: new Date(date) } }),
+        ]);
+        if (!batch || marked > 0) return { skipped: 'register submitted' };
+        const dup = await prisma.messageLog.findFirst({
+          where: {
+            type: 'TEACHER_NOT_MARKED',
+            unitId: batch.unitId,
+            createdAt: { gte: new Date(date) },
+            payload: { path: ['batchId'], equals: batchId },
+          },
+        });
+        if (dup) return { skipped: 'already alerted' };
+        await prisma.messageLog.create({
+          data: {
+            type: 'TEACHER_NOT_MARKED',
+            channel: 'INTERNAL',
+            recipient: 'CENTRE_HEAD',
+            unitId: batch.unitId,
+            payload: {
+              batchId,
+              batch: batch.name,
+              date,
+              activeStudents: batch._count.students,
+              startTime: batch.startTime,
+              message:
+                'Attendance register was not submitted — every child in this batch is still marked absent.',
+            },
+          },
+        });
+        return { alerted: true };
       }
 
       if (job.name === 'admin-call-list') {

@@ -21,6 +21,7 @@ import { JwtService } from '@nestjs/jwt';
 import { env } from '../../config/env';
 import { Throttle } from '@nestjs/throttler';
 import { ParentLoginDto } from './dto/parent-login.dto';
+import { istDateKey, validateLeave, canCancel } from '../leaves/leaves.rules';
 
 // ─────────────────────────────────────────────────────────────
 // Parent Portal API (Slice 6 — PWA)
@@ -332,6 +333,96 @@ export class ParentController {
     });
   }
 
+  // ── Leave applications (spec: approved leave suppresses absence alerts) ──
+  @Get('child/:id/leaves')
+  @UseGuards(AuthGuard)
+  @Roles('PARENT')
+  async leaves(@Req() req: any, @Param('id') id: string) {
+    this.guardChild(req, id);
+    return this.prisma.studentLeave.findMany({
+      where: { studentId: id },
+      orderBy: { fromDate: 'desc' },
+      take: 50,
+    });
+  }
+
+  @Post('child/:id/leaves')
+  @UseGuards(AuthGuard)
+  @Roles('PARENT')
+  async applyLeave(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() b: { fromDate: string; toDate: string; type?: string; reason: string },
+  ) {
+    this.guardChild(req, id);
+    const error = validateLeave(b);
+    if (error) throw new BadRequestException(error);
+    const child = await this.prisma.student.findUnique({
+      where: { id },
+      select: { id: true, unitId: true, firstName: true, status: true },
+    });
+    if (!child) throw new NotFoundException();
+    if (child.status !== 'ACTIVE')
+      throw new BadRequestException('Only active students can take leave');
+    const leave = await this.prisma.studentLeave.create({
+      data: {
+        studentId: id,
+        unitId: child.unitId,
+        fromDate: new Date(`${b.fromDate}T00:00:00Z`),
+        toDate: new Date(`${b.toDate}T00:00:00Z`),
+        type: ['PLANNED', 'SICK', 'FAMILY', 'OTHER'].includes(b.type ?? '') ? b.type! : 'PLANNED',
+        reason: b.reason.trim(),
+        source: 'PARENT',
+      },
+    });
+    // Tell the Centre Head there is something to approve.
+    await this.prisma.messageLog.create({
+      data: {
+        type: 'LEAVE_REQUEST',
+        channel: 'INTERNAL',
+        recipient: 'CENTRE_HEAD',
+        studentId: id,
+        unitId: child.unitId,
+        payload: {
+          leaveId: leave.id,
+          child: child.firstName,
+          fromDate: b.fromDate,
+          toDate: b.toDate,
+          reason: b.reason.trim(),
+        },
+      },
+    });
+    return leave;
+  }
+
+  @Post('child/:id/leaves/:leaveId/cancel')
+  @UseGuards(AuthGuard)
+  @Roles('PARENT')
+  async cancelLeave(@Req() req: any, @Param('id') id: string, @Param('leaveId') leaveId: string) {
+    this.guardChild(req, id);
+    const leave = await this.prisma.studentLeave.findFirst({
+      where: { id: leaveId, studentId: id },
+    });
+    if (!leave) throw new NotFoundException('Leave not found');
+    const from = leave.fromDate.toISOString().slice(0, 10);
+    if (!canCancel(leave.status, from, istDateKey()))
+      throw new BadRequestException(
+        'This leave can no longer be cancelled — please call the centre',
+      );
+    await this.prisma.attendanceRecord.deleteMany({
+      where: {
+        studentId: id,
+        date: leave.fromDate,
+        status: 'LEAVE',
+        overrideReason: 'Approved leave',
+      },
+    });
+    return this.prisma.studentLeave.update({
+      where: { id: leaveId },
+      data: { status: 'CANCELLED' },
+    });
+  }
+
   @Get('push/config')
   @UseGuards(AuthGuard)
   @Roles('PARENT')
@@ -368,6 +459,19 @@ export class ParentController {
     return { ok: true };
   }
 
+  // ── Lifecycle records the centre marked as parent-visible ──
+  @Get('child/:id/lifecycle')
+  @UseGuards(AuthGuard)
+  @Roles('PARENT')
+  async lifecycle(@Req() req: any, @Param('id') id: string) {
+    this.guardChild(req, id);
+    return this.prisma.studentLifecycleRecord.findMany({
+      where: { studentId: id, visibility: 'STAFF_PARENT' },
+      orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }],
+      take: 200,
+    });
+  }
+
   // ── Messages sent to this parent (parent-safe types only) ──
   @Get('messages')
   @UseGuards(AuthGuard)
@@ -376,7 +480,16 @@ export class ParentController {
     return this.prisma.messageLog.findMany({
       where: {
         studentId: { in: req.user.studentIds ?? [] },
-        type: { in: ['ABSENCE_ALERT', 'FEE_REMINDER', 'RECEIPT', 'ANNOUNCEMENT'] }, // never internal escalations
+        type: {
+          in: [
+            'ABSENCE_ALERT',
+            'FEE_REMINDER',
+            'RECEIPT',
+            'ANNOUNCEMENT',
+            'LEAVE_APPROVED',
+            'LEAVE_REJECTED',
+          ],
+        }, // never internal escalations
       },
       include: { student: { select: { firstName: true } } },
       orderBy: { createdAt: 'desc' },

@@ -18,6 +18,8 @@ import { AuditService } from '../../common/audit/audit.service';
 import { bbQueue } from '../../jobs/queue';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { lockTimes } from './attendance.rules';
+import { approvedLeaveMap } from '../leaves/leaves.query';
+import { runDailyScan } from '../../jobs/scheduler';
 
 const MARK_ROLES = ['TEACHER', 'COORDINATOR', 'CENTRE_HEAD', 'FOUNDER', 'ACADEMIC_DIR'];
 const OVERRIDE_ROLES = ['CENTRE_HEAD', 'FOUNDER', 'ACADEMIC_DIR'];
@@ -61,6 +63,8 @@ export class AttendanceController {
       where: { batchId, date: new Date(d) },
     });
     const recMap = new Map<string, any>(records.map((r: any) => [r.studentId, r]));
+    // Approved leave is surfaced so the teacher sees why a child is absent.
+    const onLeave = await approvedLeaveMap(this.prisma, d, batch.unitId);
     const now = new Date();
     return {
       batch: { id: batch.id, name: batch.name, startTime: batch.startTime, unit: batch.unit.code },
@@ -77,6 +81,8 @@ export class AttendanceController {
           status: r?.status ?? 'ABSENT',
           marked: !!r?.markedAt,
           overridden: !!r?.overrideById,
+          onLeave: onLeave.has(s.id),
+          leaveType: onLeave.get(s.id)?.type ?? null,
         };
       }),
     };
@@ -195,6 +201,38 @@ export class AttendanceController {
     });
   }
 
+  // ── The 05:00 plan, for ops verification (spec: "daily lock jobs") ──
+  @Get('daily-plan')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR')
+  dailyPlan(@Req() req: any) {
+    return runDailyScan(this.prisma, { force: true, now: new Date() }).then((r) => ({
+      ...r,
+      plans: HO_ROLES.includes(req.user.role)
+        ? r.plans
+        : r.plans.filter((p) => p.unitId === req.user.unitId),
+    }));
+  }
+
+  /** Backfill: derive (and enqueue) today's plan on demand. Idempotent. */
+  @Post('daily-scan')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
+  async dailyScan(@Req() req: any) {
+    const result = await runDailyScan(this.prisma, { force: true, now: new Date() });
+    await this.audit.log(
+      req,
+      'attendance_records',
+      `daily-plan:${result.dateISO}`,
+      'UPDATE',
+      null,
+      {
+        planned: result.planned,
+        enqueued: result.enqueued,
+        queueAvailable: result.queueAvailable,
+      },
+    );
+    return result;
+  }
+
   // ── Message queue view (absence alerts, escalations, admin calls) ──
   @Get('messages')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR')
@@ -205,7 +243,10 @@ export class AttendanceController {
         : {}
       : { unitId: req.user.unitId };
     return this.prisma.messageLog.findMany({
-      where: { ...scope, type: { in: ['ABSENCE_ALERT', 'ESCALATION_3DAY', 'ADMIN_CALL'] } },
+      where: {
+        ...scope,
+        type: { in: ['ABSENCE_ALERT', 'ESCALATION_3DAY', 'ADMIN_CALL', 'TEACHER_NOT_MARKED'] },
+      },
       include: { student: { select: { firstName: true, lastName: true, admissionNo: true } } },
       orderBy: { createdAt: 'desc' },
       take: 100,

@@ -121,6 +121,7 @@ model Unit {
   feeStructures     FeeStructure[]
   feeTransactions   FeeTransaction[]
   attendanceRecords AttendanceRecord[]
+  studentLeaves    StudentLeave[]
   discoveryFlights  DiscoveryFlight[]
   areaMappings      AreaMaster[]
 
@@ -301,6 +302,7 @@ model Student {
   lead      Lead?      @relation(fields: [leadId], references: [id])
 
   attendanceRecords AttendanceRecord[]
+  leaves            StudentLeave[]
   feeTransactions   FeeTransaction[]
   discoveryFlights  DiscoveryFlight[]
   messageLogs       MessageLog[]
@@ -359,6 +361,32 @@ model AttendanceRecord {
 
   @@unique([studentId, date, batchId])
   @@map("attendance_records")
+}
+
+// Parent- or staff-filed leave. An APPROVED leave is the only thing that
+// suppresses the absence alert chain — attendance still defaults to ABSENT.
+model StudentLeave {
+  id           String    @id @default(uuid()) @db.Uuid
+  studentId    String    @map("student_id") @db.Uuid
+  unitId       String    @map("unit_id") @db.Uuid
+  fromDate     DateTime  @map("from_date") @db.Date
+  toDate       DateTime  @map("to_date") @db.Date
+  type         String    @default("PLANNED") // PLANNED | SICK | FAMILY | OTHER
+  reason       String
+  status       String    @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELLED
+  source       String    @default("PARENT") // PARENT | STAFF
+  appliedById  String?   @map("applied_by_id") @db.Uuid
+  decidedById  String?   @map("decided_by_id") @db.Uuid
+  decidedAt    DateTime? @map("decided_at")
+  decisionNote String?   @map("decision_note")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@index([studentId, fromDate])
+  @@index([unitId, status, fromDate])
+  @@map("student_leaves")
 }
 
 // ─────────────────────────── FEES ───────────────────────────

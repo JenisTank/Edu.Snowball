@@ -21,6 +21,7 @@ import { FeesModule } from './modules/fees/fees.module';
 import { HealthModule } from './modules/health/health.module';
 import { HrModule } from './modules/hr/hr.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { LeavesModule } from './modules/leaves/leaves.module';
 import { LifecycleModule } from './modules/lifecycle/lifecycle.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ParentModule } from './modules/parents/parents.module';
@@ -60,6 +61,7 @@ import { UsersModule } from './modules/users/users.module';
     LifecycleModule,
     AcademicModule,
     InventoryModule,
+    LeavesModule,
     PtmModule,
     EveningModule,
     HrModule,
