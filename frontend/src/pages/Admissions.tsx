@@ -45,6 +45,55 @@ function dfState(s: any): { label: string; tone: any; step: number } {
   return { label: `${df.resultCode} · approved`, tone: 'green', step: 3 };
 }
 
+/**
+ * Live preview of the auto-generated summary. The default recommendation is
+ * applied as the observer types, but the dropdown above always wins — this is a
+ * suggestion, not a decision. Screening language stays internal.
+ */
+function DiscoveryPreview({
+  dfId,
+  resultCode,
+  notes,
+  onUse,
+}: {
+  dfId: string;
+  resultCode: string;
+  notes: string;
+  onUse: (rec: string) => void;
+}) {
+  const { data } = useQuery({
+    queryKey: ['df-summary', dfId, resultCode, notes],
+    queryFn: () => api(`/discovery/${dfId}/summary?notes=${encodeURIComponent(notes || '')}`),
+    staleTime: 5_000,
+  });
+  if (!data) return null;
+  return (
+    <div className="neo-inset space-y-1.5 p-3.5 text-xs">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5 text-honey-700" />
+        <b className="font-heading text-[12px]">Auto summary (internal)</b>
+        <button
+          className="btn-neo ml-auto !px-2 !py-1 text-[10.5px]"
+          onClick={() => onUse(data.suggestedRecommendation)}
+        >
+          Use suggestion: {RECO_LABEL[data.suggestedRecommendation] ?? data.suggestedRecommendation}
+        </button>
+      </div>
+      <p className="text-stone-700">{data.summary}</p>
+      <ul className="list-disc pl-4 text-stone-600">
+        {data.strengths.slice(0, 3).map((x: string) => (
+          <li key={x}>{x}</li>
+        ))}
+      </ul>
+      {data.needsReview && (
+        <p className="font-semibold text-amber-700">
+          Flagged: review before approving this result.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function StudentModal({ student, onClose }: { student: any; onClose: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -246,6 +295,12 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
               onChange={(e) => setResult({ ...result, notes: e.target.value })}
             />
           </Field>
+          <DiscoveryPreview
+            dfId={df.id}
+            resultCode={result.resultCode}
+            notes={result.notes}
+            onUse={(rec) => setResult((r: any) => ({ ...r, recommendation: rec }))}
+          />
           <button
             className="btn-primary w-full"
             disabled={record.isPending}

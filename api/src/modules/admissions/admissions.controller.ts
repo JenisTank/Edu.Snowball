@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthGuard } from '../../common/auth/auth.guard';
+import { buildDiscoverySummary, RECOMMENDATIONS } from './discovery.rules';
 import { Roles } from '../../common/auth/roles.decorator';
 import { unitScope } from '../../common/auth/unit-scope';
 import { HO_ROLES } from '../../common/auth/auth.constants';
@@ -330,7 +331,7 @@ export class AdmissionsController {
   async recordDF(
     @Req() req: any,
     @Param('dfId') dfId: string,
-    @Body() body: { resultCode: string; recommendation: string; notes?: string },
+    @Body() body: { resultCode: string; recommendation?: string; notes?: string },
   ) {
     const df = await this.prisma.discoveryFlight.findUnique({ where: { id: dfId } });
     if (!df) throw new NotFoundException('Discovery Flight not found');
@@ -338,14 +339,22 @@ export class AdmissionsController {
       throw new ForbiddenException('Cross-unit access denied');
     if (!['EP', 'GP', 'SP', 'NP', 'ND'].includes(body.resultCode))
       throw new BadRequestException('resultCode must be EP/GP/SP/NP/ND');
-    if (!['READY', 'READY_WITH_SUPPORT', 'ALTERNATE_LEVEL'].includes(body.recommendation))
+    if (
+      body.recommendation &&
+      !(RECOMMENDATIONS as readonly string[]).includes(body.recommendation)
+    )
       throw new BadRequestException('Invalid recommendation');
+    // No recommendation sent → take the rule-derived default for the code.
+    const suggestion = buildDiscoverySummary({
+      resultCode: body.resultCode,
+      notes: body.notes,
+    }).suggestedRecommendation;
     const updated = await this.prisma.discoveryFlight.update({
       where: { id: dfId },
       data: {
         conductedAt: new Date(),
         resultCode: body.resultCode as any,
-        recommendation: body.recommendation,
+        recommendation: body.recommendation || suggestion,
         notes: body.notes || null,
       },
     });
@@ -354,6 +363,36 @@ export class AdmissionsController {
       recommendation: body.recommendation,
     });
     return updated;
+  }
+
+  /**
+   * Auto-generated summary + suggested recommendation (internal only).
+   * The Centre Head reads this before approving; nothing here decides anything.
+   */
+  @Get('discovery/:dfId/summary')
+  @Roles(...ADMIT_ROLES)
+  async dfSummary(@Req() req: any, @Param('dfId') dfId: string, @Query('notes') notes?: string) {
+    const df = await this.prisma.discoveryFlight.findUnique({
+      where: { id: dfId },
+      include: {
+        student: {
+          select: { firstName: true, lastName: true, programme: { select: { name: true } } },
+        },
+        lead: { select: { childName: true, programmeInterest: { select: { name: true } } } },
+      },
+    });
+    if (!df) throw new NotFoundException('Discovery Flight not found');
+    if (!HO_ROLES.includes(req.user.role) && req.user.unitId !== df.unitId)
+      throw new ForbiddenException('Cross-unit access denied');
+    const anyDf = df as any;
+    return buildDiscoverySummary({
+      resultCode: anyDf.resultCode ?? 'ND',
+      notes: notes ?? anyDf.notes,
+      childName: anyDf.student
+        ? `${anyDf.student.firstName} ${anyDf.student.lastName}`
+        : (anyDf.lead?.childName ?? null),
+      programmeName: anyDf.student?.programme?.name ?? anyDf.lead?.programmeInterest?.name ?? null,
+    });
   }
 
   // ── Discovery Flight: Centre Head approval gate ──
