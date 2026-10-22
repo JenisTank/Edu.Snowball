@@ -4,7 +4,9 @@ import { api } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { Modal, Field } from '../components/ui/Modal';
 import { Plus } from 'lucide-react';
+import { useI18n } from '../lib/i18n';
 export default function Evening() {
+  const { t } = useI18n();
   const qc = useQueryClient(),
     [open, setOpen] = useState(false),
     [f, setF] = useState<any>({ name: '', schedule: '', fee: 0, capacity: 20 });
@@ -19,12 +21,12 @@ export default function Evening() {
   return (
     <div>
       <PageHeader
-        title="Evening Activity Centre"
-        subtitle="Separate enrolment and fee ledger — never merged with preschool fees"
+        title={t('evening.title')}
+        subtitle={t('evening.subtitle')}
         action={
           <button className="btn-primary" onClick={() => setOpen(true)}>
             <Plus className="mr-1 inline h-4 w-4" />
-            New activity
+            {t('evening.newActivity')}
           </button>
         }
       />

@@ -9,6 +9,7 @@ import { useAuth, ROLE_LABELS } from '../lib/auth';
 import { cn } from '../lib/utils';
 import { loadTheme, themesEqual, type Theme } from '@snowball/ui/theme';
 import { APP_THEMES, selectTheme } from '../lib/appTheme';
+import { useI18n } from '../lib/i18n';
 
 const ADMIN_ROLES = ['FOUNDER', 'ACADEMIC_DIR'];
 const CH_ROLES = ['COORDINATOR', 'TEACHER', 'RECEPTIONIST'];
@@ -1271,6 +1272,7 @@ function AppearanceTab({ founder }: { founder: boolean }) {
 
 // ───────────────────────── Page ─────────────────────────
 export default function SettingsPage() {
+  const { t: tr } = useI18n();
   const { user } = useAuth();
   const isAdmin = ADMIN_ROLES.includes(user!.role);
   const isCH = user!.role === 'CENTRE_HEAD';
@@ -1298,8 +1300,8 @@ export default function SettingsPage() {
   return (
     <div>
       <PageHeader
-        title="Settings"
-        subtitle="Team, batch masters, unit settings & audit trail — every change is logged"
+        title={tr('settings.title')}
+        subtitle={tr('settings.subtitle')}
         action={
           <span className="chip">
             <ShieldCheck className="h-3.5 w-3.5 text-honey-600" /> {ROLE_LABELS[user!.role]}

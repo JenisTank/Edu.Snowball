@@ -6,6 +6,7 @@ import { PageHeader } from '../components/layout/AppLayout';
 import { Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { cn } from '../lib/utils';
+import { useI18n } from '../lib/i18n';
 
 // ═══════════════════════════════════════════════════════════════════
 // Inventory — stock, procurement (PRF → PO → GRN), petty cash, reports.
@@ -18,6 +19,7 @@ const TABS = ['stock', 'procurement', 'petty-cash', 'reports'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Inventory() {
+  const { t: tr } = useI18n();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>('stock');
   const [open, setOpen] = useState(false);
@@ -57,8 +59,8 @@ export default function Inventory() {
   return (
     <div>
       <PageHeader
-        title="Inventory"
-        subtitle="8-category SKU master · PRF → PO → GRN · petty cash · 10 reports"
+        title={tr('inventory.title')}
+        subtitle={tr('inventory.subtitle')}
         count={`${rows.length} SKUs`}
         action={
           <div className="flex items-center gap-2">
@@ -75,7 +77,7 @@ export default function Inventory() {
             </div>
             <button className="btn-primary" onClick={() => setOpen(true)}>
               <Plus className="mr-1 inline h-4 w-4" />
-              New SKU
+              {tr('inventory.newSku')}
             </button>
           </div>
         }

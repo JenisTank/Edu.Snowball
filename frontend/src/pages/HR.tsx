@@ -6,6 +6,7 @@ import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
+import { useI18n } from '../lib/i18n';
 const initial = {
   fullName: '',
   email: '',
@@ -21,6 +22,7 @@ const initial = {
   ptEnabled: false,
 };
 export default function HR() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [open, setOpen] = useState(false);
@@ -105,9 +107,9 @@ export default function HR() {
   return (
     <div>
       <PageHeader
-        title="HR & Payroll"
+        title={t('hr.title')}
         count={`${employees.length} employees`}
-        subtitle="Employee master · reporting hierarchy · effective-dated employment history"
+        subtitle={t('hr.subtitle')}
         action={
           <button
             className="btn-primary"
@@ -117,7 +119,7 @@ export default function HR() {
             }}
           >
             <Plus className="mr-1 inline h-4 w-4" />
-            Add employee
+            {t('hr.addEmployee')}
           </button>
         }
       />
@@ -211,7 +213,7 @@ export default function HR() {
         columns={cols}
         data={employees}
         isLoading={isLoading}
-        title="Employee master"
+        title={t('hr.master')}
         searchPlaceholder="Search employee…"
         exportName="employees"
         filterable={[

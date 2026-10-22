@@ -18,6 +18,7 @@ import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useAuth, HO_ROLES } from '../lib/auth';
 import { cn } from '../lib/utils';
+import { useI18n } from '../lib/i18n';
 
 const inr = (n: number) => '₹' + Number(n || 0).toLocaleString('en-IN');
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -569,6 +570,7 @@ function LedgerModal({ row, onClose }: { row: any; onClose: () => void }) {
 
 // ───────────────────────── Structures tab ─────────────────────────
 function StructuresTab() {
+  const { t: tr } = useI18n();
   const { user } = useAuth();
   const canEdit = ['FOUNDER', 'ACADEMIC_DIR'].includes(user!.role);
   const qc = useQueryClient();
@@ -641,7 +643,7 @@ function StructuresTab() {
         columns={cols}
         data={rows}
         isLoading={isLoading}
-        title="Fee structures · AY 2026-27"
+        title={tr('fees.structures')}
         searchPlaceholder="Search structures…"
         exportName="fee-structures"
         onRowClick={
@@ -822,6 +824,7 @@ function RemindersTab() {
 
 // ───────────────────────── Page ─────────────────────────
 export default function Fees() {
+  const { t: tr } = useI18n();
   const { user } = useAuth();
   const [tab, setTab] = useState<'ledger' | 'structures' | 'reminders' | 'reports'>('ledger');
   const [selected, setSelected] = useState<any>(null);
@@ -908,9 +911,9 @@ export default function Fees() {
   return (
     <div>
       <PageHeader
-        title="Fees & Receipts"
+        title={tr('fees.title')}
         count="AY 2026-27"
-        subtitle="Dual ledger (preschool annual · evening monthly, never merged) · auto receipt numbering · sibling concessions · reminder queue"
+        subtitle={tr('fees.subtitle')}
         action={
           <div className="seg">
             {(['ledger', 'structures', 'reminders', 'reports'] as const).map((t) => (
@@ -955,7 +958,7 @@ export default function Fees() {
           columns={cols}
           data={rows}
           isLoading={isLoading}
-          title="Student fee ledger"
+          title={tr('fees.ledger')}
           searchPlaceholder="Search student / admission no…"
           exportName="fee-ledger"
           filterable={[

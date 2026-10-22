@@ -4,6 +4,7 @@ import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { Plus, ShieldAlert } from 'lucide-react';
+import { useI18n } from '../lib/i18n';
 const defaults: any = {
   title: '',
   eventDate: new Date().toISOString().slice(0, 10),
@@ -11,6 +12,7 @@ const defaults: any = {
   details: '',
 };
 export default function Lifecycle() {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [studentId, setStudentId] = useState('');
   const [tab, setTab] = useState('STUDENT_INFORMATION');
@@ -54,8 +56,8 @@ export default function Lifecycle() {
   return (
     <div>
       <PageHeader
-        title="Student Lifecycle"
-        subtitle="Complete 18-tab profile · visibility rules enforced by the API"
+        title={t('lifecycle.title')}
+        subtitle={t('lifecycle.subtitle')}
         action={
           <button
             className="btn-primary"
@@ -66,7 +68,7 @@ export default function Lifecycle() {
             }}
           >
             <Plus className="mr-1 inline h-4 w-4" />
-            Add record
+            {t('lifecycle.addRecord')}
           </button>
         }
       />

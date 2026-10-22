@@ -3,8 +3,10 @@ import { Building2, MapPin, Phone, Mail, Users, CalendarClock } from 'lucide-rea
 import { api } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { Badge } from '../components/ui/DataTable';
+import { useI18n } from '../lib/i18n';
 
 export default function Units() {
+  const { t } = useI18n();
   const { data: units, isLoading } = useQuery({
     queryKey: ['units'],
     queryFn: () => api('/units'),
@@ -13,10 +15,7 @@ export default function Units() {
 
   return (
     <div>
-      <PageHeader
-        title="Units & Batches"
-        subtitle="3 company-owned units · Rajkot · franchise layer arrives in Phase 3"
-      />
+      <PageHeader title={t('units.title')} subtitle={t('units.subtitle')} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {(units ?? []).map((u: any) => (
@@ -69,7 +68,7 @@ export default function Units() {
           ))}
       </div>
 
-      <h3 className="mb-3 mt-8 font-heading text-[15px] font-extrabold">Batches — AY 2026-27</h3>
+      <h3 className="mb-3 mt-8 font-heading text-[15px] font-extrabold">{t('units.batches')}</h3>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {(batches ?? []).map((b: any) => (
           <div key={b.id} className="card p-4">

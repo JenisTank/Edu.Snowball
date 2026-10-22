@@ -7,6 +7,7 @@ import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useAuth, HO_ROLES } from '../lib/auth';
+import { useI18n } from '../lib/i18n';
 
 const TYPE_META: Record<string, { label: string; tone: any }> = {
   ANNOUNCEMENT: { label: 'Announcement', tone: 'honey' },
@@ -19,6 +20,7 @@ const TYPE_META: Record<string, { label: string; tone: any }> = {
 };
 
 export default function Comms() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
   const canSend = ['FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD'].includes(user!.role);
@@ -149,9 +151,9 @@ export default function Comms() {
   return (
     <div>
       <PageHeader
-        title="Communication"
+        title={t('comms.title')}
         count={sm ? `${sm.total} messages` : undefined}
-        subtitle="One outbox for every parent-facing message · WhatsApp BSP connects via .env keys (running in sandbox mode)"
+        subtitle={t('comms.subtitle')}
         action={
           canSend && (
             <div className="flex gap-2">
@@ -171,7 +173,7 @@ export default function Comms() {
                 }}
               >
                 <Megaphone className="mr-1.5 inline h-3.5 w-3.5" />
-                New announcement
+                {t('comms.newAnnouncement')}
               </button>
             </div>
           )
@@ -212,7 +214,7 @@ export default function Comms() {
         columns={cols}
         data={msgs}
         isLoading={isLoading}
-        title="Message outbox"
+        title={t('comms.outbox')}
         searchPlaceholder="Search messages…"
         exportName="messages"
         filterable={[

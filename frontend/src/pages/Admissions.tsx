@@ -17,6 +17,7 @@ import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useAuth } from '../lib/auth';
 import { cn } from '../lib/utils';
+import { useI18n } from '../lib/i18n';
 
 const RESULT_LABEL: Record<string, string> = {
   EP: 'EP · Excellent Progress',
@@ -512,6 +513,7 @@ function WaitlistPanel() {
 }
 
 export default function Admissions() {
+  const { t } = useI18n();
   const { data, isLoading } = useQuery({
     queryKey: ['admissions'],
     queryFn: () => api('/admissions'),
@@ -614,9 +616,9 @@ export default function Admissions() {
   return (
     <div>
       <PageHeader
-        title="Admissions"
+        title={t('admissions.title')}
         count={`${rows.length} in pipeline`}
-        subtitle="Stage-2 registration → Discovery Flight → CH approval → confirmation"
+        subtitle={t('admissions.subtitle')}
       />
       <WaitlistPanel />
       <div className="mb-4 flex flex-wrap gap-2.5">
@@ -641,7 +643,7 @@ export default function Admissions() {
         columns={columns}
         data={rows}
         isLoading={isLoading}
-        title="Admission Pipeline"
+        title={t('admissions.pipeline')}
         searchPlaceholder="Search registrations…"
         exportName="admissions"
         filterable={[

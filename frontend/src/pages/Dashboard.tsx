@@ -5,6 +5,7 @@ import { api, fmtINR, fmtDate } from '../lib/api';
 import { useAuth, ROLE_LABELS } from '../lib/auth';
 import { PageHeader } from '../components/layout/AppLayout';
 import { Badge } from '../components/ui/DataTable';
+import { useI18n } from '../lib/i18n';
 
 const STAGE_LABELS: Record<string, string> = {
   NEW_INQUIRY: 'New Inquiry',
@@ -29,6 +30,7 @@ const STAGE_ORDER = [
 ];
 
 export default function Dashboard() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
@@ -41,28 +43,28 @@ export default function Dashboard() {
 
   const stats = [
     {
-      label: 'Active Students',
+      label: t('dashboard.activeStudents'),
       value: data?.students ?? '—',
       icon: Users,
       tint: 'bg-honey-50 text-honey-600',
       foot: `${data?.batches ?? 0} active batches`,
     },
     {
-      label: 'Open Leads',
+      label: t('dashboard.openLeads'),
       value: data?.leadsOpen ?? '—',
       icon: Megaphone,
       tint: 'bg-sky-50 text-sky-600',
       foot: 'First Buzz pipeline',
     },
     {
-      label: "Today's Attendance",
+      label: t('dashboard.todayAttendance'),
       value: data ? `${attendancePct}%` : '—',
       icon: CalendarCheck,
       tint: 'bg-emerald-50 text-emerald-600',
       foot: data ? `${data.attendance.present} of ${data.attendance.total} present` : '',
     },
     {
-      label: 'Fees Collected',
+      label: t('dashboard.feesCollected'),
       value: data ? fmtINR(data.fees.collected) : '—',
       icon: IndianRupee,
       tint: 'bg-violet-50 text-violet-600',
@@ -77,10 +79,10 @@ export default function Dashboard() {
 
   const greeting =
     new Date().getHours() < 12
-      ? 'Good morning'
+      ? t('dashboard.goodMorning')
       : new Date().getHours() < 17
-        ? 'Good afternoon'
-        : 'Good evening';
+        ? t('dashboard.goodAfternoon')
+        : t('dashboard.goodEvening');
 
   return (
     <div>
@@ -117,11 +119,9 @@ export default function Dashboard() {
         {/* ── Admission funnel ── */}
         <div className="card p-5 xl:col-span-2">
           <div className="flex items-center justify-between">
-            <h3 className="font-heading text-[15px] font-extrabold">
-              Admission Funnel — First Buzz Pipeline
-            </h3>
+            <h3 className="font-heading text-[15px] font-extrabold">{t('dashboard.funnel')}</h3>
             <Link to="/leads" className="btn-ghost text-xs">
-              View CRM <ArrowRight className="h-3.5 w-3.5" />
+              {t('dashboard.viewCrm')} <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
           <div className="mt-5 space-y-3">
@@ -148,7 +148,7 @@ export default function Dashboard() {
 
         {/* ── Programme distribution ── */}
         <div className="card p-5">
-          <h3 className="font-heading text-[15px] font-extrabold">Students by Programme</h3>
+          <h3 className="font-heading text-[15px] font-extrabold">{t('dashboard.byProgramme')}</h3>
           <div className="mt-4 space-y-3.5">
             {(data?.programmeDistribution ?? []).map((p: any) => (
               <div key={p.name} className="flex items-center gap-3">
@@ -176,7 +176,9 @@ export default function Dashboard() {
       {/* ── Recent leads ── */}
       <div className="card mt-5 p-5">
         <div className="flex items-center justify-between">
-          <h3 className="font-heading text-[15px] font-extrabold">Recent Inquiries</h3>
+          <h3 className="font-heading text-[15px] font-extrabold">
+            {t('dashboard.recentInquiries')}
+          </h3>
           <Link to="/leads" className="btn-ghost text-xs">
             All leads <ArrowRight className="h-3.5 w-3.5" />
           </Link>

@@ -4,6 +4,7 @@ import { Activity, Boxes, IndianRupee, TrendingUp, Users, WalletCards } from 'lu
 import { api } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { useAuth, HO_ROLES } from '../lib/auth';
+import { useI18n } from '../lib/i18n';
 const money = (v: number) =>
   '₹' + Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
 function Kpi({ label, value, note, icon: Icon, tone = 'text-honey-700' }: any) {
@@ -44,6 +45,7 @@ function Bars({ rows, valueKey, labelKey, format = (x: any) => x }: any) {
   );
 }
 export default function Analytics() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const [unitId, setUnitId] = useState('');
   const [months, setMonths] = useState('6');
@@ -60,7 +62,7 @@ export default function Analytics() {
   if (isLoading || !d)
     return (
       <div>
-        <PageHeader title="Analytics" subtitle="Loading management intelligence…" />
+        <PageHeader title={t('analytics.title')} subtitle={t('analytics.loading')} />
         <div className="card p-12 text-center">Loading analytics…</div>
       </div>
     );
@@ -68,8 +70,8 @@ export default function Analytics() {
   return (
     <div>
       <PageHeader
-        title="Analytics"
-        subtitle={`Cross-module operational intelligence · generated ${new Date(d.generatedAt).toLocaleString('en-IN')}`}
+        title={t('analytics.title')}
+        subtitle={`${t('analytics.subtitle')} · ${new Date(d.generatedAt).toLocaleString('en-IN')}`}
       />
       <div className="card mb-4 flex flex-wrap gap-3 p-4">
         {units.length > 0 && (

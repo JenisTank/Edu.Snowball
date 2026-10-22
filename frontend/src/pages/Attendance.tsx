@@ -16,6 +16,7 @@ import { Badge } from '../components/ui/DataTable';
 import { ErrorNote } from '../components/ui/Modal';
 import { useAuth, HO_ROLES } from '../lib/auth';
 import { cn } from '../lib/utils';
+import { useI18n } from '../lib/i18n';
 
 const OVERRIDE_ROLES = ['CENTRE_HEAD', 'FOUNDER', 'ACADEMIC_DIR'];
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -369,6 +370,7 @@ function ReportsPanel({ batches }: { batches: { batchId: string; name: string; u
 }
 
 export default function Attendance() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
   const isHO = HO_ROLES.includes(user!.role);
@@ -448,9 +450,9 @@ export default function Attendance() {
   return (
     <div>
       <PageHeader
-        title="Attendance"
-        count={date === todayISO() ? 'today' : date}
-        subtitle="Default is ABSENT — teachers actively mark Present · auto-lock at start + 30 min · post-lock edits need Centre Head override"
+        title={t('attendance.title')}
+        count={date === todayISO() ? t('attendance.today') : date}
+        subtitle={t('attendance.subtitle')}
         action={
           <label className="btn-neo flex items-center gap-2 cursor-pointer">
             <CalendarDays className="h-4 w-4 text-honey-700" />

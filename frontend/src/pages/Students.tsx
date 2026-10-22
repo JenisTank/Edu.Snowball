@@ -4,6 +4,7 @@ import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
 import { useAuth, HO_ROLES } from '../lib/auth';
+import { useI18n } from '../lib/i18n';
 
 interface StudentRow {
   id: string;
@@ -31,6 +32,7 @@ const PLAN_LABEL: Record<string, string> = {
 };
 
 export default function Students() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ['students'],
@@ -156,7 +158,7 @@ export default function Students() {
   return (
     <div>
       <PageHeader
-        title="Students"
+        title={t('students.title')}
         count={`${students.length} enrolled`}
         subtitle={`AY 2026-27 ${isHO ? '· all units' : `· ${user?.unitName}`}`}
       />
@@ -179,7 +181,7 @@ export default function Students() {
       </div>
 
       <DataTable
-        title="Student Register"
+        title={t('students.register')}
         columns={columns}
         data={students}
         isLoading={isLoading}

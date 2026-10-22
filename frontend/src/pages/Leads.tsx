@@ -20,6 +20,7 @@ import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useAuth, HO_ROLES } from '../lib/auth';
 import { cn } from '../lib/utils';
+import { useI18n } from '../lib/i18n';
 
 interface LeadRow {
   id: string;
@@ -753,6 +754,7 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
 
 // ───────────────────────── Page ─────────────────────────
 export default function Leads() {
+  const { t } = useI18n();
   const { data, isLoading } = useQuery({
     queryKey: ['leads'],
     queryFn: () => api<LeadRow[]>('/leads'),
@@ -892,9 +894,9 @@ export default function Leads() {
   return (
     <div>
       <PageHeader
-        title="First Buzz CRM"
+        title={t('leads.title')}
         count={`${leads.length} leads`}
-        subtitle="9-stage inquiry pipeline · central hub routing to 3 units"
+        subtitle={t('leads.subtitle')}
         action={
           <div className="flex items-center gap-2.5">
             <div className="seg">
@@ -945,7 +947,7 @@ export default function Leads() {
           columns={columns}
           data={leads}
           isLoading={isLoading}
-          title="Lead Pipeline"
+          title={t('leads.pipeline')}
           searchPlaceholder="Search pipeline…"
           exportName="leads"
           filterable={[

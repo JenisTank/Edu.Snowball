@@ -129,6 +129,9 @@ jobs:
 
       - run: npm ci --no-audit --no-fund
 
+      # A typo in t('…') renders as the key itself, so catch it before the build.
+      - run: node scripts/check-i18n.mjs
+
       - run: npm run build
 
   format:

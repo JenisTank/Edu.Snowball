@@ -7,8 +7,10 @@ import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useAuth } from '../lib/auth';
+import { useI18n } from '../lib/i18n';
 
 export default function Certificates() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
   const canIssue = ['FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD'].includes(user!.role);
@@ -114,9 +116,9 @@ export default function Certificates() {
   return (
     <div>
       <PageHeader
-        title="Certificates"
+        title={t('certificates.title')}
         count={`${issued.length} issued`}
-        subtitle="7 Head-Office-locked templates · serial-numbered · TC requires cleared fees + No-Dues confirmation"
+        subtitle={t('certificates.subtitle')}
       />
 
       <div className="card mb-5 flex flex-col gap-3 p-4 sm:flex-row sm:items-end">
@@ -202,7 +204,7 @@ export default function Certificates() {
         columns={cols}
         data={issued}
         isLoading={isLoading}
-        title="Issued certificates"
+        title={t('certificates.issued')}
         searchPlaceholder="Search serial / student…"
         exportName="certificates"
         filterable={[
