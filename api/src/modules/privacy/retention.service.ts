@@ -47,7 +47,7 @@ export async function runRetention(
 
   // Audit rows and student records are reported, never deleted here.
   const [audit, students] = await Promise.all([
-    prisma.auditLog.count({ where: { createdAt: { lt: plan.auditBefore } } }),
+    prisma.auditLog.count({ where: { changedAt: { lt: plan.auditBefore } } }),
     prisma.student.count({
       where: {
         status: { in: ['TC_ISSUED', 'GRADUATED', 'WITHDRAWN'] },

@@ -15,7 +15,7 @@ the evidence column says where.
 | ⏸    | Explicitly deferred by the client                                     |
 
 **Current footprint:** 249 HTTP routes · 66 Prisma models · 11 enums ·
-214 tests in 23 suites · 22 staff pages + parent PWA · 66-table migration
+220 tests in 24 suites · 22 staff pages + parent PWA · 66-table migration
 validated in PGlite.
 
 > **Audit date note.** The tables below were built from the 21 Oct 2026 audit.
@@ -51,6 +51,12 @@ The last audit gaps that were codeable without a client decision are closed:
 - **PTM student-wise view** — `GET /ptm/student/:id` and the history modal.
 - **CI schema guard** — the committed migration must equal the generator output
   and `prisma migrate diff` must report no drift.
+- **DPDP retention bug** — the nightly purge counted `audit_log.created_at`,
+  a column that does not exist (`changed_at`), so the job threw, the scheduler
+  swallowed it as a warning, and **retention silently never ran**. Fixed, with
+  a fake-client regression test that pins the exact `where` clauses.
+- **Sandbox runner** — `scripts/sandbox-preview.sh` runs the full stack without
+  Docker or Prisma engine binaries (see `docs/RUNBOOK.md` §1b).
 
 ---
 
@@ -352,7 +358,7 @@ documentation deliverable:
 | Grade-wise Discovery Flight templates       | 🟡     | One generic form; per-programme variants need the programme content   |
 | Faculty guest-engagement / security deposit | 🟡     | Not built — needs HR policy confirmation                              |
 
-**Verification for this state:** `npm test` 214/214 across 23 suites,
+**Verification for this state:** `npm test` 220/220 across 24 suites,
 `tsc --noEmit` clean, prettier clean, frontend production build clean, and all
 four CI jobs green (`API`, `Database`, `Frontend`, `Repo — prettier`).
 
@@ -381,7 +387,7 @@ drift against `schema.prisma`.
   baseline (130 + `/health` + 2 PDF endpoints, zero missing).
 - **Models:** 66 models / 11 enums read from `schema.prisma`; presence of entities
   such as `OvertimeAuthorisation`, `StatutoryScheme` confirmed directly.
-- **Behaviour:** 214 tests cover the fee, attendance, admission, certificate, scoping,
+- **Behaviour:** 220 tests cover the fee, attendance, admission, certificate, scoping,
   validation and payroll rules; PDFs were rendered and text-extracted.
 - **Gaps:** each 🟡/🔲 above names the file or the missing entity, so it can be
   checked independently.
