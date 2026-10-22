@@ -206,7 +206,7 @@ function NotesModal({
             value={parentNames}
             maxLength={200}
             onChange={(e) => setParentNames(e.target.value)}
-            placeholder="Mr & Mrs Patel"
+            placeholder="Guardian name"
           />
         </Field>
         <Field label={t('ptm.teacherNotes')} hint={t('ptm.notesHint')}>

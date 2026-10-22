@@ -14,7 +14,7 @@ const base: DigestInput = {
   student: {
     id: 'stu-1',
     firstName: 'Aarav',
-    lastName: 'Patel',
+    lastName: 'Sample',
     admissionNo: 'BB-U1-2627-0001',
     guardianEmail: 'guardian@example.com',
   },
@@ -37,7 +37,7 @@ describe('weekly parent digest', () => {
     expect(first).toContain('present 4 of 5');
     expect(first).toContain('80%');
     expect(d.text.trim().endsWith('— BumbleB Kidz')).toBe(true);
-    expect(d.subject).toContain('Aarav Patel');
+    expect(d.subject).toContain('Aarav Sample');
   });
 
   it('says the register was not marked instead of inventing an absence', () => {

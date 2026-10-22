@@ -12,7 +12,7 @@ describe('PDF documents (receipts + certificates)', () => {
     const buf = await svc.receiptPdf({
       receiptNo: 'BB-U1-RCPT-2627-0042',
       paymentDate: '2026-10-21',
-      studentName: 'Aarav Patel',
+      studentName: 'Aarav Sample',
       admissionNo: 'BB-U1-2627-0001',
       programme: 'PlayHouse',
       batch: 'PlayHouse Morning (Guj)',
@@ -48,7 +48,7 @@ describe('PDF documents (receipts + certificates)', () => {
       serialNo: 'BB-U1-CERT-2627-0007',
       title: 'Bonafide Certificate',
       body: longBody,
-      childName: 'Aarav Patel',
+      childName: 'Aarav Sample',
       admissionNo: 'BB-U1-2627-0001',
       programme: 'PlayHouse',
       unitName: 'Unit 1 - Saraswati',
@@ -66,7 +66,7 @@ describe('PDF documents (receipts + certificates)', () => {
     const buf = await svc.receiptPdf({
       receiptNo: 'BB-U2-RCPT-2627-0001',
       paymentDate: '2026-04-10',
-      studentName: 'Diya Shah',
+      studentName: 'Diya Sample',
       admissionNo: 'BB-U2-2627-0009',
       unitName: 'Unit 2 - Rajkot Flagship',
       unitCode: 'U2',

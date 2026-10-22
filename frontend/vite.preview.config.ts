@@ -1,18 +1,18 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 const names = [
-  'Aarav Patel',
-  'Diya Shah',
-  'Vivaan Mehta',
-  'Aanya Trivedi',
-  'Reyansh Joshi',
-  'Ira Desai',
-  'Kabir Dave',
-  'Myra Vyas',
-  'Arjun Bhatt',
-  'Kiara Soni',
-  'Dhruv Pandya',
-  'Riya Thakkar',
+  'Aarav Sample',
+  'Diya Sample',
+  'Vivaan Sample',
+  'Aanya Sample',
+  'Reyansh Sample',
+  'Ira Sample',
+  'Kabir Sample',
+  'Myra Sample',
+  'Arjun Sample',
+  'Kiara Sample',
+  'Dhruv Sample',
+  'Riya Sample',
 ];
 const units = [
   { id: 'u1', code: 'U1', name: 'University Road' },

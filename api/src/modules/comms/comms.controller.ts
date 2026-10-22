@@ -334,7 +334,7 @@ export class CommsController {
       code,
       body,
       preview: renderTemplate(body, {
-        child: 'Aarav Patel',
+        child: 'Aarav Sample',
         batch: 'K1 Morning Gujarati',
         date: new Date().toLocaleDateString('en-IN'),
         amount: '12,000',

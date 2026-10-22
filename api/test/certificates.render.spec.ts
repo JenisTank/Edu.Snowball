@@ -15,7 +15,7 @@ const certificate = {
   payload: {},
   student: {
     firstName: 'Aarav',
-    lastName: 'Patel',
+    lastName: 'Sample',
     admissionNo: 'BB-U1-2627-0001',
     programme: { name: 'PlayHouse' },
     unit: { name: 'Unit 1 - Saraswati' },
@@ -25,9 +25,9 @@ const certificate = {
 describe('certificate body rendering', () => {
   it('substitutes every placeholder in the HO-locked template', () => {
     const { body, child, tpl } = (makeController() as any).renderCertificateBody(certificate);
-    expect(child).toBe('Aarav Patel');
+    expect(child).toBe('Aarav Sample');
     expect(tpl.name).toBe('Bonafide Certificate');
-    expect(body).toContain('Aarav Patel');
+    expect(body).toContain('Aarav Sample');
     expect(body).toContain('BB-U1-2627-0001');
     expect(body).toContain('PlayHouse');
     expect(body).toContain('Unit 1 - Saraswati');

@@ -27,7 +27,7 @@ const receipt = (over: Record<string, any> = {}) => ({
   ledgerType: 'PRESCHOOL',
   student: {
     firstName: 'Aarav',
-    lastName: 'Patel',
+    lastName: 'Sample',
     admissionNo: 'BB-U1-2627-0001',
     programme: { name: 'PlayHouse' },
     unit: { code: 'U1' },
@@ -38,7 +38,7 @@ const receipt = (over: Record<string, any> = {}) => ({
 const ledgerRow = (over: Record<string, any> = {}) => ({
   id: 's1',
   admissionNo: 'BB-U1-2627-0001',
-  name: 'Aarav Patel',
+  name: 'Aarav Sample',
   unit: 'U1',
   programme: { name: 'PlayHouse' },
   plan: 'PLAN_A',
@@ -289,7 +289,7 @@ describe('fee reports', () => {
 
   describe('exports', () => {
     it('escapes CSV cells that would break a spreadsheet', () => {
-      expect(csvCell('Patel, Aarav')).toBe('"Patel, Aarav"');
+      expect(csvCell('Sample, Aarav')).toBe('"Sample, Aarav"');
       expect(csvCell('say "hi"')).toBe('"say ""hi"""');
       expect(csvCell(42)).toBe('42');
       expect(csvCell(null)).toBe('');

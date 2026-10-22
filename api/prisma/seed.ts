@@ -314,7 +314,9 @@ async function main() {
     }
   }
 
-  // ── Students (42, realistic Gujarati names) ──
+  // ── Students (42 demo fixtures) ──
+  // Demo people carry the surname "Sample" and example.com mailboxes so no
+  // seeded row can be mistaken for a real family.
   const firstNames = [
     'Aarav',
     'Vihaan',
@@ -359,22 +361,6 @@ async function main() {
     'Nirav',
     'Pia',
   ];
-  const lastNames = [
-    'Patel',
-    'Shah',
-    'Mehta',
-    'Joshi',
-    'Trivedi',
-    'Dave',
-    'Vyas',
-    'Bhatt',
-    'Raval',
-    'Thakkar',
-    'Gandhi',
-    'Desai',
-    'Kotak',
-    'Pandya',
-  ];
   const areasList = [
     'Saraswati Nagar',
     'Kalawad Road',
@@ -392,7 +378,7 @@ async function main() {
     const unitCode = batch.unitId === u1.id ? 'U1' : batch.unitId === u2.id ? 'U2' : 'U3';
     serial++;
     const fn = firstNames[i % firstNames.length];
-    const ln = lastNames[i % lastNames.length];
+    const ln = 'Sample'; // demo fixture — never a real family name
     const ageYears =
       Number(prog.ageMin) + Math.random() * (Number(prog.ageMax) - Number(prog.ageMin));
     const dob = new Date(Date.now() - ageYears * 365.25 * 24 * 3600 * 1000);
@@ -404,9 +390,10 @@ async function main() {
         lastName: ln,
         dob,
         gender: i % 2 === 0 ? 'Male' : 'Female',
-        fatherName: `${['Rajesh', 'Amit', 'Sanjay', 'Hitesh', 'Paresh', 'Mehul'][i % 6]} ${ln}`,
+        fatherName: `Parent ${ln} ${String(serial).padStart(2, '0')}`,
         fatherPhone: `+91 9${String(100000000 + i * 1234567).slice(0, 9)}`,
-        motherName: `${['Nita', 'Payal', 'Hetal', 'Bhavna', 'Komal', 'Rupal'][i % 6]} ${ln}`,
+        guardianEmail: `parent.${String(serial).padStart(2, '0')}@example.com`,
+        motherName: `Co-parent ${ln} ${String(serial).padStart(2, '0')}`,
         addressArea: areasList[i % areasList.length],
         programmeId: batch.programmeId,
         batchId: batch.id,
@@ -487,7 +474,7 @@ async function main() {
       data: {
         inquiryNo: `BB-${unit.code}-INQ-2627-${String(i + 1).padStart(4, '0')}`,
         stage: stages[i % stages.length],
-        parentName: `${['Kiran', 'Bhavesh', 'Dipti', 'Jignesh', 'Falak', 'Chirag', 'Hina', 'Nilesh'][i % 8]} ${lastNames[i % lastNames.length]}`,
+        parentName: `Parent Sample ${String(i + 1).padStart(2, '0')}`,
         parentPhone: `+91 97${String(10000000 + i * 654321).slice(0, 8)}`,
         childName: `${firstNames[(i + 20) % firstNames.length]}`,
         programmeInterestId: progs[progData[i % 5].code].id,
