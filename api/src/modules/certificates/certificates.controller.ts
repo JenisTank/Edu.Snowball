@@ -23,6 +23,7 @@ import { AuditService } from '../../common/audit/audit.service';
 import { certificateNo, nextSerial } from './certificates.rules';
 import { buildSchedule, num } from '../fees/fees.rules';
 import type { Response } from 'express';
+import { IssueCertificateDto } from './certificates.dto';
 
 const AY = '2026-27';
 const AY_SHORT = '2627';
@@ -167,17 +168,7 @@ export class CertificatesController {
   // ── Issue a certificate ──
   @Post('issue')
   @Roles(...ISSUE_ROLES)
-  async issue(
-    @Req() req: any,
-    @Body()
-    b: {
-      studentId: string;
-      type: string;
-      event?: string;
-      reason?: string;
-      noDuesConfirmed?: boolean;
-    },
-  ) {
+  async issue(@Req() req: any, @Body() b: IssueCertificateDto) {
     const tpl = TEMPLATES.find((t) => t.type === b.type);
     if (!tpl) throw new BadRequestException('Unknown certificate type');
     const s = await this.prisma.student.findUnique({

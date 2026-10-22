@@ -16,6 +16,13 @@ import {
 import type { Response } from 'express';
 import { AuthGuard } from '../../common/auth/auth.guard';
 import { buildDiscoverySummary, RECOMMENDATIONS } from './discovery.rules';
+import {
+  ConfirmAdmissionDto,
+  DeclineWaitlistDto,
+  DiscoveryResultDto,
+  RegisterStudentDto,
+  ScheduleDiscoveryFlightDto,
+} from './admissions.dto';
 import { Roles } from '../../common/auth/roles.decorator';
 import { unitScope } from '../../common/auth/unit-scope';
 import { HO_ROLES } from '../../common/auth/auth.constants';
@@ -188,7 +195,11 @@ export class AdmissionsController {
   // ── Stage-2 Registration (lead-linked) ──
   @Post('leads/:leadId/register')
   @Roles(...ADMIT_ROLES)
-  async register(@Req() req: any, @Param('leadId') leadId: string, @Body() body: any) {
+  async register(
+    @Req() req: any,
+    @Param('leadId') leadId: string,
+    @Body() body: RegisterStudentDto,
+  ) {
     const lead = await this.prisma.lead.findUnique({
       where: { id: leadId },
       include: { student: true, assignedUnit: true },
@@ -271,7 +282,7 @@ export class AdmissionsController {
     // DPDP: consent is captured at registration, not bolted on later.
     const consents: Record<string, boolean> = {
       DATA_PROCESSING: true,
-      ...(body.consents ?? {}),
+      ...((body.consents as Record<string, boolean>) ?? {}),
     };
     for (const [type, granted] of Object.entries(consents)) {
       await this.prisma.consentLog
@@ -306,7 +317,7 @@ export class AdmissionsController {
   async scheduleDF(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() body: { scheduledAt?: string },
+    @Body() body: ScheduleDiscoveryFlightDto,
   ) {
     const student = await this.prisma.student.findUnique({ where: { id } });
     if (!student) throw new NotFoundException('Student not found');
@@ -328,11 +339,7 @@ export class AdmissionsController {
   // ── Discovery Flight: record result (EP/GP/SP/NP/ND — internal only) ──
   @Post('discovery/:dfId/result')
   @Roles(...ADMIT_ROLES)
-  async recordDF(
-    @Req() req: any,
-    @Param('dfId') dfId: string,
-    @Body() body: { resultCode: string; recommendation?: string; notes?: string },
-  ) {
+  async recordDF(@Req() req: any, @Param('dfId') dfId: string, @Body() body: DiscoveryResultDto) {
     const df = await this.prisma.discoveryFlight.findUnique({ where: { id: dfId } });
     if (!df) throw new NotFoundException('Discovery Flight not found');
     if (!HO_ROLES.includes(req.user.role) && req.user.unitId !== df.unitId)
@@ -415,19 +422,7 @@ export class AdmissionsController {
   // ── Confirmation: admission number + batch + seat check + Enrolled ──
   @Post('students/:id/confirm')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'RECEPTIONIST')
-  async confirm(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body()
-    body: {
-      batchId: string;
-      instalmentPlan?: string;
-      orientationDate?: string;
-      /** Full batch: queue the child instead of failing the admission. */
-      waitlist?: boolean;
-      waitlistNote?: string;
-    },
-  ) {
+  async confirm(@Req() req: any, @Param('id') id: string, @Body() body: ConfirmAdmissionDto) {
     const student = await this.prisma.student.findUnique({
       where: { id },
       include: { unit: true, discoveryFlights: { orderBy: { createdAt: 'desc' } } },
@@ -669,7 +664,7 @@ export class AdmissionsController {
 
   @Post('waitlist/:id/decline')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'RECEPTIONIST')
-  async declineWaitlist(@Req() req: any, @Param('id') id: string, @Body() b: { reason?: string }) {
+  async declineWaitlist(@Req() req: any, @Param('id') id: string, @Body() b: DeclineWaitlistDto) {
     const entry = await this.prisma.waitlistEntry.findUnique({ where: { id } });
     if (!entry) throw new NotFoundException('Waitlist entry not found');
     if (!HO_ROLES.includes(req.user.role) && entry.unitId !== req.user.unitId)

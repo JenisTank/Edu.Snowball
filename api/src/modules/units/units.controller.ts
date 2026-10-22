@@ -14,6 +14,7 @@ import { Roles } from '../../common/auth/roles.decorator';
 import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { UpdateUnitDto, UpdateUnitSettingsDto } from './units.dto';
 
 // ─────────────────────────── UNITS ───────────────────────────
 @Controller('units')
@@ -46,7 +47,7 @@ export class UnitsAdminController {
 
   @Patch(':id')
   @Roles('FOUNDER', 'ACADEMIC_DIR')
-  async updateUnit(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+  async updateUnit(@Req() req: any, @Param('id') id: string, @Body() body: UpdateUnitDto) {
     const existing = await this.prisma.unit.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Unit not found');
     const data: any = {};
@@ -60,7 +61,11 @@ export class UnitsAdminController {
 
   @Patch(':id/settings')
   @Roles('FOUNDER', 'ACADEMIC_DIR')
-  async updateSettings(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+  async updateSettings(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: UpdateUnitSettingsDto,
+  ) {
     const unit = await this.prisma.unit.findUnique({ where: { id }, include: { settings: true } });
     if (!unit) throw new NotFoundException('Unit not found');
     // Petty cash float: Founder-only (HO-locked financial master)

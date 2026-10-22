@@ -23,6 +23,8 @@ import { Throttle } from '@nestjs/throttler';
 import { ParentLoginDto } from './dto/parent-login.dto';
 import { istDateKey, validateLeave, canCancel } from '../leaves/leaves.rules';
 import { CONSENT_TYPES, consentRegister } from '../privacy/privacy.rules';
+import { PushSubscriptionDto, UnsubscribeDto } from './dto/push-subscription.dto';
+import { ParentConsentDto, ParentLeaveDto, ParentMessageDto } from './dto/parent-portal.dto';
 
 // ─────────────────────────────────────────────────────────────
 // Parent Portal API (Slice 6 — PWA)
@@ -327,7 +329,7 @@ export class ParentController {
   @Post('child/:id/conversation')
   @UseGuards(AuthGuard)
   @Roles('PARENT')
-  async sendMessage(@Req() req: any, @Param('id') id: string, @Body() b: { body: string }) {
+  async sendMessage(@Req() req: any, @Param('id') id: string, @Body() b: ParentMessageDto) {
     this.guardChild(req, id);
     if (!b.body?.trim() || b.body.trim().length > 1000)
       throw new BadRequestException('Message must be 1–1000 characters');
@@ -354,11 +356,7 @@ export class ParentController {
   @Post('child/:id/leaves')
   @UseGuards(AuthGuard)
   @Roles('PARENT')
-  async applyLeave(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body() b: { fromDate: string; toDate: string; type?: string; reason: string },
-  ) {
+  async applyLeave(@Req() req: any, @Param('id') id: string, @Body() b: ParentLeaveDto) {
     this.guardChild(req, id);
     const error = validateLeave(b);
     if (error) throw new BadRequestException(error);
@@ -481,11 +479,7 @@ export class ParentController {
   @Post('child/:id/consents')
   @UseGuards(AuthGuard)
   @Roles('PARENT')
-  async recordConsent(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body() b: { decisions: Record<string, boolean> },
-  ) {
+  async recordConsent(@Req() req: any, @Param('id') id: string, @Body() b: ParentConsentDto) {
     this.guardChild(req, id);
     const decisions = b?.decisions ?? {};
     const unknown = Object.keys(decisions).filter((k) => !CONSENT_TYPES.includes(k as any));
@@ -582,7 +576,7 @@ export class ParentController {
   @Post('push/subscribe')
   @UseGuards(AuthGuard)
   @Roles('PARENT')
-  async subscribe(@Req() req: any, @Body() b: any) {
+  async subscribe(@Req() req: any, @Body() b: PushSubscriptionDto) {
     if (!b?.endpoint || !b?.keys?.p256dh || !b?.keys?.auth)
       throw new BadRequestException('Invalid push subscription');
     await this.prisma.pushSubscription.upsert({
@@ -601,7 +595,7 @@ export class ParentController {
   @Delete('push/subscribe')
   @UseGuards(AuthGuard)
   @Roles('PARENT')
-  async unsubscribe(@Req() req: any, @Body() b: { endpoint: string }) {
+  async unsubscribe(@Req() req: any, @Body() b: UnsubscribeDto) {
     await this.prisma.pushSubscription.deleteMany({
       where: { endpoint: b.endpoint, phone: req.user.phone },
     });

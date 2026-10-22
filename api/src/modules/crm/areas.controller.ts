@@ -14,6 +14,7 @@ import { AuthGuard } from '../../common/auth/auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { CreateAreaDto, UpdateAreaDto } from './crm.dto';
 
 // ─────────────────────────── AREA MASTER (HO-maintained lookup) ───────────────────────────
 @Controller('areas')
@@ -34,7 +35,7 @@ export class AreasController {
 
   @Post()
   @Roles('FOUNDER', 'ACADEMIC_DIR')
-  async create(@Req() req: any, @Body() body: any) {
+  async create(@Req() req: any, @Body() body: CreateAreaDto) {
     if (!body.locality || !body.suggestedUnitId)
       throw new BadRequestException('locality and suggestedUnitId are required');
     const area = await this.prisma.areaMaster.create({
@@ -51,7 +52,7 @@ export class AreasController {
 
   @Patch(':id')
   @Roles('FOUNDER', 'ACADEMIC_DIR')
-  async update(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+  async update(@Req() req: any, @Param('id') id: string, @Body() body: UpdateAreaDto) {
     const existing = await this.prisma.areaMaster.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Area not found');
     const data: any = {};

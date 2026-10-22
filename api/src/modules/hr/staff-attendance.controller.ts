@@ -19,6 +19,7 @@ import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import * as XLSX from 'xlsx';
+import { AttendanceCorrectionDto } from './hr.dto';
 
 const HR_ROLES = ['FOUNDER', 'HR_MANAGER'];
 
@@ -121,7 +122,7 @@ export class StaffAttendanceController {
   @Patch('attendance/:id/resolve') async resolveAttendance(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() b: any,
+    @Body() b: AttendanceCorrectionDto,
   ) {
     if (!b.reason?.trim()) throw new BadRequestException('Correction reason required');
     const old = await this.prisma.staffAttendance.findUnique({ where: { id } });

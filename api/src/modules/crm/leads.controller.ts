@@ -16,6 +16,7 @@ import { Roles } from '../../common/auth/roles.decorator';
 import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { AddLeadNoteDto, AssignLeadDto, CreateLeadDto, SetLeadStageDto } from './crm.dto';
 
 const AY = '2026-27';
 const AY_SHORT = '2627';
@@ -109,7 +110,7 @@ export class LeadsController {
   // Form B (walk-in): unit auto-assigned to the receiving unit, channel WALK_IN.
   @Post()
   @Roles(...ROUTING_ROLES)
-  async create(@Req() req: any, @Body() body: any) {
+  async create(@Req() req: any, @Body() body: CreateLeadDto) {
     const {
       formVersion,
       parentName,
@@ -186,7 +187,7 @@ export class LeadsController {
         suggestedUnitId,
         // Walk-in auto-assigns immediately; Form A waits for receptionist confirm
         assignedUnitId: isWalkIn ? suggestedUnitId : null,
-        inquiryChannel: isWalkIn ? 'WALK_IN' : inquiryChannel || 'CALL',
+        inquiryChannel: (isWalkIn ? 'WALK_IN' : inquiryChannel || 'CALL') as any,
         experienceInterest: !!experienceInterest,
         sourceCampaign: sourceCampaign || null,
         notes: notes || null,
@@ -239,11 +240,7 @@ export class LeadsController {
   // ── Stage transitions (board + list) ──
   @Post(':id/stage')
   @Roles(...ROUTING_ROLES)
-  async setStage(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body() body: { stage: string; note?: string },
-  ) {
+  async setStage(@Req() req: any, @Param('id') id: string, @Body() body: SetLeadStageDto) {
     const lead = await this.prisma.lead.findUnique({ where: { id } });
     if (!lead) throw new NotFoundException('Lead not found');
     if (!STAGE_ORDER.includes(body.stage)) throw new BadRequestException('Unknown stage');
@@ -274,11 +271,7 @@ export class LeadsController {
   // ── Routing confirm / override / re-route (note mandatory on override) ──
   @Post(':id/route')
   @Roles(...ROUTING_ROLES)
-  async route(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body() body: { unitId: string; note?: string },
-  ) {
+  async route(@Req() req: any, @Param('id') id: string, @Body() body: AssignLeadDto) {
     const lead = await this.prisma.lead.findUnique({
       where: { id },
       include: { suggestedUnit: true, assignedUnit: true },
@@ -332,7 +325,7 @@ export class LeadsController {
 
   // ── Free-form note on timeline ──
   @Post(':id/activities')
-  async addNote(@Req() req: any, @Param('id') id: string, @Body() body: { note: string }) {
+  async addNote(@Req() req: any, @Param('id') id: string, @Body() body: AddLeadNoteDto) {
     if (!body.note?.trim()) throw new BadRequestException('Note is required');
     const lead = await this.prisma.lead.findUnique({ where: { id } });
     if (!lead) throw new NotFoundException('Lead not found');

@@ -12,6 +12,17 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import {
+  CancelOrderDto,
+  CreatePurchaseOrderDto,
+  CreatePurchaseRequestDto,
+  CreateVendorDto,
+  PettyCashDto,
+  ReceiveGoodsDto,
+  RejectRequestDto,
+  RequestNoteDto,
+  UpdateVendorDto,
+} from './inventory.dto';
 import type { Response } from 'express';
 
 import { AuthGuard } from '../../common/auth/auth.guard';
@@ -90,7 +101,7 @@ export class ProcurementController {
 
   @Post('vendors')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
-  async createVendor(@Req() req: any, @Body() b: any) {
+  async createVendor(@Req() req: any, @Body() b: CreateVendorDto) {
     if (!b.name?.trim() || !b.code?.trim())
       throw new BadRequestException('Name and code are required');
     const unitId = HO_ROLES.includes(req.user.role) ? (b.unitId ?? null) : req.user.unitId;
@@ -114,7 +125,7 @@ export class ProcurementController {
 
   @Patch('vendors/:id')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
-  async updateVendor(@Req() req: any, @Param('id') id: string, @Body() b: any) {
+  async updateVendor(@Req() req: any, @Param('id') id: string, @Body() b: UpdateVendorDto) {
     const old = await this.prisma.vendor.findUnique({ where: { id } });
     if (!old) throw new NotFoundException('Vendor not found');
     if (!HO_ROLES.includes(req.user.role) && old.unitId !== req.user.unitId)
@@ -148,7 +159,7 @@ export class ProcurementController {
 
   @Post('requests')
   @Roles(...BUY_ROLES)
-  async createRequest(@Req() req: any, @Body() b: any) {
+  async createRequest(@Req() req: any, @Body() b: CreatePurchaseRequestDto) {
     const unitId = this.unitFor(req, b.unitId);
     if (!b.title?.trim()) throw new BadRequestException('A title is required');
     const lines = Array.isArray(b.lines) ? b.lines : [];
@@ -186,7 +197,7 @@ export class ProcurementController {
 
   @Post('requests/:id/approve')
   @Roles(...APPROVE_ROLES)
-  async approveRequest(@Req() req: any, @Param('id') id: string, @Body() b: { note?: string }) {
+  async approveRequest(@Req() req: any, @Param('id') id: string, @Body() b: RequestNoteDto) {
     const row = await this.transitionRequest(req, id, 'APPROVED');
     return this.prisma.purchaseRequest.update({
       where: { id: row.id },
@@ -200,7 +211,7 @@ export class ProcurementController {
 
   @Post('requests/:id/reject')
   @Roles(...APPROVE_ROLES)
-  async rejectRequest(@Req() req: any, @Param('id') id: string, @Body() b: { note: string }) {
+  async rejectRequest(@Req() req: any, @Param('id') id: string, @Body() b: RejectRequestDto) {
     if (!b?.note?.trim()) throw new BadRequestException('A rejection note is required');
     const row = await this.transitionRequest(req, id, 'REJECTED');
     return this.prisma.purchaseRequest.update({
@@ -247,7 +258,7 @@ export class ProcurementController {
 
   @Post('orders')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR')
-  async createOrder(@Req() req: any, @Body() b: any) {
+  async createOrder(@Req() req: any, @Body() b: CreatePurchaseOrderDto) {
     const unitId = this.unitFor(req, b.unitId);
     if (!b.vendorId) throw new BadRequestException('A vendor is required');
     const vendor = await this.prisma.vendor.findUnique({ where: { id: b.vendorId } });
@@ -255,7 +266,7 @@ export class ProcurementController {
     if (vendor.unitId && vendor.unitId !== unitId)
       throw new BadRequestException('Vendor belongs to another unit');
 
-    let lines = Array.isArray(b.lines) ? b.lines : [];
+    let lines: any[] = Array.isArray(b.lines) ? b.lines : [];
     let request: any = null;
     if (b.requestId) {
       request = await this.prisma.purchaseRequest.findUnique({
@@ -348,7 +359,7 @@ export class ProcurementController {
 
   @Post('orders/:id/cancel')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
-  async cancelOrder(@Req() req: any, @Param('id') id: string, @Body() b: { reason: string }) {
+  async cancelOrder(@Req() req: any, @Param('id') id: string, @Body() b: CancelOrderDto) {
     const old = await this.prisma.purchaseOrder.findUnique({
       where: { id },
       include: { lines: true },
@@ -401,7 +412,7 @@ export class ProcurementController {
    */
   @Post('orders/:id/receive')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'RECEPTIONIST')
-  async receive(@Req() req: any, @Param('id') id: string, @Body() b: any) {
+  async receive(@Req() req: any, @Param('id') id: string, @Body() b: ReceiveGoodsDto) {
     const order = await this.prisma.purchaseOrder.findUnique({
       where: { id },
       include: { lines: true, vendor: true },
@@ -412,13 +423,13 @@ export class ProcurementController {
     if (['CANCELLED', 'RECEIVED'].includes(order.status))
       throw new BadRequestException(`A ${order.status} order cannot receive goods`);
 
-    const inputs: {
+    const inputs = (Array.isArray(b?.lines) ? b.lines : []) as {
       orderLineId?: string;
       itemId?: string;
       description?: string;
       quantity: number;
       unitCost?: number;
-    }[] = Array.isArray(b?.lines) ? b.lines : [];
+    }[];
     if (!inputs.length) throw new BadRequestException('At least one received line is required');
 
     const code = await this.unitCode(order.unitId);
@@ -550,9 +561,9 @@ export class ProcurementController {
 
   @Post('petty-cash')
   @Roles(...BUY_ROLES)
-  async addPettyCash(@Req() req: any, @Body() b: any) {
+  async addPettyCash(@Req() req: any, @Body() b: PettyCashDto) {
     const unit = this.unitFor(req, b.unitId);
-    if (!PETTY_CASH_TYPES.includes(b.type))
+    if (!(PETTY_CASH_TYPES as readonly string[]).includes(b.type))
       throw new BadRequestException(`Type must be one of ${PETTY_CASH_TYPES.join(', ')}`);
     const amount = Number(b.amount);
     if (!(amount > 0)) throw new BadRequestException('Amount must be positive');

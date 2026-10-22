@@ -22,7 +22,7 @@ import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { sendWebPush } from '../../modules/notifications/push.service';
-import { CancelReceiptDto, CreatePaymentDto } from './dto/payment.dto';
+import { CancelReceiptDto, CreatePaymentDto, UpsertFeeStructureDto } from './dto/payment.dto';
 import {
   ACADEMIC_YEAR,
   ACADEMIC_YEAR_SHORT,
@@ -79,7 +79,7 @@ export class FeesController {
 
   @Post('structures')
   @Roles('FOUNDER', 'ACADEMIC_DIR')
-  async upsertStructure(@Req() req: any, @Body() b: any) {
+  async upsertStructure(@Req() req: any, @Body() b: UpsertFeeStructureDto) {
     if (!b.unitId || !b.programmeId || !b.totalFee)
       throw new BadRequestException('unitId, programmeId and totalFee are required');
     const existing = await this.prisma.feeStructure.findUnique({

@@ -17,6 +17,12 @@ import { Roles } from '../../common/auth/roles.decorator';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { Response } from 'express';
+import {
+  ADJUSTMENT_TYPES,
+  CalculatePayrollDto,
+  PayrollAdjustmentDto,
+  ReversePayrollDto,
+} from './hr.dto';
 
 const HR_ROLES = ['FOUNDER', 'HR_MANAGER'];
 
@@ -164,7 +170,7 @@ export class PayrollController {
   @Post('payroll/:id/reverse') async reversePayroll(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() b: any,
+    @Body() b: ReversePayrollDto,
   ) {
     const old = await this.prisma.payrollRun.findUnique({
       where: { id },
@@ -210,11 +216,11 @@ export class PayrollController {
     return revised;
   }
 
-  @Post('payroll/adjustments') async adjustment(@Req() req: any, @Body() b: any) {
+  @Post('payroll/adjustments') async adjustment(@Req() req: any, @Body() b: PayrollAdjustmentDto) {
     if (
       !b.employeeId ||
       !b.month ||
-      !['EARNING', 'DEDUCTION'].includes(b.type) ||
+      !(ADJUSTMENT_TYPES as readonly string[]).includes(b.type) ||
       Number(b.amount) <= 0 ||
       !b.reason
     )
@@ -286,7 +292,10 @@ export class PayrollController {
     return this.prisma.payrollRun.findUnique({ where: { id }, include: { lines: true } });
   }
 
-  @Post('payroll/evening/calculate') async eveningPayroll(@Req() req: any, @Body() b: any) {
+  @Post('payroll/evening/calculate') async eveningPayroll(
+    @Req() req: any,
+    @Body() b: CalculatePayrollDto,
+  ) {
     const month = b.month;
     if (!/^\d{4}-\d{2}$/.test(month)) throw new BadRequestException('Month must be YYYY-MM');
     const [y, m] = month.split('-').map(Number),
@@ -345,7 +354,10 @@ export class PayrollController {
     });
   }
 
-  @Post('payroll/morning/calculate') async morningPayroll(@Req() req: any, @Body() b: any) {
+  @Post('payroll/morning/calculate') async morningPayroll(
+    @Req() req: any,
+    @Body() b: CalculatePayrollDto,
+  ) {
     const month = b.month;
     if (!/^\d{4}-\d{2}$/.test(month)) throw new BadRequestException('Month must be YYYY-MM');
     const [y, m] = month.split('-').map(Number),

@@ -22,6 +22,14 @@ import {
   encryptField,
   encryptionEnabled,
 } from '../../common/crypto/pii.service';
+import {
+  ChangeEmploymentDto,
+  CreateEmployeeDto,
+  EmployeeComponentDto,
+  EmployeeShiftDto,
+  MinuteRateDto,
+  UpdateStatutoryDto,
+} from './hr.dto';
 
 const HR_ROLES = ['FOUNDER', 'HR_MANAGER'];
 const TYPES = ['MORNING_SALARIED', 'EVENING_HOURLY', 'DUAL'];
@@ -40,7 +48,7 @@ export class EmployeesController {
   @Post('employees/:id/minute-rate') async minuteRate(
     @Req() req: any,
     @Param('id') employeeId: string,
-    @Body() b: any,
+    @Body() b: MinuteRateDto,
   ) {
     if (Number(b.rate) <= 0 || !b.effectiveFrom)
       throw new BadRequestException('Positive rate and effective date required');
@@ -59,7 +67,7 @@ export class EmployeesController {
   @Post('employees/:id/shift') async assignShift(
     @Req() req: any,
     @Param('id') employeeId: string,
-    @Body() b: any,
+    @Body() b: EmployeeShiftDto,
   ) {
     if (!b.shiftId || !b.effectiveFrom)
       throw new BadRequestException('Shift and effective date required');
@@ -78,7 +86,7 @@ export class EmployeesController {
   @Post('employees/:id/compensation') async compensation(
     @Req() req: any,
     @Param('id') employeeId: string,
-    @Body() b: any,
+    @Body() b: EmployeeComponentDto,
   ) {
     if (!b.componentId || !b.effectiveFrom)
       throw new BadRequestException('Component and effective date required');
@@ -146,7 +154,7 @@ export class EmployeesController {
     return { ...out, piiEncrypted: encryptionEnabled() };
   }
 
-  @Post('employees') async create(@Req() req: any, @Body() b: any) {
+  @Post('employees') async create(@Req() req: any, @Body() b: CreateEmployeeDto) {
     if (
       !b.fullName?.trim() ||
       !b.unitId ||
@@ -159,8 +167,6 @@ export class EmployeesController {
       );
     const unit = await this.prisma.unit.findUnique({ where: { id: b.unitId } });
     if (!unit) throw new BadRequestException('Invalid unit');
-    if (b.reportingManagerId === b.id)
-      throw new BadRequestException('Employee cannot report to self');
     const year = new Date(b.joiningDate).getFullYear().toString().slice(-2);
     const count = await this.prisma.employee.count();
     const employeeNo = `BB-${unit.code}-EMP-${year}-${String(count + 1).padStart(4, '0')}`;
@@ -215,7 +221,7 @@ export class EmployeesController {
   /** Statutory identifiers (PAN/UAN/ESIC/bank) — encrypted at rest. */
   @Patch('employees/:id/statutory')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'HR_MANAGER')
-  async statutory(@Req() req: any, @Param('id') id: string, @Body() b: any) {
+  async statutory(@Req() req: any, @Param('id') id: string, @Body() b: UpdateStatutoryDto) {
     const old = await this.prisma.employee.findUnique({ where: { id } });
     if (!old) throw new NotFoundException();
     const data: any = {};
@@ -238,15 +244,16 @@ export class EmployeesController {
   @Patch('employees/:id/employment') async change(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() b: any,
+    @Body() b: ChangeEmploymentDto,
   ) {
     const old = await this.prisma.employee.findUnique({ where: { id } });
     if (!old) throw new NotFoundException();
     if (b.reportingManagerId === id)
       throw new BadRequestException('Employee cannot report to self');
-    if (b.employmentType && !TYPES.includes(b.employmentType))
+    if (b.employmentType && !(TYPES as readonly string[]).includes(b.employmentType))
       throw new BadRequestException('Invalid employment type');
-    if (b.status && !STATUSES.includes(b.status)) throw new BadRequestException('Invalid status');
+    if (b.status && !(STATUSES as readonly string[]).includes(b.status))
+      throw new BadRequestException('Invalid status');
     const effectiveFrom = new Date(b.effectiveFrom || new Date());
     const next = {
       unitId: b.unitId || old.unitId,

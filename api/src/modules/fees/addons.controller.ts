@@ -16,6 +16,7 @@ import { HO_ROLES } from '../../common/auth/auth.constants';
 import { unitScope } from '../../common/auth/unit-scope';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { CreateAddonDto, PayAddonDto, StudentAddonDto, WaiveAddonDto } from './dto/addon.dto';
 
 /**
  * Add-on charges: kit, transport, event fees, late-pickup. Billed per student
@@ -62,11 +63,7 @@ export class FeeAddonsController {
 
   @Post()
   @Roles(...BILL_ROLES)
-  async create(
-    @Req() req: any,
-    @Body()
-    b: { studentId: string; label: string; amount: number; ledgerType?: string; notes?: string },
-  ) {
+  async create(@Req() req: any, @Body() b: StudentAddonDto) {
     if (!b.studentId || !b.label?.trim())
       throw new BadRequestException('Student and label required');
     const amount = Number(b.amount);
@@ -97,10 +94,7 @@ export class FeeAddonsController {
   /** Bill the same add-on to every active student of a batch (kit, event). */
   @Post('bulk')
   @Roles(...BILL_ROLES)
-  async bulk(
-    @Req() req: any,
-    @Body() b: { batchId: string; label: string; amount: number; notes?: string },
-  ) {
+  async bulk(@Req() req: any, @Body() b: CreateAddonDto) {
     const amount = Number(b.amount);
     if (!b.batchId || !b.label?.trim()) throw new BadRequestException('Batch and label required');
     if (!Number.isFinite(amount) || amount <= 0)
@@ -138,11 +132,7 @@ export class FeeAddonsController {
 
   @Post(':id/settle')
   @Roles(...BILL_ROLES)
-  async settle(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body() b: { paymentMode: string; reference?: string },
-  ) {
+  async settle(@Req() req: any, @Param('id') id: string, @Body() b: PayAddonDto) {
     const addon = await this.prisma.feeAddon.findUnique({ where: { id } });
     if (!addon) throw new NotFoundException('Add-on not found');
     if (!HO_ROLES.includes(req.user.role) && addon.unitId !== req.user.unitId)
@@ -174,7 +164,7 @@ export class FeeAddonsController {
 
   @Post(':id/waive')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
-  async waive(@Req() req: any, @Param('id') id: string, @Body() b: { reason?: string }) {
+  async waive(@Req() req: any, @Param('id') id: string, @Body() b: WaiveAddonDto) {
     const addon = await this.prisma.feeAddon.findUnique({ where: { id } });
     if (!addon) throw new NotFoundException('Add-on not found');
     if (!HO_ROLES.includes(req.user.role) && addon.unitId !== req.user.unitId)

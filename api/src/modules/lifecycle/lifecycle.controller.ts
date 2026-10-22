@@ -28,6 +28,11 @@ import {
   schemaFor,
   validateTabPayload,
 } from './lifecycle.rules';
+import {
+  CreateLifecycleRecordDto,
+  PromoteStudentDto,
+  UpdateLifecycleRecordDto,
+} from './lifecycle.dto';
 
 export const LIFECYCLE_TABS = [
   ['STUDENT_INFORMATION', 'Student Information', 'STAFF_PARENT'],
@@ -102,7 +107,11 @@ export class LifecycleController {
       orderBy: [{ eventDate: 'desc' }, { createdAt: 'desc' }],
     });
   }
-  @Post('student/:id') async create(@Req() req: any, @Param('id') id: string, @Body() b: any) {
+  @Post('student/:id') async create(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() b: CreateLifecycleRecordDto,
+  ) {
     const s = await this.student(req, id);
     const def = LIFECYCLE_TABS.find((x) => x[0] === b.tab);
     if (!def) throw new BadRequestException('Invalid lifecycle tab');
@@ -117,7 +126,7 @@ export class LifecycleController {
         unitId: s.unitId,
         tab: b.tab,
         title: b.title.trim(),
-        payload: b.payload || {},
+        payload: (b.payload ?? {}) as any,
         visibility: def[2],
         status: b.status || null,
         eventDate: b.eventDate ? new Date(b.eventDate) : null,
@@ -130,7 +139,7 @@ export class LifecycleController {
   @Patch(':recordId') async update(
     @Req() req: any,
     @Param('recordId') recordId: string,
-    @Body() b: any,
+    @Body() b: UpdateLifecycleRecordDto,
   ) {
     const old = await this.prisma.studentLifecycleRecord.findUnique({ where: { id: recordId } });
     if (!old) throw new NotFoundException();
@@ -259,11 +268,7 @@ export class LifecycleController {
 
   @Post('students/:id/promote')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
-  async promote(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body() b: { programmeId: string; batchId?: string; effectiveDate?: string; note?: string },
-  ) {
+  async promote(@Req() req: any, @Param('id') id: string, @Body() b: PromoteStudentDto) {
     const student = await this.prisma.student.findUnique({
       where: { id },
       include: { programme: true },

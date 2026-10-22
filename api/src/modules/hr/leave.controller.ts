@@ -15,6 +15,7 @@ import { Roles } from '../../common/auth/roles.decorator';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { runLeaveCutoffTick } from '../../jobs/scheduler';
+import { ApplyLeaveDto, ApproveLeaveDto, LEAVE_TYPES, UpsertLeavePolicyDto } from './hr.dto';
 
 const HR_ROLES = ['FOUNDER', 'HR_MANAGER'];
 
@@ -32,21 +33,21 @@ export class LeaveController {
     return this.prisma.leavePolicy.findMany({ orderBy: [{ year: 'desc' }, { leaveType: 'asc' }] });
   }
 
-  @Post('leave/policies') async policy(@Req() req: any, @Body() b: any) {
-    if (!b.year || !['CL', 'SL', 'PL'].includes(b.leaveType))
+  @Post('leave/policies') async policy(@Req() req: any, @Body() b: UpsertLeavePolicyDto) {
+    if (!b.year || !(LEAVE_TYPES as readonly string[]).includes(b.leaveType))
       throw new BadRequestException('Year and CL/SL/PL required');
     const r = await this.prisma.leavePolicy.upsert({
       where: { year_leaveType: { year: Number(b.year), leaveType: b.leaveType } },
       create: {
         year: Number(b.year),
-        leaveType: b.leaveType,
+        leaveType: b.leaveType as any,
         allocation: Number(b.allocation),
-        carryForwardCap: Number(b.carryForwardCap),
+        carryForwardCap: Number(b.carryForwardCap ?? 0),
         effectiveFrom: new Date(b.effectiveFrom || `${b.year}-01-01`),
       },
       update: {
         allocation: Number(b.allocation),
-        carryForwardCap: Number(b.carryForwardCap),
+        carryForwardCap: Number(b.carryForwardCap ?? 0),
         effectiveFrom: new Date(b.effectiveFrom || `${b.year}-01-01`),
       },
     });
@@ -54,7 +55,7 @@ export class LeaveController {
     return r;
   }
 
-  @Post('leave/apply') async applyLeave(@Body() b: any) {
+  @Post('leave/apply') async applyLeave(@Body() b: ApplyLeaveDto) {
     if (!b.employeeId || !b.fromDate || !b.toDate || !b.reason)
       throw new BadRequestException('Complete leave request required');
     const from = new Date(b.fromDate),
@@ -64,7 +65,7 @@ export class LeaveController {
     return this.prisma.staffLeave.create({
       data: {
         employeeId: b.employeeId,
-        leaveType: b.leaveType,
+        leaveType: b.leaveType as any,
         fromDate: from,
         toDate: to,
         days,
@@ -94,7 +95,7 @@ export class LeaveController {
   @Patch('leave/:id/approve') async approveLeave(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() b: any,
+    @Body() b: ApproveLeaveDto,
   ) {
     const old = await this.prisma.staffLeave.findUnique({ where: { id } });
     if (!old) throw new NotFoundException();

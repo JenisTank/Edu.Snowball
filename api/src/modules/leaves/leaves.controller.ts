@@ -26,6 +26,7 @@ import {
   LEAVE_TYPES,
   validateLeave,
 } from './leaves.rules';
+import { CreateStudentLeaveDto, LeaveDecisionDto } from './leaves.dto';
 
 // ─────────────────────────────────────────────────────────────
 // Student leave applications (spec: "approved leave suppresses absence
@@ -113,17 +114,7 @@ export class LeavesController {
   // ── Front desk logs a phone-in leave ──
   @Post()
   @Roles(...LOG_ROLES)
-  async create(
-    @Req() req: any,
-    @Body()
-    b: {
-      studentId: string;
-      fromDate: string;
-      toDate: string;
-      type?: string;
-      reason: string;
-    },
-  ) {
+  async create(@Req() req: any, @Body() b: CreateStudentLeaveDto) {
     const error = validateLeave(b);
     if (error) throw new BadRequestException(error);
     const student = await this.prisma.student.findUnique({
@@ -159,7 +150,7 @@ export class LeavesController {
   // ── Approve: silences the absence chain for those days ──
   @Post(':id/approve')
   @Roles(...DECIDE_ROLES)
-  async approve(@Req() req: any, @Param('id') id: string, @Body() b: { note?: string }) {
+  async approve(@Req() req: any, @Param('id') id: string, @Body() b: LeaveDecisionDto) {
     const leave = await this.prisma.studentLeave.findUnique({
       where: { id },
       include: {
@@ -251,7 +242,7 @@ export class LeavesController {
 
   @Post(':id/reject')
   @Roles(...DECIDE_ROLES)
-  async reject(@Req() req: any, @Param('id') id: string, @Body() b: { note?: string }) {
+  async reject(@Req() req: any, @Param('id') id: string, @Body() b: LeaveDecisionDto) {
     const leave = await this.prisma.studentLeave.findUnique({
       where: { id },
       include: { student: { select: { firstName: true, fatherPhone: true, motherPhone: true } } },

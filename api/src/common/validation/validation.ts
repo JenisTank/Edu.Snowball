@@ -5,9 +5,9 @@ import { ValidationPipe } from '@nestjs/common';
  *
  * - `whitelist` strips properties that a DTO does not declare, which closes the
  *   mass-assignment door on every endpoint that has a DTO.
- * - Handlers still typed as `@Body() b: any` (no DTO) are untouched by design:
- *   Nest only validates when a DTO class is supplied, so this can be rolled out
- *   endpoint by endpoint without changing existing behaviour.
+ * - Every route body now supplies a DTO class, so nothing reaches a handler
+ *   unvalidated; `test/body-dto.spec.ts` fails the build if an `@Body()` is
+ *   ever declared as `any` or as an inline object literal again.
  * - `transform` turns payloads into DTO instances so numbers/dates arrive typed.
  */
 export function createValidationPipe(): ValidationPipe {

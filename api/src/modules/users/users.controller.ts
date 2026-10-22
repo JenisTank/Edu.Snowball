@@ -18,7 +18,7 @@ import { ADMIN_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { HEAD_OFFICE_USER_ROLES, UNIT_MANAGED_ROLES } from './user.constants';
-import { ChangePasswordDto, CreateUserDto, ResetPasswordDto } from './dto/user.dto';
+import { ChangePasswordDto, CreateUserDto, ResetPasswordDto, UpdateUserDto } from './dto/user.dto';
 import { hashPassword, verifyPassword } from '../../common/auth/password';
 
 // ─────────────────────────── USERS (team management) ───────────────────────────
@@ -112,7 +112,7 @@ export class UsersController {
 
   @Patch(':id')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
-  async update(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+  async update(@Req() req: any, @Param('id') id: string, @Body() body: UpdateUserDto) {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('User not found');
     this.assertCanManage(req.user, existing);

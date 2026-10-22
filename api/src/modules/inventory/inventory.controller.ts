@@ -17,6 +17,12 @@ import { HO_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { openingStockValue, validateOpeningStock } from './opening-stock.rules';
+import {
+  CreateInventoryItemDto,
+  IssueToStudentDto,
+  OpeningStockDto,
+  StockMovementDto,
+} from './inventory.dto';
 
 const CATS = [
   'ACADEMIC',
@@ -51,7 +57,7 @@ export class InventoryController {
   }
   @Post() @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD') async create(
     @Req() r: any,
-    @Body() b: any,
+    @Body() b: CreateInventoryItemDto,
   ) {
     if (!b.sku || !b.name || !CATS.includes(b.category))
       throw new BadRequestException('SKU, name and valid category required');
@@ -76,15 +82,15 @@ export class InventoryController {
    */
   @Post('opening-stock')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR')
-  async openingStock(@Req() r: any, @Body() b: { unitId?: string; items?: any[] }) {
+  async openingStock(@Req() r: any, @Body() b: OpeningStockDto) {
     const unitId = HO_ROLES.includes(r.user.role) ? b.unitId || r.user.unitId : r.user.unitId;
     if (!unitId) throw new BadRequestException('Unit required');
     if (!HO_ROLES.includes(r.user.role) && b.unitId && b.unitId !== r.user.unitId)
       throw new ForbiddenException();
-    const lines = (b.items ?? []).map((l: any) => ({
+    const lines = (b.items ?? []).map((l) => ({
       itemId: l?.itemId,
       quantity: Number(l?.quantity),
-      unitCost: l?.unitCost == null || l.unitCost === '' ? null : Number(l.unitCost),
+      unitCost: l?.unitCost == null ? null : Number(l.unitCost),
     }));
     const invalid = validateOpeningStock(lines);
     if (invalid) throw new BadRequestException(invalid);
@@ -142,7 +148,11 @@ export class InventoryController {
     return summary;
   }
 
-  @Post(':id/movement') async move(@Req() r: any, @Param('id') id: string, @Body() b: any) {
+  @Post(':id/movement') async move(
+    @Req() r: any,
+    @Param('id') id: string,
+    @Body() b: StockMovementDto,
+  ) {
     const item = await this.prisma.inventoryItem.findUnique({ where: { id } });
     if (!item) throw new NotFoundException();
     const unitId = b.unitId || r.user.unitId;
@@ -180,12 +190,7 @@ export class InventoryController {
    */
   @Post(':id/issue-to-student')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'TEACHER')
-  async issueToStudent(
-    @Req() r: any,
-    @Param('id') id: string,
-    @Body()
-    b: { studentId: string; quantity: number; bill?: boolean; amount?: number; notes?: string },
-  ) {
+  async issueToStudent(@Req() r: any, @Param('id') id: string, @Body() b: IssueToStudentDto) {
     const item = await this.prisma.inventoryItem.findUnique({ where: { id } });
     if (!item) throw new NotFoundException('Item not found');
     const quantity = Math.abs(Math.round(Number(b.quantity)));

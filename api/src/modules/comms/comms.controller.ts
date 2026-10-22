@@ -22,6 +22,12 @@ import { DigestService } from './digest.service';
 import { DIGEST_CADENCE, weekKey } from './digest.rules';
 import { providerStatus } from './providers';
 import { DEFAULT_TEMPLATES, missingVariables, renderTemplate } from './comms.rules';
+import {
+  AnnouncementDto,
+  CreateTemplateDto,
+  ReplyParentMessageDto,
+  UpdateTemplateDto,
+} from './comms.dto';
 
 // ─────────────────────────────────────────────────────────────
 // Communication Centre (Slice 7)
@@ -107,7 +113,7 @@ export class CommsController {
   async parentReply(
     @Req() req: any,
     @Param('studentId') studentId: string,
-    @Body() b: { body: string },
+    @Body() b: ReplyParentMessageDto,
   ) {
     if (!b.body?.trim() || b.body.trim().length > 1000)
       throw new BadRequestException('Reply must be 1–1000 characters');
@@ -137,7 +143,7 @@ export class CommsController {
   // ── Broadcast an announcement to parents ──
   @Post('announce')
   @Roles(...ANNOUNCE_ROLES)
-  async announce(@Req() req: any, @Body() b: { title: string; body: string; unitId?: string }) {
+  async announce(@Req() req: any, @Body() b: AnnouncementDto) {
     if (!b.title?.trim() || !b.body?.trim())
       throw new BadRequestException('Title and message are required');
     const scope = HO_ROLES.includes(req.user.role)
@@ -227,18 +233,7 @@ export class CommsController {
 
   @Post('templates')
   @Roles('FOUNDER', 'ACADEMIC_DIR')
-  async createTemplate(
-    @Req() req: any,
-    @Body()
-    b: {
-      code: string;
-      name: string;
-      channel?: string;
-      language?: string;
-      body: string;
-      metaTemplate?: string;
-    },
-  ) {
+  async createTemplate(@Req() req: any, @Body() b: CreateTemplateDto) {
     if (!b.code?.trim() || !b.name?.trim() || !b.body?.trim())
       throw new BadRequestException('Code, name and body are required');
     const missing = missingVariables(b.body, { child: 'x' });
@@ -302,7 +297,7 @@ export class CommsController {
 
   @Post('templates/:id')
   @Roles('FOUNDER', 'ACADEMIC_DIR')
-  async updateTemplate(@Req() req: any, @Param('id') id: string, @Body() b: any) {
+  async updateTemplate(@Req() req: any, @Param('id') id: string, @Body() b: UpdateTemplateDto) {
     const tpl = await this.prisma.messageTemplate.findUnique({ where: { id } });
     if (!tpl) throw new NotFoundException('Template not found');
     const row = await this.prisma.messageTemplate.update({

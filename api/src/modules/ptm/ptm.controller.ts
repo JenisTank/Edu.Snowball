@@ -43,7 +43,7 @@ export class PtmController {
   }
   @Post() @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR') async create(
     @Req() r: any,
-    @Body() b: any,
+    @Body() b: CreatePtmSessionDto,
   ) {
     const unitId = HO_ROLES.includes(r.user.role) ? b.unitId : r.user.unitId;
     if (!unitId || !b.title || !b.scheduledAt)

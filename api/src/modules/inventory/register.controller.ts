@@ -18,6 +18,7 @@ import { unitScope } from '../../common/auth/unit-scope';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { IO_CATEGORIES, IO_DIRECTIONS } from './procurement.rules';
+import { InwardOutwardDto } from './inventory.dto';
 
 /**
  * Inward / Outward register (spec module 16).
@@ -66,10 +67,10 @@ export class InwardOutwardController {
 
   @Post()
   @Roles(...ROLES)
-  async create(@Req() req: any, @Body() b: any) {
-    if (!IO_DIRECTIONS.includes(b.direction))
+  async create(@Req() req: any, @Body() b: InwardOutwardDto) {
+    if (!(IO_DIRECTIONS as readonly string[]).includes(b.direction))
       throw new BadRequestException(`Direction must be one of ${IO_DIRECTIONS.join(', ')}`);
-    if (!IO_CATEGORIES.includes(b.category))
+    if (!(IO_CATEGORIES as readonly string[]).includes(b.category))
       throw new BadRequestException(`Category must be one of ${IO_CATEGORIES.join(', ')}`);
     if (!b.party?.trim() || !b.description?.trim())
       throw new BadRequestException('Party and description are required');

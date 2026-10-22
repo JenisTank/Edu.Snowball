@@ -3,6 +3,14 @@ import { AuthGuard } from '../../common/auth/auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import {
+  CALCULATION_TYPES,
+  CreateHolidayDto,
+  CreateSalaryComponentDto,
+  CreateShiftDto,
+  CreateStatutorySchemeDto,
+  SALARY_COMPONENT_TYPES,
+} from './hr.dto';
 
 const HR_ROLES = ['FOUNDER', 'HR_MANAGER'];
 
@@ -23,7 +31,7 @@ export class MastersController {
     });
   }
 
-  @Post('statutory') async statutoryMaster(@Req() req: any, @Body() b: any) {
+  @Post('statutory') async statutoryMaster(@Req() req: any, @Body() b: CreateStatutorySchemeDto) {
     if (!['PF', 'ESIC', 'PT'].includes(b.code) || !b.effectiveFrom)
       throw new BadRequestException('PF/ESIC/PT and effective date required');
     const r = await this.prisma.statutoryScheme.create({
@@ -58,7 +66,7 @@ export class MastersController {
     return { shifts, holidays, components };
   }
 
-  @Post('shifts') async shift(@Req() req: any, @Body() b: any) {
+  @Post('shifts') async shift(@Req() req: any, @Body() b: CreateShiftDto) {
     if (!b.name || !b.code || !b.startTime || !b.endTime || !b.workingMinutes || !b.halfDayMinutes)
       throw new BadRequestException('Complete shift rules required');
     const r = await this.prisma.hrShift.create({
@@ -76,7 +84,7 @@ export class MastersController {
     return r;
   }
 
-  @Post('holidays') async holiday(@Req() req: any, @Body() b: any) {
+  @Post('holidays') async holiday(@Req() req: any, @Body() b: CreateHolidayDto) {
     if (!b.date || !b.name) throw new BadRequestException('Date and name required');
     const r = await this.prisma.hrHoliday.create({
       data: {
@@ -90,7 +98,7 @@ export class MastersController {
     return r;
   }
 
-  @Post('salary-components') async component(@Req() req: any, @Body() b: any) {
+  @Post('salary-components') async component(@Req() req: any, @Body() b: CreateSalaryComponentDto) {
     if (
       !b.code ||
       !b.name ||

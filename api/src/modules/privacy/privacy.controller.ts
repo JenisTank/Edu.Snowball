@@ -28,6 +28,7 @@ import {
   retentionPlan,
 } from './privacy.rules';
 import { RETENTION_KEY, runRetention } from './retention.service';
+import { ConsentRecordDto, EraseStudentDto, RetentionPurgeDto } from './privacy.dto';
 
 /**
  * DPDP compliance surface.
@@ -78,7 +79,7 @@ export class PrivacyController {
   async recordConsent(
     @Req() req: any,
     @Param('studentId') studentId: string,
-    @Body() b: { decisions: Record<string, boolean>; grantedBy?: string },
+    @Body() b: ConsentRecordDto,
   ) {
     const student = await this.studentFor(req, studentId);
     if (!b?.decisions || typeof b.decisions !== 'object')
@@ -179,7 +180,7 @@ export class PrivacyController {
 
   @Post('retention/run')
   @Roles('FOUNDER')
-  async purge(@Req() req: any, @Body() b: { dryRun?: boolean; confirm?: string }) {
+  async purge(@Req() req: any, @Body() b: RetentionPurgeDto) {
     const dryRun = b?.dryRun !== false;
     if (!dryRun && b?.confirm !== 'PURGE')
       throw new BadRequestException('Live purge requires { "confirm": "PURGE" }');
@@ -278,11 +279,7 @@ export class PrivacyController {
    */
   @Delete('students/:id')
   @Roles('FOUNDER')
-  async erase(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body() b: { confirm?: string; reason?: string },
-  ) {
+  async erase(@Req() req: any, @Param('id') id: string, @Body() b: EraseStudentDto) {
     if (b?.confirm !== 'ERASE')
       throw new BadRequestException('Erasure requires { "confirm": "ERASE", "reason": "..." }');
     if (!b?.reason?.trim())

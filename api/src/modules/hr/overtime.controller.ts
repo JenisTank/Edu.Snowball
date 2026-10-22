@@ -14,6 +14,7 @@ import { AuthGuard } from '../../common/auth/auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { ApproveOvertimeDto, OvertimeRequestDto } from './hr.dto';
 
 const HR_ROLES = ['FOUNDER', 'HR_MANAGER'];
 
@@ -34,7 +35,7 @@ export class OvertimeController {
     });
   }
 
-  @Post('overtime') async requestOt(@Body() b: any) {
+  @Post('overtime') async requestOt(@Body() b: OvertimeRequestDto) {
     if (!b.employeeId || !b.date || !b.expectedMinutes || !b.reason || Number(b.multiplier) <= 0)
       throw new BadRequestException('Complete OT request required');
     return this.prisma.overtimeAuthorisation.create({
@@ -51,7 +52,7 @@ export class OvertimeController {
   @Patch('overtime/:id/approve') async approveOt(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() b: any,
+    @Body() b: ApproveOvertimeDto,
   ) {
     const old = await this.prisma.overtimeAuthorisation.findUnique({ where: { id } });
     if (!old) throw new NotFoundException();

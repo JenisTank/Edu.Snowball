@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsIn,
   IsISO8601,
   IsNumber,
@@ -68,4 +69,58 @@ export class CancelReceiptDto {
   @IsString()
   @MaxLength(500)
   reason!: string;
+}
+
+/**
+ * Fee structure for one unit + programme + academic year.
+ *
+ * `totalFee` and the three instalments are optional at the DTO level because
+ * the controller re-derives the schedule (`fees.rules.buildSchedule`), but
+ * anything supplied must be a sane rupee amount — a negative fee is always a
+ * typo, never a discount.
+ */
+export class UpsertFeeStructureDto {
+  @IsUUID('4', { message: 'unitId must be a UUID' })
+  unitId!: string;
+
+  @IsUUID('4', { message: 'programmeId must be a UUID' })
+  programmeId!: string;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(10_000_000)
+  totalFee!: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(10_000_000)
+  instalment1?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(10_000_000)
+  instalment2?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(10_000_000)
+  instalment3?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
+  siblingDiscountPct?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  locked?: boolean;
+
+  /** Founder override: editing a locked structure for this AY. */
+  @IsOptional()
+  @IsBoolean()
+  unlock?: boolean;
 }

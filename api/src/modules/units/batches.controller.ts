@@ -18,6 +18,7 @@ import { unitScope } from '../../common/auth/unit-scope';
 import { ADMIN_ROLES } from '../../common/auth/auth.constants';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { CreateBatchDto, UpdateBatchDto } from './units.dto';
 
 // ─────────────────────────── BATCHES ───────────────────────────
 @Controller('batches')
@@ -56,7 +57,7 @@ export class BatchesAdminController {
 
   @Post()
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
-  async create(@Req() req: any, @Body() body: any) {
+  async create(@Req() req: any, @Body() body: CreateBatchDto) {
     const { unitId, programmeId, name, medium, shift, startTime, endTime, capacity, academicYear } =
       body;
     if (!unitId || !programmeId || !name || !shift || !startTime || !capacity) {
@@ -89,7 +90,7 @@ export class BatchesAdminController {
 
   @Patch(':id')
   @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD')
-  async update(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+  async update(@Req() req: any, @Param('id') id: string, @Body() body: UpdateBatchDto) {
     const existing = await this.prisma.batch.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Batch not found');
     this.assertUnitAllowed(req.user, existing.unitId);
