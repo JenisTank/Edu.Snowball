@@ -27,6 +27,29 @@ export const env = {
   get jwtExpiresIn() {
     return process.env.JWT_EXPIRES ?? '15m';
   },
+  // ── Razorpay (online fee collection) ──────────────────────────────────────
+  /** Public key id handed to the browser checkout. Empty → sandbox mode. */
+  get razorpayKeyId() {
+    return process.env.RAZORPAY_KEY_ID ?? '';
+  },
+  get razorpayKeySecret() {
+    return process.env.RAZORPAY_KEY_SECRET ?? '';
+  },
+  /** Webhook signing secret configured in the Razorpay dashboard. */
+  get razorpayWebhookSecret() {
+    return process.env.RAZORPAY_WEBHOOK_SECRET ?? '';
+  },
+  get razorpayBaseUrl() {
+    return process.env.RAZORPAY_BASE_URL ?? 'https://api.razorpay.com/v1';
+  },
+  /** Single largest online payment accepted, in rupees. */
+  get onlinePaymentCap() {
+    return Number(process.env.ONLINE_PAYMENT_CAP ?? 200000);
+  },
+  /** No merchant keys → the sandbox adapter; nothing hits the live API. */
+  get razorpayMock() {
+    return !this.razorpayKeyId || !this.razorpayKeySecret;
+  },
   get waBspKey() {
     return process.env.WA_BSP_KEY ?? '';
   },

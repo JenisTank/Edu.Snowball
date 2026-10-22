@@ -25,6 +25,7 @@ import { LeavesModule } from './modules/leaves/leaves.module';
 import { LifecycleModule } from './modules/lifecycle/lifecycle.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ParentModule } from './modules/parents/parents.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
 import { PtmModule } from './modules/ptm/ptm.module';
 import { StudentsModule } from './modules/students/students.module';
@@ -57,6 +58,7 @@ import { UsersModule } from './modules/users/users.module';
     AttendanceModule,
     FeesModule,
     ParentModule,
+    PaymentsModule,
     CertificatesModule,
     CommsModule,
     LifecycleModule,

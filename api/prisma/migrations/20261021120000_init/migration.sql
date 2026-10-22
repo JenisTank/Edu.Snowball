@@ -655,6 +655,29 @@ CREATE TABLE "evening_payments" (
 CREATE UNIQUE INDEX "evening_payments_receipt_no_key" ON "evening_payments"("receipt_no");
 
 -- CreateTable
+CREATE TABLE "online_payments" (
+    "id" TEXT NOT NULL,
+    "student_id" TEXT NOT NULL,
+    "unit_id" TEXT NOT NULL,
+    "amount" DECIMAL(65,30) NOT NULL,
+    "ledger_type" "LedgerType" DEFAULT 'PRESCHOOL' NOT NULL,
+    "provider" TEXT DEFAULT 'RAZORPAY' NOT NULL,
+    "mode" TEXT DEFAULT 'MOCK' NOT NULL,
+    "order_id" TEXT NOT NULL,
+    "provider_payment_id" TEXT,
+    "status" TEXT DEFAULT 'CREATED' NOT NULL,
+    "failure_reason" TEXT,
+    "transaction_id" TEXT,
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "paid_at" TIMESTAMP(3),
+    CONSTRAINT "online_payments_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "online_payments_order_id_key" ON "online_payments"("order_id");
+CREATE INDEX "online_payments_student_id_status_idx" ON "online_payments"("student_id", "status");
+CREATE INDEX "online_payments_unit_id_created_at_idx" ON "online_payments"("unit_id", "created_at");
+
+-- CreateTable
 CREATE TABLE "vendors" (
     "id" TEXT NOT NULL,
     "unit_id" TEXT,
@@ -1237,6 +1260,8 @@ ALTER TABLE "evening_enrollments" ADD CONSTRAINT "evening_enrollments_activity_i
 ALTER TABLE "evening_enrollments" ADD CONSTRAINT "evening_enrollments_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "evening_enrollments" ADD CONSTRAINT "evening_enrollments_participant_id_fkey" FOREIGN KEY ("participant_id") REFERENCES "evening_participants"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "evening_payments" ADD CONSTRAINT "evening_payments_enrollment_id_fkey" FOREIGN KEY ("enrollment_id") REFERENCES "evening_enrollments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "online_payments" ADD CONSTRAINT "online_payments_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "online_payments" ADD CONSTRAINT "online_payments_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "purchase_request_lines" ADD CONSTRAINT "purchase_request_lines_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "purchase_requests"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "purchase_orders_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "vendors"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "purchase_orders" ADD CONSTRAINT "purchase_orders_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "purchase_requests"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

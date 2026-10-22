@@ -125,6 +125,7 @@ model Unit {
   feeAddons        FeeAddon[]
   discoveryFlights  DiscoveryFlight[]
   areaMappings      AreaMaster[]
+  onlinePayments    OnlinePayment[]
 
   @@map("units")
 }
@@ -317,6 +318,7 @@ model Student {
   ptmRecords        PtmRecord[]
   eveningEnrollments EveningEnrollment[]
   eveningAttendance  EveningAttendance[]
+  onlinePayments     OnlinePayment[]
 
   @@map("students")
 }
@@ -643,6 +645,35 @@ model EveningPayment { id String @id @default(uuid()) @db.Uuid enrollmentId Stri
 // ─────────────────────────── PROCUREMENT ───────────────────────────
 // PRF → PO → GRN. Stock only ever moves through the GRN (or an explicit
 // adjustment), so the ledger and the shelf can never disagree.
+
+// ─────────────────────────── ONLINE PAYMENTS (Razorpay) ───────────────────────────
+
+// One row per checkout attempt. `mode` records whether a real merchant account
+// created the order (LIVE) or the built-in sandbox did (MOCK). Mock rows never
+// produce a FeeTransaction, so sandbox testing cannot pollute the money reports.
+model OnlinePayment {
+  id                String     @id @default(uuid()) @db.Uuid
+  studentId         String     @map("student_id") @db.Uuid
+  unitId            String     @map("unit_id") @db.Uuid
+  amount            Decimal    @db.Decimal(10, 2)
+  ledgerType        LedgerType @default(PRESCHOOL) @map("ledger_type")
+  provider          String     @default("RAZORPAY")
+  mode              String     @default("MOCK") // LIVE | MOCK
+  orderId           String     @unique @map("order_id")
+  providerPaymentId String?    @map("provider_payment_id")
+  status            String     @default("CREATED") // CREATED | PAID | FAILED | EXPIRED
+  failureReason     String?    @map("failure_reason")
+  transactionId     String?    @unique @map("transaction_id") @db.Uuid
+  createdAt         DateTime   @default(now()) @map("created_at")
+  paidAt            DateTime?  @map("paid_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@index([studentId, status])
+  @@index([unitId, createdAt])
+  @@map("online_payments")
+}
 
 model Vendor {
   id           String   @id @default(uuid()) @db.Uuid

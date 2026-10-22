@@ -14,7 +14,8 @@ import { startScheduler } from './jobs/scheduler';
 async function bootstrap() {
   validateEnv();
 
-  const app = await NestFactory.create(AppModule);
+  // rawBody: the Razorpay webhook is verified against the exact bytes received.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.enableCors({ origin: true, credentials: true });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(createValidationPipe());
