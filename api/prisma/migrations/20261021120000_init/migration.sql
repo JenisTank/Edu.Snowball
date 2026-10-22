@@ -1294,6 +1294,7 @@ ALTER TABLE "goods_receipt_lines" ADD CONSTRAINT "goods_receipt_lines_receipt_id
 ALTER TABLE "goods_receipt_lines" ADD CONSTRAINT "goods_receipt_lines_order_line_id_fkey" FOREIGN KEY ("order_line_id") REFERENCES "purchase_order_lines"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "evening_sessions" ADD CONSTRAINT "evening_sessions_activity_id_fkey" FOREIGN KEY ("activity_id") REFERENCES "evening_activities"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "evening_attendance" ADD CONSTRAINT "evening_attendance_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "evening_sessions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "evening_attendance" ADD CONSTRAINT "evening_attendance_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "evening_attendance" ADD CONSTRAINT "evening_attendance_participant_id_fkey" FOREIGN KEY ("participant_id") REFERENCES "evening_participants"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "ptm_slots" ADD CONSTRAINT "ptm_slots_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "ptm_sessions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "employees" ADD CONSTRAINT "employees_reporting_manager_id_fkey" FOREIGN KEY ("reporting_manager_id") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

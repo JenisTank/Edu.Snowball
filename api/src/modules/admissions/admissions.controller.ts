@@ -68,15 +68,19 @@ export class AdmissionsController {
     if (s.status === 'REGISTERED' || !s.admissionNo.startsWith('BB-'))
       throw new BadRequestException('Confirm the admission first — there is no seat yet');
 
-    const structure = await this.prisma.feeStructure.findUnique({
-      where: {
-        unitId_programmeId_academicYear: {
-          unitId: s.unitId,
-          programmeId: s.programmeId,
-          academicYear: AY,
-        },
-      },
-    });
+    // A student without a programme has no fee structure — the schedule
+    // helpers treat `null` as an empty structure.
+    const structure = s.programmeId
+      ? await this.prisma.feeStructure.findUnique({
+          where: {
+            unitId_programmeId_academicYear: {
+              unitId: s.unitId,
+              programmeId: s.programmeId,
+              academicYear: AY,
+            },
+          },
+        })
+      : null;
     const schedule = buildSchedule(structure, s.instalmentPlan ?? 'PLAN_C', !!s.siblingGroup);
     const paid = s.feeTransactions
       .filter((t: any) => !t.isCancelled && t.ledgerType === 'PRESCHOOL')

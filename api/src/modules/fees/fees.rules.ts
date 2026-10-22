@@ -9,6 +9,8 @@
  *  - receipt and certificate serials (sequential per unit, never reused)
  */
 
+import type { Money } from '../../common/types/money';
+
 export const ACADEMIC_YEAR = '2026-27';
 export const ACADEMIC_YEAR_SHORT = '2627';
 const AY_START_YEAR = 2026;
@@ -24,11 +26,11 @@ export const DUE_DATES: Record<InstalmentPlan, string[]> = {
 };
 
 export interface FeeStructureLike {
-  totalFee?: number | string | null;
-  siblingDiscountPct?: number | string | null;
-  instalment1?: number | string | null;
-  instalment2?: number | string | null;
-  instalment3?: number | string | null;
+  totalFee?: Money;
+  siblingDiscountPct?: Money;
+  instalment1?: Money;
+  instalment2?: Money;
+  instalment3?: Money;
 }
 
 export interface Instalment {
@@ -47,6 +49,7 @@ export interface FeeSchedule {
   instalments: { no: number; amount: number; dueDate: string }[];
 }
 
+/** Accepts `Prisma.Decimal`, numeric strings and numbers alike. */
 export const num = (v: unknown): number => (v == null ? 0 : Number(v) || 0);
 
 /** Sibling concession in rupees, rounded to the nearest rupee. */
@@ -98,7 +101,7 @@ export function buildSchedule(
 }
 
 export interface TransactionLike {
-  amount: number | string;
+  amount: Money;
   isCancelled?: boolean;
   ledgerType?: string;
 }

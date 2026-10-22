@@ -108,15 +108,19 @@ export class CertificatesController {
    * Fee-Statement documents so a certificate can never disagree with the ledger.
    */
   private async financials(s: any) {
-    const structure = await this.prisma.feeStructure.findUnique({
-      where: {
-        unitId_programmeId_academicYear: {
-          unitId: s.unitId,
-          programmeId: s.programmeId,
-          academicYear: AY,
-        },
-      },
-    });
+    // A student without a programme has no fee structure — the schedule
+    // helpers treat `null` as an empty structure.
+    const structure = s.programmeId
+      ? await this.prisma.feeStructure.findUnique({
+          where: {
+            unitId_programmeId_academicYear: {
+              unitId: s.unitId,
+              programmeId: s.programmeId,
+              academicYear: AY,
+            },
+          },
+        })
+      : null;
     const schedule = buildSchedule(structure, s.instalmentPlan ?? 'PLAN_C', !!s.siblingGroup);
     const paid = (s.feeTransactions ?? [])
       .filter((t: any) => !t.isCancelled && t.ledgerType === 'PRESCHOOL')
@@ -201,15 +205,17 @@ export class CertificatesController {
 
     // ── TC gate (spec): fees fully cleared + explicit No-Dues confirmation ──
     if (b.type === 'TC') {
-      const structure = await this.prisma.feeStructure.findUnique({
-        where: {
-          unitId_programmeId_academicYear: {
-            unitId: s.unitId,
-            programmeId: s.programmeId,
-            academicYear: AY,
-          },
-        },
-      });
+      const structure = s.programmeId
+        ? await this.prisma.feeStructure.findUnique({
+            where: {
+              unitId_programmeId_academicYear: {
+                unitId: s.unitId,
+                programmeId: s.programmeId,
+                academicYear: AY,
+              },
+            },
+          })
+        : null;
       const gross = Number(structure?.totalFee ?? 0);
       const disc = s.siblingGroup
         ? Math.round((gross * Number(structure?.siblingDiscountPct ?? 0)) / 100)

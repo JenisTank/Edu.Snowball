@@ -1,5 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from 'crypto';
 
+import type { Money } from '../../common/types/money';
+
 /**
  * Razorpay integration rules — pure functions so the money maths and the
  * signature checks are unit-tested without a network or a database.
@@ -100,13 +102,16 @@ export function parseWebhook(raw: string): ParsedWebhook {
  * (webhook retry), and 'REJECT' when the webhook contradicts our records.
  */
 export function captureDecision(
-  intent: { status: string; mode: string; transactionId?: string | null; amount: number },
+  intent: { status: string; mode: string; transactionId?: string | null; amount: Money },
   paidRupees: number | undefined,
 ): 'CREATE' | 'REPLAY' | 'REJECT' {
   if (intent.mode !== 'LIVE') return 'REJECT';
   if (intent.status === 'PAID' || intent.transactionId) return 'REPLAY';
   if (intent.status !== 'CREATED') return 'REJECT';
-  if (paidRupees != null && Math.round(paidRupees * 100) !== Math.round(intent.amount * 100))
+  if (
+    paidRupees != null &&
+    Math.round(paidRupees * 100) !== Math.round(Number(intent.amount) * 100)
+  )
     return 'REJECT';
   return 'CREATE';
 }

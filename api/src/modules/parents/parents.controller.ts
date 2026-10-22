@@ -174,15 +174,19 @@ export class ParentController {
       include: { feeTransactions: { orderBy: { paymentDate: 'desc' } } },
     });
     if (!s) throw new NotFoundException();
-    const structure = await this.prisma.feeStructure.findUnique({
-      where: {
-        unitId_programmeId_academicYear: {
-          unitId: s.unitId,
-          programmeId: s.programmeId,
-          academicYear: AY,
-        },
-      },
-    });
+    // A student without a programme has no fee structure — the schedule
+    // helpers treat `null` as an empty structure.
+    const structure = s.programmeId
+      ? await this.prisma.feeStructure.findUnique({
+          where: {
+            unitId_programmeId_academicYear: {
+              unitId: s.unitId,
+              programmeId: s.programmeId,
+              academicYear: AY,
+            },
+          },
+        })
+      : null;
     const gross = num(structure?.totalFee);
     const discPct = s.siblingGroup ? num(structure?.siblingDiscountPct) : 0;
     const discount = Math.round((gross * discPct) / 100);

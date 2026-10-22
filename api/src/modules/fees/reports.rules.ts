@@ -32,17 +32,19 @@ export const num = (v: unknown): number => (v == null ? 0 : Number(v) || 0);
 
 // ───────────────────────────── receipts ─────────────────────────────
 
+import type { Money } from '../../common/types/money';
+
 export interface ReceiptLike {
   id?: string;
   receiptNo: string;
-  amount: number | string;
+  amount: Money;
   paymentMode: string;
   paymentDate: Date | string;
   isCancelled?: boolean;
   ledgerType?: string | null;
   instalmentNo?: number | null;
-  discount?: number | string | null;
-  fine?: number | string | null;
+  discount?: Money;
+  fine?: Money;
   reference?: string | null;
   remarks?: string | null;
   student?: {
@@ -437,7 +439,7 @@ export function headWiseRows(
 export interface AddonLike {
   id: string;
   label: string;
-  amount: number | string;
+  amount: Money;
   status: string;
   ledgerType?: string | null;
   billedAt: Date | string;

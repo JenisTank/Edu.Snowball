@@ -173,15 +173,19 @@ export class FeesController {
     if (!s) throw new NotFoundException('Student not found');
     if (!HO_ROLES.includes(req.user.role) && req.user.unitId !== s.unitId)
       throw new ForbiddenException('Cross-unit access denied');
-    const structure = await this.prisma.feeStructure.findUnique({
-      where: {
-        unitId_programmeId_academicYear: {
-          unitId: s.unitId,
-          programmeId: s.programmeId,
-          academicYear: AY,
-        },
-      },
-    });
+    // A student without a programme has no fee structure — the schedule
+    // helpers treat `null` as an empty structure.
+    const structure = s.programmeId
+      ? await this.prisma.feeStructure.findUnique({
+          where: {
+            unitId_programmeId_academicYear: {
+              unitId: s.unitId,
+              programmeId: s.programmeId,
+              academicYear: AY,
+            },
+          },
+        })
+      : null;
     const led = await this.studentLedger(s, structure, s.feeTransactions);
     return {
       student: {
@@ -189,7 +193,7 @@ export class FeesController {
         admissionNo: s.admissionNo,
         name: `${s.firstName} ${s.lastName}`,
         unit: s.unit,
-        programme: s.programme.name,
+        programme: s.programme?.name ?? null,
         sibling: !!s.siblingGroup,
       },
       ledger: led,
@@ -378,7 +382,7 @@ export class FeesController {
       <div class="rno"><span>RECEIPT NO</span><b>${t.receiptNo}</b></div></div>
       <table>
       ${row('Student', `${s.firstName} ${s.lastName} (${s.admissionNo})`)}
-      ${row('Programme', s.programme.name)}
+      ${row('Programme', s.programme?.name ?? '—')}
       ${row('Academic Year', AY)}
       ${row('Ledger', t.ledgerType === 'EVENING' ? 'Evening Centre (monthly)' : 'Preschool (annual)')}
       ${row('Instalment', t.instalmentNo ? `Instalment ${t.instalmentNo}` : '—')}

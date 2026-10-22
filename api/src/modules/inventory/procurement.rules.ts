@@ -1,3 +1,5 @@
+import type { Money } from '../../common/types/money';
+
 /**
  * Procurement rules — pure functions.
  *
@@ -47,7 +49,7 @@ export function awaitingApproval(status: string): boolean {
 
 export interface OrderLineLike {
   quantity: number;
-  unitCost: number | string;
+  unitCost: Money;
   receivedQty?: number;
 }
 
@@ -111,7 +113,7 @@ export function nextSerial(prefix: string, lastSerial: string | null | undefined
 
 export interface PettyCashLike {
   type: string;
-  amount: number | string;
+  amount: Money;
 }
 
 /** Float + top-ups − spends + returns. */
@@ -159,9 +161,7 @@ export function lowStockRows(items: { quantity: number; reorderLevel: number }[]
 }
 
 /** Stock value per category. */
-export function valuationRows(
-  items: { category: string; quantity: number; unitCost: number | string }[],
-) {
+export function valuationRows(items: { category: string; quantity: number; unitCost: Money }[]) {
   const map = new Map<
     string,
     { category: string; items: number; quantity: number; value: number }
@@ -182,7 +182,7 @@ export function consumptionRows(
     itemId: string;
     type: string;
     quantity: number;
-    unitCost?: number | string | null;
+    unitCost?: Money;
     item?: { name?: string; category?: string } | null;
   }[],
 ) {

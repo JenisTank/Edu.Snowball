@@ -144,7 +144,9 @@ export class LifecycleController {
       where: { id: recordId },
       data: {
         title: b.title?.trim() || old.title,
-        payload: b.payload === undefined ? old.payload : mergePayload(old.payload, b.payload),
+        payload: (b.payload === undefined
+          ? old.payload
+          : mergePayload(old.payload, b.payload)) as any,
         status: b.status === undefined ? old.status : b.status,
         eventDate: b.eventDate ? new Date(b.eventDate) : old.eventDate,
       },
@@ -179,13 +181,13 @@ export class LifecycleController {
     const ayStart = new Date(`${student.academicYear.slice(0, 4)}-04-01T00:00:00Z`);
     const [
       attendance,
+      txns,
       ptmTotal,
       ptmAttended,
       portfolio,
       homePlan,
       support,
       structure,
-      txns,
       addons,
     ] = await Promise.all([
       this.prisma.attendanceRecord.groupBy({
