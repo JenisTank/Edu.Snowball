@@ -79,6 +79,13 @@ jobs:
         env:
           DATABASE_URL: postgresql://bumbleb:bumbleb@localhost:5432/bumblebkidz_erp
 
+      # 2a. the committed SQL must be exactly what the generator produces from
+      #     schema.prisma — editing one without the other is a silent drift.
+      - name: Migration is generated from the schema
+        run: |
+          python3 prisma/generate-init-migration.py
+          git diff --exit-code -- prisma/migrations
+
       # 2. migrations must still describe schema.prisma exactly.
       #    `migrate diff --script` writes "-- This is an empty migration." when
       #    there is nothing to do; anything else is drift. The diff is echoed as
