@@ -100,7 +100,7 @@ CREATE TYPE "LedgerType" AS ENUM (
 
 -- CreateTable
 CREATE TABLE "units" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "type" "UnitType" DEFAULT 'COMPANY_OWNED' NOT NULL,
@@ -117,8 +117,8 @@ CREATE UNIQUE INDEX "units_code_key" ON "units"("code");
 
 -- CreateTable
 CREATE TABLE "unit_settings" (
-    "unit_id" TEXT NOT NULL,
-    "petty_cash_float" DECIMAL(65,30) DEFAULT 5000.00 NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "petty_cash_float" DECIMAL(10, 2) DEFAULT 5000.00 NOT NULL,
     "admission_number" TEXT,
     "calendly_link" TEXT,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -128,12 +128,12 @@ CREATE TABLE "unit_settings" (
 
 -- CreateTable
 CREATE TABLE "programmes" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "tier_name" TEXT NOT NULL,
-    "age_min" DECIMAL(65,30) NOT NULL,
-    "age_max" DECIMAL(65,30) NOT NULL,
+    "age_min" DECIMAL(4, 1) NOT NULL,
+    "age_max" DECIMAL(4, 1) NOT NULL,
     "level_colour" TEXT NOT NULL,
     "sort_order" INTEGER DEFAULT 0 NOT NULL,
     CONSTRAINT "programmes_pkey" PRIMARY KEY ("id")
@@ -143,9 +143,9 @@ CREATE UNIQUE INDEX "programmes_code_key" ON "programmes"("code");
 
 -- CreateTable
 CREATE TABLE "batches" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
-    "programme_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "programme_id" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "medium" TEXT,
     "shift" TEXT NOT NULL,
@@ -161,13 +161,13 @@ CREATE TABLE "batches" (
 
 -- CreateTable
 CREATE TABLE "users" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "email" TEXT NOT NULL,
     "password_hash" TEXT NOT NULL,
     "full_name" TEXT NOT NULL,
     "phone" TEXT,
     "role" "UserRole" NOT NULL,
-    "unit_id" TEXT,
+    "unit_id" UUID,
     "is_active" BOOLEAN DEFAULT true NOT NULL,
     "last_login_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -178,10 +178,10 @@ CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateTable
 CREATE TABLE "area_master" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "locality" TEXT NOT NULL,
     "pincode" TEXT,
-    "suggested_unit_id" TEXT NOT NULL,
+    "suggested_unit_id" UUID NOT NULL,
     "is_active" BOOLEAN DEFAULT true NOT NULL,
     CONSTRAINT "area_master_pkey" PRIMARY KEY ("id")
 );
@@ -189,19 +189,19 @@ CREATE TABLE "area_master" (
 
 -- CreateTable
 CREATE TABLE "leads" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "inquiry_no" TEXT NOT NULL,
     "stage" "LeadStage" DEFAULT 'NEW_INQUIRY' NOT NULL,
     "parent_name" TEXT NOT NULL,
     "parent_phone" TEXT NOT NULL,
     "parent_email" TEXT,
     "child_name" TEXT,
-    "child_dob" TIMESTAMP(3),
-    "programme_interest_id" TEXT,
+    "child_dob" DATE,
+    "programme_interest_id" UUID,
     "area_locality" TEXT,
     "preferred_unit" TEXT,
-    "suggested_unit_id" TEXT,
-    "assigned_unit_id" TEXT,
+    "suggested_unit_id" UUID,
+    "assigned_unit_id" UUID,
     "routing_notes" TEXT,
     "inquiry_channel" "InquiryChannel" DEFAULT 'CALL' NOT NULL,
     "experience_interest" BOOLEAN DEFAULT false NOT NULL,
@@ -217,12 +217,12 @@ CREATE UNIQUE INDEX "leads_inquiry_no_key" ON "leads"("inquiry_no");
 
 -- CreateTable
 CREATE TABLE "lead_activities" (
-    "id" TEXT NOT NULL,
-    "lead_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "lead_id" UUID NOT NULL,
     "type" TEXT NOT NULL,
     "note" TEXT,
     "meta" JSONB,
-    "by_id" TEXT,
+    "by_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "lead_activities_pkey" PRIMARY KEY ("id")
 );
@@ -230,12 +230,12 @@ CREATE TABLE "lead_activities" (
 
 -- CreateTable
 CREATE TABLE "students" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
     "admission_no" TEXT NOT NULL,
     "first_name" TEXT NOT NULL,
     "last_name" TEXT NOT NULL,
-    "dob" TIMESTAMP(3) NOT NULL,
+    "dob" DATE NOT NULL,
     "gender" TEXT,
     "photo_url" TEXT,
     "blood_group" TEXT,
@@ -247,16 +247,16 @@ CREATE TABLE "students" (
     "mother_phone" TEXT,
     "guardian_email" TEXT,
     "address_area" TEXT,
-    "programme_id" TEXT,
-    "batch_id" TEXT,
-    "admission_date" TIMESTAMP(3),
-    "orientation_date" TIMESTAMP(3),
+    "programme_id" UUID,
+    "batch_id" UUID,
+    "admission_date" DATE,
+    "orientation_date" DATE,
     "anonymised_at" TIMESTAMP(3),
     "instalment_plan" "InstalmentPlan",
     "status" "StudentStatus" DEFAULT 'ACTIVE' NOT NULL,
     "academic_year" TEXT NOT NULL,
     "sibling_group" TEXT,
-    "lead_id" TEXT,
+    "lead_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updated_at" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "students_pkey" PRIMARY KEY ("id")
@@ -266,10 +266,10 @@ CREATE UNIQUE INDEX "students_admission_no_key" ON "students"("admission_no");
 
 -- CreateTable
 CREATE TABLE "waitlist_entries" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
-    "batch_id" TEXT NOT NULL,
-    "student_id" TEXT,
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "batch_id" UUID NOT NULL,
+    "student_id" UUID,
     "child_name" TEXT NOT NULL,
     "guardian_phone" TEXT NOT NULL,
     "position" INTEGER NOT NULL,
@@ -286,17 +286,17 @@ CREATE INDEX "waitlist_entries_batch_id_status_idx" ON "waitlist_entries"("batch
 
 -- CreateTable
 CREATE TABLE "discovery_flights" (
-    "id" TEXT NOT NULL,
-    "lead_id" TEXT,
-    "student_id" TEXT,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "lead_id" UUID,
+    "student_id" UUID,
+    "unit_id" UUID NOT NULL,
     "scheduled_at" TIMESTAMP(3),
     "conducted_at" TIMESTAMP(3),
     "result_code" "ScreeningResult",
     "recommendation" TEXT,
     "notes" TEXT,
     "internal_only" BOOLEAN DEFAULT true NOT NULL,
-    "approved_by_id" TEXT,
+    "approved_by_id" UUID,
     "approved_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "discovery_flights_pkey" PRIMARY KEY ("id")
@@ -305,17 +305,17 @@ CREATE TABLE "discovery_flights" (
 
 -- CreateTable
 CREATE TABLE "attendance_records" (
-    "id" TEXT NOT NULL,
-    "student_id" TEXT NOT NULL,
-    "batch_id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
-    "date" TIMESTAMP(3) NOT NULL,
+    "id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
+    "batch_id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "date" DATE NOT NULL,
     "status" "AttendanceStatus" DEFAULT 'ABSENT' NOT NULL,
-    "marked_by_id" TEXT,
+    "marked_by_id" UUID,
     "marked_at" TIMESTAMP(3),
     "is_locked" BOOLEAN DEFAULT false NOT NULL,
     "lock_time" TIMESTAMP(3),
-    "override_by_id" TEXT,
+    "override_by_id" UUID,
     "override_reason" TEXT,
     CONSTRAINT "attendance_records_pkey" PRIMARY KEY ("id")
 );
@@ -324,17 +324,17 @@ CREATE UNIQUE INDEX "attendance_records_student_id_date_batch_id_key" ON "attend
 
 -- CreateTable
 CREATE TABLE "student_leaves" (
-    "id" TEXT NOT NULL,
-    "student_id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
-    "from_date" TIMESTAMP(3) NOT NULL,
-    "to_date" TIMESTAMP(3) NOT NULL,
+    "id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "from_date" DATE NOT NULL,
+    "to_date" DATE NOT NULL,
     "type" TEXT DEFAULT 'PLANNED' NOT NULL,
     "reason" TEXT NOT NULL,
     "status" TEXT DEFAULT 'PENDING' NOT NULL,
     "source" TEXT DEFAULT 'PARENT' NOT NULL,
-    "applied_by_id" TEXT,
-    "decided_by_id" TEXT,
+    "applied_by_id" UUID,
+    "decided_by_id" UUID,
     "decided_at" TIMESTAMP(3),
     "decision_note" TEXT,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -346,15 +346,15 @@ CREATE INDEX "student_leaves_unit_id_status_from_date_idx" ON "student_leaves"("
 
 -- CreateTable
 CREATE TABLE "fee_structures" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
-    "programme_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "programme_id" UUID NOT NULL,
     "academic_year" TEXT NOT NULL,
-    "total_fee" DECIMAL(65,30) NOT NULL,
-    "instalment_1" DECIMAL(65,30),
-    "instalment_2" DECIMAL(65,30),
-    "instalment_3" DECIMAL(65,30),
-    "sibling_discount_pct" DECIMAL(65,30),
+    "total_fee" DECIMAL(10, 2) NOT NULL,
+    "instalment_1" DECIMAL(10, 2),
+    "instalment_2" DECIMAL(10, 2),
+    "instalment_3" DECIMAL(10, 2),
+    "sibling_discount_pct" DECIMAL(5, 2),
     "locked" BOOLEAN DEFAULT false NOT NULL,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "fee_structures_pkey" PRIMARY KEY ("id")
@@ -364,21 +364,21 @@ CREATE UNIQUE INDEX "fee_structures_unit_id_programme_id_academic_year_key" ON "
 
 -- CreateTable
 CREATE TABLE "fee_transactions" (
-    "id" TEXT NOT NULL,
-    "student_id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
     "ledger_type" "LedgerType" DEFAULT 'PRESCHOOL' NOT NULL,
-    "amount" DECIMAL(65,30) NOT NULL,
-    "discount" DECIMAL(65,30) DEFAULT 0 NOT NULL,
-    "fine" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    "amount" DECIMAL(10, 2) NOT NULL,
+    "discount" DECIMAL(10, 2) DEFAULT 0 NOT NULL,
+    "fine" DECIMAL(10, 2) DEFAULT 0 NOT NULL,
     "payment_mode" "PaymentMode" NOT NULL,
     "reference" TEXT,
-    "payment_date" TIMESTAMP(3) NOT NULL,
+    "payment_date" DATE NOT NULL,
     "instalment_no" INTEGER,
     "receipt_no" TEXT NOT NULL,
     "remarks" TEXT,
     "is_cancelled" BOOLEAN DEFAULT false NOT NULL,
-    "collected_by_id" TEXT,
+    "collected_by_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "fee_transactions_pkey" PRIMARY KEY ("id")
 );
@@ -387,11 +387,11 @@ CREATE UNIQUE INDEX "fee_transactions_receipt_no_key" ON "fee_transactions"("rec
 
 -- CreateTable
 CREATE TABLE "fee_addons" (
-    "id" TEXT NOT NULL,
-    "student_id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
     "label" TEXT NOT NULL,
-    "amount" DECIMAL(65,30) NOT NULL,
+    "amount" DECIMAL(10, 2) NOT NULL,
     "ledger_type" "LedgerType" DEFAULT 'PRESCHOOL' NOT NULL,
     "status" TEXT DEFAULT 'PENDING' NOT NULL,
     "payment_mode" "PaymentMode",
@@ -399,8 +399,8 @@ CREATE TABLE "fee_addons" (
     "notes" TEXT,
     "billed_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "settled_at" TIMESTAMP(3),
-    "settled_by_id" TEXT,
-    "created_by_id" TEXT,
+    "settled_by_id" UUID,
+    "created_by_id" UUID,
     CONSTRAINT "fee_addons_pkey" PRIMARY KEY ("id")
 );
 
@@ -409,13 +409,13 @@ CREATE INDEX "fee_addons_student_id_billed_at_idx" ON "fee_addons"("student_id",
 
 -- CreateTable
 CREATE TABLE "audit_log" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "table_name" TEXT NOT NULL,
     "record_id" TEXT NOT NULL,
     "action" TEXT NOT NULL,
     "old_data" JSONB,
     "new_data" JSONB,
-    "changed_by_id" TEXT,
+    "changed_by_id" UUID,
     "changed_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "ip_address" TEXT,
     CONSTRAINT "audit_log_pkey" PRIMARY KEY ("id")
@@ -424,12 +424,12 @@ CREATE TABLE "audit_log" (
 
 -- CreateTable
 CREATE TABLE "certificates" (
-    "id" TEXT NOT NULL,
-    "student_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
     "type" TEXT NOT NULL,
     "serial_no" TEXT NOT NULL,
     "payload" JSONB,
-    "issued_by_id" TEXT,
+    "issued_by_id" UUID,
     "issued_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "certificates_pkey" PRIMARY KEY ("id")
 );
@@ -438,12 +438,12 @@ CREATE UNIQUE INDEX "certificates_serial_no_key" ON "certificates"("serial_no");
 
 -- CreateTable
 CREATE TABLE "message_logs" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "type" TEXT NOT NULL,
     "channel" TEXT DEFAULT 'WHATSAPP' NOT NULL,
     "recipient" TEXT NOT NULL,
-    "student_id" TEXT,
-    "unit_id" TEXT,
+    "student_id" UUID,
+    "unit_id" UUID,
     "payload" JSONB,
     "status" TEXT DEFAULT 'QUEUED' NOT NULL,
     "scheduled_for" TIMESTAMP(3),
@@ -459,7 +459,7 @@ CREATE TABLE "message_logs" (
 
 -- CreateTable
 CREATE TABLE "message_templates" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "channel" TEXT DEFAULT 'WHATSAPP' NOT NULL,
@@ -468,7 +468,7 @@ CREATE TABLE "message_templates" (
     "meta_template" TEXT,
     "approved" BOOLEAN DEFAULT false NOT NULL,
     "active" BOOLEAN DEFAULT true NOT NULL,
-    "updated_by_id" TEXT,
+    "updated_by_id" UUID,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "message_templates_pkey" PRIMARY KEY ("id")
@@ -478,8 +478,8 @@ CREATE UNIQUE INDEX "message_templates_code_key" ON "message_templates"("code");
 
 -- CreateTable
 CREATE TABLE "consent_log" (
-    "id" TEXT NOT NULL,
-    "student_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
     "consent_type" TEXT NOT NULL,
     "granted" BOOLEAN NOT NULL,
     "granted_by" TEXT NOT NULL,
@@ -490,7 +490,7 @@ CREATE TABLE "consent_log" (
 
 -- CreateTable
 CREATE TABLE "push_subscriptions" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "phone" TEXT NOT NULL,
     "endpoint" TEXT NOT NULL,
     "p256dh" TEXT NOT NULL,
@@ -505,9 +505,9 @@ CREATE INDEX "push_subscriptions_phone_idx" ON "push_subscriptions"("phone");
 
 -- CreateTable
 CREATE TABLE "parent_messages" (
-    "id" TEXT NOT NULL,
-    "student_id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
     "sender" TEXT NOT NULL,
     "body" TEXT NOT NULL,
     "read_at" TIMESTAMP(3),
@@ -522,16 +522,16 @@ CREATE INDEX "parent_messages_unit_id_created_at_idx" ON "parent_messages"("unit
 
 -- CreateTable
 CREATE TABLE "student_lifecycle_records" (
-    "id" TEXT NOT NULL,
-    "student_id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
     "tab" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "payload" JSONB NOT NULL,
     "visibility" TEXT DEFAULT 'STAFF_PARENT' NOT NULL,
     "status" TEXT,
-    "event_date" TIMESTAMP(3),
-    "created_by_id" TEXT,
+    "event_date" DATE,
+    "created_by_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updated_at" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "student_lifecycle_records_pkey" PRIMARY KEY ("id")
@@ -542,21 +542,21 @@ CREATE INDEX "student_lifecycle_records_unit_id_idx" ON "student_lifecycle_recor
 
 -- CreateTable
 CREATE TABLE "academic_plans" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT,
-    "programme_id" TEXT,
+    "id" UUID NOT NULL,
+    "unit_id" UUID,
+    "programme_id" UUID,
     "academic_year" TEXT NOT NULL,
     "kind" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
     "month" INTEGER,
-    "start_date" TIMESTAMP(3),
-    "end_date" TIMESTAMP(3),
+    "start_date" DATE,
+    "end_date" DATE,
     "status" TEXT DEFAULT 'DRAFT' NOT NULL,
     "parent_visible" BOOLEAN DEFAULT false NOT NULL,
     "payload" JSONB,
-    "authored_by_id" TEXT,
-    "approved_by_id" TEXT,
+    "authored_by_id" UUID,
+    "approved_by_id" UUID,
     "approved_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -568,14 +568,14 @@ CREATE INDEX "academic_plans_unit_id_idx" ON "academic_plans"("unit_id");
 
 -- CreateTable
 CREATE TABLE "inventory_items" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT,
+    "id" UUID NOT NULL,
+    "unit_id" UUID,
     "sku" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "category" TEXT NOT NULL,
     "reorder_level" INTEGER DEFAULT 0 NOT NULL,
     "quantity" INTEGER DEFAULT 0 NOT NULL,
-    "unit_cost" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    "unit_cost" DECIMAL(10,2) DEFAULT 0 NOT NULL,
     "active" BOOLEAN DEFAULT true NOT NULL,
     CONSTRAINT "inventory_items_pkey" PRIMARY KEY ("id")
 );
@@ -584,15 +584,15 @@ CREATE UNIQUE INDEX "inventory_items_sku_key" ON "inventory_items"("sku");
 
 -- CreateTable
 CREATE TABLE "inventory_movements" (
-    "id" TEXT NOT NULL,
-    "item_id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "item_id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
     "type" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL,
-    "unit_cost" DECIMAL(65,30),
+    "unit_cost" DECIMAL(10,2),
     "reference" TEXT,
     "notes" TEXT,
-    "created_by_id" TEXT,
+    "created_by_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "inventory_movements_pkey" PRIMARY KEY ("id")
 );
@@ -601,9 +601,9 @@ CREATE INDEX "inventory_movements_unit_id_created_at_idx" ON "inventory_movement
 
 -- CreateTable
 CREATE TABLE "ptm_sessions" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
-    "batch_id" TEXT,
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "batch_id" UUID,
     "title" TEXT NOT NULL,
     "scheduled_at" TIMESTAMP(3) NOT NULL,
     "status" TEXT DEFAULT 'SCHEDULED' NOT NULL,
@@ -615,9 +615,9 @@ CREATE INDEX "ptm_sessions_unit_id_scheduled_at_idx" ON "ptm_sessions"("unit_id"
 
 -- CreateTable
 CREATE TABLE "ptm_records" (
-    "id" TEXT NOT NULL,
-    "session_id" TEXT NOT NULL,
-    "student_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "session_id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
     "attended" BOOLEAN DEFAULT false NOT NULL,
     "parent_names" TEXT,
     "teacher_notes" TEXT,
@@ -631,11 +631,11 @@ CREATE UNIQUE INDEX "ptm_records_session_id_student_id_key" ON "ptm_records"("se
 
 -- CreateTable
 CREATE TABLE "evening_activities" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "schedule" TEXT,
-    "fee" DECIMAL(65,30) NOT NULL,
+    "fee" DECIMAL(10,2) NOT NULL,
     "capacity" INTEGER NOT NULL,
     "active" BOOLEAN DEFAULT true NOT NULL,
     CONSTRAINT "evening_activities_pkey" PRIMARY KEY ("id")
@@ -645,14 +645,14 @@ CREATE INDEX "evening_activities_unit_id_idx" ON "evening_activities"("unit_id")
 
 -- CreateTable
 CREATE TABLE "evening_enrollments" (
-    "id" TEXT NOT NULL,
-    "activity_id" TEXT NOT NULL,
-    "student_id" TEXT,
-    "participant_id" TEXT,
-    "start_date" TIMESTAMP(3) NOT NULL,
-    "end_date" TIMESTAMP(3),
+    "id" UUID NOT NULL,
+    "activity_id" UUID NOT NULL,
+    "student_id" UUID,
+    "participant_id" UUID,
+    "start_date" DATE NOT NULL,
+    "end_date" DATE,
     "status" TEXT DEFAULT 'ACTIVE' NOT NULL,
-    "amount_due" DECIMAL(65,30) NOT NULL,
+    "amount_due" DECIMAL(10,2) NOT NULL,
     CONSTRAINT "evening_enrollments_pkey" PRIMARY KEY ("id")
 );
 
@@ -661,14 +661,14 @@ CREATE UNIQUE INDEX "evening_enrollments_activity_id_participant_id_key" ON "eve
 
 -- CreateTable
 CREATE TABLE "evening_payments" (
-    "id" TEXT NOT NULL,
-    "enrollment_id" TEXT NOT NULL,
-    "amount" DECIMAL(65,30) NOT NULL,
+    "id" UUID NOT NULL,
+    "enrollment_id" UUID NOT NULL,
+    "amount" DECIMAL(10,2) NOT NULL,
     "mode" "PaymentMode" NOT NULL,
     "reference" TEXT,
     "receipt_no" TEXT NOT NULL,
     "paid_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    "collected_by_id" TEXT,
+    "collected_by_id" UUID,
     CONSTRAINT "evening_payments_pkey" PRIMARY KEY ("id")
 );
 
@@ -676,10 +676,10 @@ CREATE UNIQUE INDEX "evening_payments_receipt_no_key" ON "evening_payments"("rec
 
 -- CreateTable
 CREATE TABLE "online_payments" (
-    "id" TEXT NOT NULL,
-    "student_id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
-    "amount" DECIMAL(65,30) NOT NULL,
+    "id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "amount" DECIMAL(10, 2) NOT NULL,
     "ledger_type" "LedgerType" DEFAULT 'PRESCHOOL' NOT NULL,
     "provider" TEXT DEFAULT 'RAZORPAY' NOT NULL,
     "mode" TEXT DEFAULT 'MOCK' NOT NULL,
@@ -687,7 +687,7 @@ CREATE TABLE "online_payments" (
     "provider_payment_id" TEXT,
     "status" TEXT DEFAULT 'CREATED' NOT NULL,
     "failure_reason" TEXT,
-    "transaction_id" TEXT,
+    "transaction_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "paid_at" TIMESTAMP(3),
     CONSTRAINT "online_payments_pkey" PRIMARY KEY ("id")
@@ -699,8 +699,8 @@ CREATE INDEX "online_payments_unit_id_created_at_idx" ON "online_payments"("unit
 
 -- CreateTable
 CREATE TABLE "vendors" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT,
+    "id" UUID NOT NULL,
+    "unit_id" UUID,
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "category" TEXT,
@@ -720,13 +720,13 @@ CREATE INDEX "vendors_unit_id_active_idx" ON "vendors"("unit_id", "active");
 
 -- CreateTable
 CREATE TABLE "purchase_requests" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
     "title" TEXT NOT NULL,
     "justification" TEXT,
     "status" TEXT DEFAULT 'DRAFT' NOT NULL,
-    "requested_by_id" TEXT,
-    "approved_by_id" TEXT,
+    "requested_by_id" UUID,
+    "approved_by_id" UUID,
     "approved_at" TIMESTAMP(3),
     "decision_note" TEXT,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -737,12 +737,12 @@ CREATE INDEX "purchase_requests_unit_id_status_idx" ON "purchase_requests"("unit
 
 -- CreateTable
 CREATE TABLE "purchase_request_lines" (
-    "id" TEXT NOT NULL,
-    "request_id" TEXT NOT NULL,
-    "item_id" TEXT,
+    "id" UUID NOT NULL,
+    "request_id" UUID NOT NULL,
+    "item_id" UUID,
     "description" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL,
-    "estimated_cost" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    "estimated_cost" DECIMAL(10, 2) DEFAULT 0 NOT NULL,
     CONSTRAINT "purchase_request_lines_pkey" PRIMARY KEY ("id")
 );
 
@@ -750,17 +750,17 @@ CREATE INDEX "purchase_request_lines_request_id_idx" ON "purchase_request_lines"
 
 -- CreateTable
 CREATE TABLE "purchase_orders" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
-    "vendor_id" TEXT NOT NULL,
-    "request_id" TEXT,
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "vendor_id" UUID NOT NULL,
+    "request_id" UUID,
     "po_no" TEXT NOT NULL,
     "status" TEXT DEFAULT 'DRAFT' NOT NULL,
     "ordered_at" TIMESTAMP(3),
-    "expected_at" TIMESTAMP(3),
-    "total_amount" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    "expected_at" DATE,
+    "total_amount" DECIMAL(12, 2) DEFAULT 0 NOT NULL,
     "notes" TEXT,
-    "created_by_id" TEXT,
+    "created_by_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "purchase_orders_pkey" PRIMARY KEY ("id")
 );
@@ -770,12 +770,12 @@ CREATE INDEX "purchase_orders_unit_id_status_idx" ON "purchase_orders"("unit_id"
 
 -- CreateTable
 CREATE TABLE "purchase_order_lines" (
-    "id" TEXT NOT NULL,
-    "order_id" TEXT NOT NULL,
-    "item_id" TEXT,
+    "id" UUID NOT NULL,
+    "order_id" UUID NOT NULL,
+    "item_id" UUID,
     "description" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL,
-    "unit_cost" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    "unit_cost" DECIMAL(10, 2) DEFAULT 0 NOT NULL,
     "received_qty" INTEGER DEFAULT 0 NOT NULL,
     CONSTRAINT "purchase_order_lines_pkey" PRIMARY KEY ("id")
 );
@@ -784,13 +784,13 @@ CREATE INDEX "purchase_order_lines_order_id_idx" ON "purchase_order_lines"("orde
 
 -- CreateTable
 CREATE TABLE "goods_receipts" (
-    "id" TEXT NOT NULL,
-    "order_id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "order_id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
     "grn_no" TEXT NOT NULL,
     "invoice_no" TEXT,
-    "invoice_date" TIMESTAMP(3),
-    "received_by_id" TEXT,
+    "invoice_date" DATE,
+    "received_by_id" UUID,
     "notes" TEXT,
     "received_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "goods_receipts_pkey" PRIMARY KEY ("id")
@@ -801,13 +801,13 @@ CREATE INDEX "goods_receipts_unit_id_received_at_idx" ON "goods_receipts"("unit_
 
 -- CreateTable
 CREATE TABLE "goods_receipt_lines" (
-    "id" TEXT NOT NULL,
-    "receipt_id" TEXT NOT NULL,
-    "order_line_id" TEXT,
-    "item_id" TEXT,
+    "id" UUID NOT NULL,
+    "receipt_id" UUID NOT NULL,
+    "order_line_id" UUID,
+    "item_id" UUID,
     "description" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL,
-    "unit_cost" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    "unit_cost" DECIMAL(10, 2) DEFAULT 0 NOT NULL,
     CONSTRAINT "goods_receipt_lines_pkey" PRIMARY KEY ("id")
 );
 
@@ -815,14 +815,14 @@ CREATE INDEX "goods_receipt_lines_receipt_id_idx" ON "goods_receipt_lines"("rece
 
 -- CreateTable
 CREATE TABLE "petty_cash_entries" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
-    "date" TIMESTAMP(3) NOT NULL,
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "date" DATE NOT NULL,
     "type" TEXT NOT NULL,
     "description" TEXT NOT NULL,
-    "amount" DECIMAL(65,30) NOT NULL,
+    "amount" DECIMAL(10, 2) NOT NULL,
     "receipt_ref" TEXT,
-    "recorded_by_id" TEXT,
+    "recorded_by_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "petty_cash_entries_pkey" PRIMARY KEY ("id")
 );
@@ -831,15 +831,15 @@ CREATE INDEX "petty_cash_entries_unit_id_date_idx" ON "petty_cash_entries"("unit
 
 -- CreateTable
 CREATE TABLE "inward_outward_entries" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
     "direction" TEXT NOT NULL,
-    "date" TIMESTAMP(3) NOT NULL,
+    "date" DATE NOT NULL,
     "category" TEXT NOT NULL,
     "party" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "reference" TEXT,
-    "handled_by_id" TEXT,
+    "handled_by_id" UUID,
     "acknowledged" BOOLEAN DEFAULT false NOT NULL,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "inward_outward_entries_pkey" PRIMARY KEY ("id")
@@ -849,10 +849,10 @@ CREATE INDEX "inward_outward_entries_unit_id_date_idx" ON "inward_outward_entrie
 
 -- CreateTable
 CREATE TABLE "evening_participants" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
     "full_name" TEXT NOT NULL,
-    "dob" TIMESTAMP(3),
+    "dob" DATE,
     "guardian_name" TEXT,
     "guardian_phone" TEXT,
     "school" TEXT,
@@ -865,9 +865,9 @@ CREATE INDEX "evening_participants_unit_id_active_idx" ON "evening_participants"
 
 -- CreateTable
 CREATE TABLE "evening_sessions" (
-    "id" TEXT NOT NULL,
-    "activity_id" TEXT NOT NULL,
-    "date" TIMESTAMP(3) NOT NULL,
+    "id" UUID NOT NULL,
+    "activity_id" UUID NOT NULL,
+    "date" DATE NOT NULL,
     "start_time" TEXT,
     "end_time" TEXT,
     "topic" TEXT,
@@ -880,12 +880,12 @@ CREATE UNIQUE INDEX "evening_sessions_activity_id_date_key" ON "evening_sessions
 
 -- CreateTable
 CREATE TABLE "evening_attendance" (
-    "id" TEXT NOT NULL,
-    "session_id" TEXT NOT NULL,
-    "student_id" TEXT,
-    "participant_id" TEXT,
+    "id" UUID NOT NULL,
+    "session_id" UUID NOT NULL,
+    "student_id" UUID,
+    "participant_id" UUID,
     "status" TEXT DEFAULT 'PRESENT' NOT NULL,
-    "marked_by_id" TEXT,
+    "marked_by_id" UUID,
     "marked_at" TIMESTAMP(3),
     CONSTRAINT "evening_attendance_pkey" PRIMARY KEY ("id")
 );
@@ -896,13 +896,13 @@ CREATE INDEX "evening_attendance_session_id_idx" ON "evening_attendance"("sessio
 
 -- CreateTable
 CREATE TABLE "ptm_slots" (
-    "id" TEXT NOT NULL,
-    "session_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "session_id" UUID NOT NULL,
     "start_time" TIMESTAMP(3) NOT NULL,
     "end_time" TIMESTAMP(3) NOT NULL,
-    "student_id" TEXT,
+    "student_id" UUID,
     "booked_at" TIMESTAMP(3),
-    "booked_by_id" TEXT,
+    "booked_by_id" UUID,
     "notes" TEXT,
     CONSTRAINT "ptm_slots_pkey" PRIMARY KEY ("id")
 );
@@ -912,19 +912,19 @@ CREATE INDEX "ptm_slots_session_id_idx" ON "ptm_slots"("session_id");
 
 -- CreateTable
 CREATE TABLE "employees" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "employee_no" TEXT NOT NULL,
     "full_name" TEXT NOT NULL,
     "email" TEXT,
     "phone" TEXT,
-    "date_of_birth" TIMESTAMP(3),
-    "joining_date" TIMESTAMP(3) NOT NULL,
-    "relieving_date" TIMESTAMP(3),
+    "date_of_birth" DATE,
+    "joining_date" DATE NOT NULL,
+    "relieving_date" DATE,
     "status" TEXT DEFAULT 'ACTIVE' NOT NULL,
-    "unit_id" TEXT NOT NULL,
+    "unit_id" UUID NOT NULL,
     "department" TEXT,
     "designation" TEXT NOT NULL,
-    "reporting_manager_id" TEXT,
+    "reporting_manager_id" UUID,
     "employment_type" TEXT NOT NULL,
     "bank_account_name" TEXT,
     "bank_account_no" TEXT,
@@ -946,17 +946,17 @@ CREATE INDEX "employees_reporting_manager_id_idx" ON "employees"("reporting_mana
 
 -- CreateTable
 CREATE TABLE "employment_history" (
-    "id" TEXT NOT NULL,
-    "employee_id" TEXT NOT NULL,
-    "effective_from" TIMESTAMP(3) NOT NULL,
-    "effective_to" TIMESTAMP(3),
-    "unit_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "employee_id" UUID NOT NULL,
+    "effective_from" DATE NOT NULL,
+    "effective_to" DATE,
+    "unit_id" UUID NOT NULL,
     "department" TEXT,
     "designation" TEXT NOT NULL,
     "employment_type" TEXT NOT NULL,
-    "reporting_manager_id" TEXT,
+    "reporting_manager_id" UUID,
     "reason" TEXT,
-    "changed_by_id" TEXT,
+    "changed_by_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "employment_history_pkey" PRIMARY KEY ("id")
 );
@@ -965,7 +965,7 @@ CREATE INDEX "employment_history_employee_id_effective_from_idx" ON "employment_
 
 -- CreateTable
 CREATE TABLE "hr_shifts" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "name" TEXT NOT NULL,
     "code" TEXT NOT NULL,
     "start_time" TEXT NOT NULL,
@@ -981,11 +981,11 @@ CREATE UNIQUE INDEX "hr_shifts_code_key" ON "hr_shifts"("code");
 
 -- CreateTable
 CREATE TABLE "employee_shifts" (
-    "id" TEXT NOT NULL,
-    "employee_id" TEXT NOT NULL,
-    "shift_id" TEXT NOT NULL,
-    "effective_from" TIMESTAMP(3) NOT NULL,
-    "effective_to" TIMESTAMP(3),
+    "id" UUID NOT NULL,
+    "employee_id" UUID NOT NULL,
+    "shift_id" UUID NOT NULL,
+    "effective_from" DATE NOT NULL,
+    "effective_to" DATE,
     CONSTRAINT "employee_shifts_pkey" PRIMARY KEY ("id")
 );
 
@@ -993,9 +993,9 @@ CREATE INDEX "employee_shifts_employee_id_effective_from_idx" ON "employee_shift
 
 -- CreateTable
 CREATE TABLE "hr_holidays" (
-    "id" TEXT NOT NULL,
-    "unit_id" TEXT,
-    "date" TIMESTAMP(3) NOT NULL,
+    "id" UUID NOT NULL,
+    "unit_id" UUID,
+    "date" DATE NOT NULL,
     "name" TEXT NOT NULL,
     "paid" BOOLEAN DEFAULT true NOT NULL,
     CONSTRAINT "hr_holidays_pkey" PRIMARY KEY ("id")
@@ -1005,12 +1005,12 @@ CREATE UNIQUE INDEX "hr_holidays_unit_id_date_key" ON "hr_holidays"("unit_id", "
 
 -- CreateTable
 CREATE TABLE "salary_components" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "calculation_type" TEXT NOT NULL,
-    "default_value" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    "default_value" DECIMAL(12,4) DEFAULT 0 NOT NULL,
     "pf_applicable" BOOLEAN DEFAULT false NOT NULL,
     "esic_applicable" BOOLEAN DEFAULT false NOT NULL,
     "pt_applicable" BOOLEAN DEFAULT false NOT NULL,
@@ -1022,12 +1022,12 @@ CREATE UNIQUE INDEX "salary_components_code_key" ON "salary_components"("code");
 
 -- CreateTable
 CREATE TABLE "employee_salary_components" (
-    "id" TEXT NOT NULL,
-    "employee_id" TEXT NOT NULL,
-    "component_id" TEXT NOT NULL,
-    "value" DECIMAL(65,30) NOT NULL,
-    "effective_from" TIMESTAMP(3) NOT NULL,
-    "effective_to" TIMESTAMP(3),
+    "id" UUID NOT NULL,
+    "employee_id" UUID NOT NULL,
+    "component_id" UUID NOT NULL,
+    "value" DECIMAL(12,4) NOT NULL,
+    "effective_from" DATE NOT NULL,
+    "effective_to" DATE,
     CONSTRAINT "employee_salary_components_pkey" PRIMARY KEY ("id")
 );
 
@@ -1035,13 +1035,13 @@ CREATE INDEX "employee_salary_components_employee_id_effective_from_idx" ON "emp
 
 -- CreateTable
 CREATE TABLE "attendance_imports" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "file_name" TEXT NOT NULL,
     "source" TEXT NOT NULL,
     "status" TEXT DEFAULT 'PROCESSED' NOT NULL,
     "totalRows" INTEGER DEFAULT 0 NOT NULL,
     "errorRows" INTEGER DEFAULT 0 NOT NULL,
-    "imported_by_id" TEXT,
+    "imported_by_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "attendance_imports_pkey" PRIMARY KEY ("id")
 );
@@ -1049,9 +1049,9 @@ CREATE TABLE "attendance_imports" (
 
 -- CreateTable
 CREATE TABLE "staff_attendance" (
-    "id" TEXT NOT NULL,
-    "employee_id" TEXT NOT NULL,
-    "date" TIMESTAMP(3) NOT NULL,
+    "id" UUID NOT NULL,
+    "employee_id" UUID NOT NULL,
+    "date" DATE NOT NULL,
     "first_in" TIMESTAMP(3),
     "last_out" TIMESTAMP(3),
     "worked_minutes" INTEGER DEFAULT 0 NOT NULL,
@@ -1060,7 +1060,7 @@ CREATE TABLE "staff_attendance" (
     "exception" TEXT,
     "exception_resolved" BOOLEAN DEFAULT false NOT NULL,
     "correction_reason" TEXT,
-    "import_id" TEXT,
+    "import_id" UUID,
     CONSTRAINT "staff_attendance_pkey" PRIMARY KEY ("id")
 );
 
@@ -1069,12 +1069,12 @@ CREATE INDEX "staff_attendance_date_exception_resolved_idx" ON "staff_attendance
 
 -- CreateTable
 CREATE TABLE "leave_policies" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "year" INTEGER NOT NULL,
     "leaveType" TEXT NOT NULL,
-    "allocation" DECIMAL(65,30) NOT NULL,
-    "carry_forward_cap" DECIMAL(65,30) NOT NULL,
-    "effective_from" TIMESTAMP(3) NOT NULL,
+    "allocation" DECIMAL(6,2) NOT NULL,
+    "carry_forward_cap" DECIMAL(6,2) NOT NULL,
+    "effective_from" DATE NOT NULL,
     "active" BOOLEAN DEFAULT true NOT NULL,
     CONSTRAINT "leave_policies_pkey" PRIMARY KEY ("id")
 );
@@ -1083,16 +1083,16 @@ CREATE UNIQUE INDEX "leave_policies_year_leaveType_key" ON "leave_policies"("yea
 
 -- CreateTable
 CREATE TABLE "staff_leaves" (
-    "id" TEXT NOT NULL,
-    "employee_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "employee_id" UUID NOT NULL,
     "leaveType" TEXT NOT NULL,
-    "from_date" TIMESTAMP(3) NOT NULL,
-    "to_date" TIMESTAMP(3) NOT NULL,
-    "days" DECIMAL(65,30) NOT NULL,
+    "from_date" DATE NOT NULL,
+    "to_date" DATE NOT NULL,
+    "days" DECIMAL(6,2) NOT NULL,
     "reason" TEXT NOT NULL,
     "status" TEXT DEFAULT 'PENDING_MANAGER' NOT NULL,
-    "manager_approved_by_id" TEXT,
-    "hr_approved_by_id" TEXT,
+    "manager_approved_by_id" UUID,
+    "hr_approved_by_id" UUID,
     "is_lwp" BOOLEAN DEFAULT false NOT NULL,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "staff_leaves_pkey" PRIMARY KEY ("id")
@@ -1102,14 +1102,14 @@ CREATE INDEX "staff_leaves_employee_id_from_date_idx" ON "staff_leaves"("employe
 
 -- CreateTable
 CREATE TABLE "leave_balances" (
-    "id" TEXT NOT NULL,
-    "employee_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "employee_id" UUID NOT NULL,
     "year" INTEGER NOT NULL,
     "leaveType" TEXT NOT NULL,
-    "opening" DECIMAL(65,30) DEFAULT 0 NOT NULL,
-    "allocated" DECIMAL(65,30) DEFAULT 0 NOT NULL,
-    "used" DECIMAL(65,30) DEFAULT 0 NOT NULL,
-    "carried" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    "opening" DECIMAL(6,2) DEFAULT 0 NOT NULL,
+    "allocated" DECIMAL(6,2) DEFAULT 0 NOT NULL,
+    "used" DECIMAL(6,2) DEFAULT 0 NOT NULL,
+    "carried" DECIMAL(6,2) DEFAULT 0 NOT NULL,
     CONSTRAINT "leave_balances_pkey" PRIMARY KEY ("id")
 );
 
@@ -1117,14 +1117,14 @@ CREATE UNIQUE INDEX "leave_balances_employee_id_year_leaveType_key" ON "leave_ba
 
 -- CreateTable
 CREATE TABLE "overtime_authorisations" (
-    "id" TEXT NOT NULL,
-    "employee_id" TEXT NOT NULL,
-    "date" TIMESTAMP(3) NOT NULL,
+    "id" UUID NOT NULL,
+    "employee_id" UUID NOT NULL,
+    "date" DATE NOT NULL,
     "expected_minutes" INTEGER NOT NULL,
     "reason" TEXT NOT NULL,
-    "multiplier" DECIMAL(65,30) DEFAULT 1 NOT NULL,
+    "multiplier" DECIMAL(5,2) DEFAULT 1 NOT NULL,
     "status" TEXT DEFAULT 'REQUESTED' NOT NULL,
-    "approved_by_id" TEXT,
+    "approved_by_id" UUID,
     "approved_at" TIMESTAMP(3),
     "actual_minutes" INTEGER,
     "eligible_minutes" INTEGER,
@@ -1136,18 +1136,18 @@ CREATE UNIQUE INDEX "overtime_authorisations_employee_id_date_key" ON "overtime_
 
 -- CreateTable
 CREATE TABLE "payroll_runs" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "type" TEXT NOT NULL,
     "month" TEXT NOT NULL,
-    "unit_id" TEXT,
+    "unit_id" UUID,
     "status" TEXT DEFAULT 'DRAFT' NOT NULL,
     "version" INTEGER DEFAULT 1 NOT NULL,
-    "created_by_id" TEXT NOT NULL,
-    "submitted_by_id" TEXT,
-    "approved_by_id" TEXT,
+    "created_by_id" UUID NOT NULL,
+    "submitted_by_id" UUID,
+    "approved_by_id" UUID,
     "approved_at" TIMESTAMP(3),
     "locked_at" TIMESTAMP(3),
-    "reversal_of_id" TEXT,
+    "reversal_of_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "payroll_runs_pkey" PRIMARY KEY ("id")
 );
@@ -1156,16 +1156,16 @@ CREATE UNIQUE INDEX "payroll_runs_type_month_unit_id_version_key" ON "payroll_ru
 
 -- CreateTable
 CREATE TABLE "payroll_lines" (
-    "id" TEXT NOT NULL,
-    "run_id" TEXT NOT NULL,
-    "employee_id" TEXT NOT NULL,
-    "gross" DECIMAL(65,30) NOT NULL,
-    "deductions" DECIMAL(65,30) NOT NULL,
-    "employer_contributions" DECIMAL(65,30) DEFAULT 0 NOT NULL,
-    "net" DECIMAL(65,30) NOT NULL,
+    "id" UUID NOT NULL,
+    "run_id" UUID NOT NULL,
+    "employee_id" UUID NOT NULL,
+    "gross" DECIMAL(12,2) NOT NULL,
+    "deductions" DECIMAL(12,2) NOT NULL,
+    "employer_contributions" DECIMAL(12,2) DEFAULT 0 NOT NULL,
+    "net" DECIMAL(12,2) NOT NULL,
     "worked_minutes" INTEGER DEFAULT 0 NOT NULL,
     "ot_minutes" INTEGER DEFAULT 0 NOT NULL,
-    "lwp_days" DECIMAL(65,30) DEFAULT 0 NOT NULL,
+    "lwp_days" DECIMAL(6,2) DEFAULT 0 NOT NULL,
     "details" JSONB NOT NULL,
     CONSTRAINT "payroll_lines_pkey" PRIMARY KEY ("id")
 );
@@ -1174,15 +1174,15 @@ CREATE UNIQUE INDEX "payroll_lines_run_id_employee_id_key" ON "payroll_lines"("r
 
 -- CreateTable
 CREATE TABLE "payroll_adjustments" (
-    "id" TEXT NOT NULL,
-    "employee_id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "employee_id" UUID NOT NULL,
     "month" TEXT NOT NULL,
     "type" TEXT NOT NULL,
-    "amount" DECIMAL(65,30) NOT NULL,
+    "amount" DECIMAL(12,2) NOT NULL,
     "reason" TEXT NOT NULL,
     "status" TEXT DEFAULT 'APPROVED' NOT NULL,
-    "source_run_id" TEXT,
-    "created_by_id" TEXT NOT NULL,
+    "source_run_id" UUID,
+    "created_by_id" UUID NOT NULL,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT "payroll_adjustments_pkey" PRIMARY KEY ("id")
 );
@@ -1191,11 +1191,11 @@ CREATE INDEX "payroll_adjustments_employee_id_month_idx" ON "payroll_adjustments
 
 -- CreateTable
 CREATE TABLE "employee_minute_rates" (
-    "id" TEXT NOT NULL,
-    "employee_id" TEXT NOT NULL,
-    "rate" DECIMAL(65,30) NOT NULL,
-    "effective_from" TIMESTAMP(3) NOT NULL,
-    "effective_to" TIMESTAMP(3),
+    "id" UUID NOT NULL,
+    "employee_id" UUID NOT NULL,
+    "rate" DECIMAL(10,4) NOT NULL,
+    "effective_from" DATE NOT NULL,
+    "effective_to" DATE,
     CONSTRAINT "employee_minute_rates_pkey" PRIMARY KEY ("id")
 );
 
@@ -1203,14 +1203,14 @@ CREATE INDEX "employee_minute_rates_employee_id_effective_from_idx" ON "employee
 
 -- CreateTable
 CREATE TABLE "statutory_schemes" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "effective_from" TIMESTAMP(3) NOT NULL,
-    "effective_to" TIMESTAMP(3),
-    "employee_rate" DECIMAL(65,30) NOT NULL,
-    "employer_rate" DECIMAL(65,30) DEFAULT 0 NOT NULL,
-    "wage_ceiling" DECIMAL(65,30),
+    "effective_from" DATE NOT NULL,
+    "effective_to" DATE,
+    "employee_rate" DECIMAL(7,4) NOT NULL,
+    "employer_rate" DECIMAL(7,4) DEFAULT 0 NOT NULL,
+    "wage_ceiling" DECIMAL(12,2),
     "calculation_basis" TEXT NOT NULL,
     "active" BOOLEAN DEFAULT true NOT NULL,
     CONSTRAINT "statutory_schemes_pkey" PRIMARY KEY ("id")
@@ -1220,11 +1220,11 @@ CREATE INDEX "statutory_schemes_code_effective_from_idx" ON "statutory_schemes"(
 
 -- CreateTable
 CREATE TABLE "statutory_slabs" (
-    "id" TEXT NOT NULL,
-    "scheme_id" TEXT NOT NULL,
-    "min_amount" DECIMAL(65,30) NOT NULL,
-    "max_amount" DECIMAL(65,30),
-    "deduction" DECIMAL(65,30) NOT NULL,
+    "id" UUID NOT NULL,
+    "scheme_id" UUID NOT NULL,
+    "min_amount" DECIMAL(12,2) NOT NULL,
+    "max_amount" DECIMAL(12,2),
+    "deduction" DECIMAL(12,2) NOT NULL,
     CONSTRAINT "statutory_slabs_pkey" PRIMARY KEY ("id")
 );
 
@@ -1233,7 +1233,7 @@ CREATE TABLE "statutory_slabs" (
 CREATE TABLE "app_settings" (
     "key" TEXT NOT NULL,
     "value" JSONB NOT NULL,
-    "updated_by_id" TEXT,
+    "updated_by_id" UUID,
     "updated_at" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "app_settings_pkey" PRIMARY KEY ("key")
 );

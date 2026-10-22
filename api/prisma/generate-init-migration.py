@@ -107,8 +107,17 @@ def parse():
 
 
 def attr_attr(attrs, name):
+    """Find `@name`, `@name(...)` or a namespaced `@db.Uuid` / `@db.Decimal(10,2)`.
+
+    The namespaced form matters: without it every `@db.Uuid` column silently
+    fell back to TEXT, which desynchronises the migration from the schema.
+    """
     for a in attrs:
-        if a == '@' + name or a.startswith('@' + name + '('):
+        if (
+            a == '@' + name
+            or a.startswith('@' + name + '(')
+            or a.startswith('@' + name + '.')
+        ):
             return a
     return None
 
