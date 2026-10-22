@@ -28,7 +28,12 @@ import {
   retentionPlan,
 } from './privacy.rules';
 import { RETENTION_KEY, runRetention } from './retention.service';
-import { ConsentRecordDto, EraseStudentDto, RetentionPurgeDto } from './privacy.dto';
+import {
+  ConsentRecordDto,
+  EraseStudentDto,
+  RetentionPolicyDto,
+  RetentionPurgeDto,
+} from './privacy.dto';
 
 /**
  * DPDP compliance surface.
@@ -157,7 +162,7 @@ export class PrivacyController {
 
   @Post('retention/policy')
   @Roles('FOUNDER')
-  async setPolicy(@Req() req: any, @Body() b: Record<string, number>) {
+  async setPolicy(@Req() req: any, @Body() b: RetentionPolicyDto) {
     const allowed = ['messageDays', 'conversationDays', 'pushDays', 'auditDays', 'studentDays'];
     const clean: Record<string, number> = {};
     for (const [k, v] of Object.entries(b ?? {})) {

@@ -25,12 +25,16 @@ function walk(dir: string): string[] {
 const files = walk(SRC);
 
 describe('request bodies are typed', () => {
-  it('has no @Body() parameter typed as any or an inline object literal', () => {
+  it('has no @Body() parameter typed as any, a Record or an inline object literal', () => {
     const offenders: string[] = [];
     for (const file of files) {
       const text = readFileSync(file, 'utf8');
       // `@Body() body: any` — no validation at all.
       for (const m of text.matchAll(/@Body\(\)\s*\w+\s*:\s*any/g)) {
+        offenders.push(`${file.replace(SRC, 'src')}: ${m[0]}`);
+      }
+      // `@Body() body: Record<string, number>` — a shape, but not a class.
+      for (const m of text.matchAll(/@Body\(\)\s*\w+\s*:\s*Record</g)) {
         offenders.push(`${file.replace(SRC, 'src')}: ${m[0]}`);
       }
       // `@Body() body: { ... }` — a shape, but not a class, so still unvalidated.

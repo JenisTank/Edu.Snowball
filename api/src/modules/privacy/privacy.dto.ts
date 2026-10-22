@@ -1,4 +1,13 @@
-import { IsBoolean, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 /**
  * DPDP operations.
@@ -38,4 +47,41 @@ export class EraseStudentDto {
   @IsString()
   @MaxLength(500)
   reason?: string;
+}
+
+/**
+ * Retention windows, in days. Each field is optional — an operator may adjust
+ * one window without restating the rest — but anything supplied must be a whole
+ * number of days within the range the retention job can honour.
+ */
+export class RetentionPolicyDto {
+  @IsOptional()
+  @IsInt()
+  @Min(30)
+  @Max(36500)
+  messageDays?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(30)
+  @Max(36500)
+  conversationDays?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(30)
+  @Max(36500)
+  pushDays?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(30)
+  @Max(36500)
+  auditDays?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(30)
+  @Max(36500)
+  studentDays?: number;
 }
