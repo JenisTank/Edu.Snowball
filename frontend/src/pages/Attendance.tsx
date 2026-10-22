@@ -16,7 +16,7 @@ import { Badge } from '../components/ui/DataTable';
 import { ErrorNote } from '../components/ui/Modal';
 import { useAuth, HO_ROLES } from '../lib/auth';
 import { cn } from '../lib/utils';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 
 const OVERRIDE_ROLES = ['CENTRE_HEAD', 'FOUNDER', 'ACADEMIC_DIR'];
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -47,6 +47,7 @@ function initials(name: string) {
 const LEAVE_TYPES = ['PLANNED', 'SICK', 'FAMILY', 'OTHER'];
 
 function LeavePanel() {
+  const L = useLabels();
   const qc = useQueryClient();
   const [status, setStatus] = useState('PENDING');
   const [form, setForm] = useState<any>({
@@ -206,7 +207,7 @@ function LeavePanel() {
             </select>
             <input
               className="input lg:col-span-3"
-              placeholder="Reason (visible to the family)"
+              placeholder={L('Reason (visible to the family)')}
               value={form.reason}
               onChange={(e) => setForm({ ...form, reason: e.target.value })}
             />
@@ -370,6 +371,7 @@ function ReportsPanel({ batches }: { batches: { batchId: string; name: string; u
 }
 
 export default function Attendance() {
+  const L = useLabels();
   const { t } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -623,7 +625,7 @@ export default function Attendance() {
             {locked && canOverride && (
               <input
                 className="input mb-3"
-                placeholder="Override reason (required — goes to audit log)"
+                placeholder={L('Override reason (required — goes to audit log)')}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />

@@ -7,7 +7,7 @@ import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useAuth, HO_ROLES } from '../lib/auth';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 
 const TYPE_META: Record<string, { label: string; tone: any }> = {
   ANNOUNCEMENT: { label: 'Announcement', tone: 'honey' },
@@ -20,6 +20,7 @@ const TYPE_META: Record<string, { label: string; tone: any }> = {
 };
 
 export default function Comms() {
+  const L = useLabels();
   const { t } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -78,7 +79,7 @@ export default function Comms() {
     () => [
       {
         accessorKey: 'createdAt',
-        header: 'Date',
+        header: L('Date'),
         cell: ({ row }) => (
           <span className="whitespace-nowrap text-[12px] font-semibold text-stone-600">
             {fmtDate(row.original.createdAt)}
@@ -87,7 +88,7 @@ export default function Comms() {
       },
       {
         accessorKey: 'type',
-        header: 'Type',
+        header: L('Type'),
         cell: ({ row }) => {
           const m = TYPE_META[row.original.type] ?? { label: row.original.type, tone: 'stone' };
           return <Badge tone={m.tone}>{m.label}</Badge>;
@@ -97,12 +98,12 @@ export default function Comms() {
         id: 'student',
         accessorFn: (r: any) =>
           r.student ? `${r.student.firstName} ${r.student.lastName}` : (r.payload?.child ?? '—'),
-        header: 'Student',
+        header: L('Student'),
         cell: ({ getValue }) => <span className="font-bold">{getValue() as string}</span>,
       },
       {
         id: 'summary',
-        header: 'Content',
+        header: L('Content'),
         cell: ({ row }) => {
           const p = row.original.payload ?? {};
           const t = row.original.type;
@@ -121,14 +122,14 @@ export default function Comms() {
       },
       {
         accessorKey: 'recipient',
-        header: 'To',
+        header: L('To'),
         cell: ({ row }) => (
           <span className="text-[12px] font-semibold text-stone-500">{row.original.recipient}</span>
         ),
       },
       {
         accessorKey: 'status',
-        header: 'Status',
+        header: L('Status'),
         cell: ({ row }) => (
           <Badge
             tone={
@@ -218,8 +219,8 @@ export default function Comms() {
         searchPlaceholder="Search messages…"
         exportName="messages"
         filterable={[
-          { id: 'type', label: 'Type' },
-          { id: 'status', label: 'Status' },
+          { id: 'type', label: L('Type') },
+          { id: 'status', label: L('Status') },
         ]}
       />
 
@@ -297,7 +298,7 @@ export default function Comms() {
       )}
 
       {announcing && (
-        <Modal title="📣 New announcement" onClose={() => setAnnouncing(false)}>
+        <Modal title={L('📣 New announcement')} onClose={() => setAnnouncing(false)}>
           {err && <ErrorNote msg={err} />}
           <div className="space-y-3">
             <Field label="Title">
@@ -305,7 +306,7 @@ export default function Comms() {
                 className="input"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Diwali Break 🎆"
+                placeholder={L('Diwali Break 🎆')}
               />
             </Field>
             <Field label="Message">
@@ -313,7 +314,7 @@ export default function Comms() {
                 className="input min-h-28"
                 value={form.body}
                 onChange={(e) => setForm({ ...form, body: e.target.value })}
-                placeholder="Dear parents…"
+                placeholder={L('Dear parents…')}
               />
             </Field>
             <div className="rounded-xl bg-honey-100 px-3 py-2 text-[11.5px] font-bold text-honey-800">

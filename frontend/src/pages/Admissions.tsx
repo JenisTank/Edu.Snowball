@@ -17,7 +17,7 @@ import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useAuth } from '../lib/auth';
 import { cn } from '../lib/utils';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 
 const RESULT_LABEL: Record<string, string> = {
   EP: 'EP · Excellent Progress',
@@ -96,6 +96,7 @@ function DiscoveryPreview({
 }
 
 function StudentModal({ student, onClose }: { student: any; onClose: () => void }) {
+  const L = useLabels();
   const { user } = useAuth();
   const qc = useQueryClient();
   const df = student.discoveryFlights?.[0];
@@ -155,7 +156,7 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
 
   if (waited) {
     return (
-      <Modal title="Added to the waitlist" onClose={onClose}>
+      <Modal title={L('Added to the waitlist')} onClose={onClose}>
         <div className="space-y-3">
           <div className="rounded-xl bg-honey-100/80 px-4 py-3 text-center">
             <div className="font-heading text-lg font-extrabold text-honey-800">
@@ -180,7 +181,7 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
 
   if (confirmed) {
     return (
-      <Modal title="Admission confirmed 🎉" onClose={onClose}>
+      <Modal title={L('Admission confirmed 🎉')} onClose={onClose}>
         <div className="space-y-3">
           <div className="rounded-xl bg-emerald-100/70 px-4 py-3 text-center">
             <div className="text-lg font-heading font-extrabold text-emerald-700">
@@ -513,6 +514,7 @@ function WaitlistPanel() {
 }
 
 export default function Admissions() {
+  const L = useLabels();
   const { t } = useI18n();
   const { data, isLoading } = useQuery({
     queryKey: ['admissions'],
@@ -533,7 +535,7 @@ export default function Admissions() {
     () => [
       {
         id: 'child',
-        header: 'Child',
+        header: L('Child'),
         accessorFn: (r: any) => `${r.firstName} ${r.lastName} ${r.admissionNo}`,
         cell: ({ row }) => (
           <div>
@@ -549,10 +551,10 @@ export default function Admissions() {
           </div>
         ),
       },
-      { id: 'unit', header: 'Unit', accessorFn: (r: any) => r.unit.code },
+      { id: 'unit', header: L('Unit'), accessorFn: (r: any) => r.unit.code },
       {
         id: 'programme',
-        header: 'Programme',
+        header: L('Programme'),
         accessorFn: (r: any) => r.programme?.name ?? '',
         cell: ({ row }) => (
           <span className="inline-flex items-center gap-2">
@@ -566,12 +568,12 @@ export default function Admissions() {
       },
       {
         id: 'plan',
-        header: 'Plan (auto)',
+        header: L('Plan (auto)'),
         accessorFn: (r: any) => PLAN_LABEL[r.instalmentPlan] ?? '—',
       },
       {
         id: 'df',
-        header: 'Discovery Flight',
+        header: L('Discovery Flight'),
         accessorFn: (r: any) => dfState(r).label,
         cell: ({ row }) => {
           const s = dfState(row.original);
@@ -584,7 +586,7 @@ export default function Admissions() {
       },
       {
         id: 'next',
-        header: 'Next step',
+        header: L('Next step'),
         accessorFn: (r: any) => dfState(r).step,
         cell: ({ row }) => {
           const step = dfState(row.original).step;
@@ -603,7 +605,7 @@ export default function Admissions() {
       },
       {
         id: 'source',
-        header: 'Inquiry',
+        header: L('Inquiry'),
         accessorFn: (r: any) => r.lead?.inquiryNo ?? '—',
         cell: ({ getValue }) => (
           <span className="text-[11px] text-stone-500">{getValue() as string}</span>
@@ -647,9 +649,9 @@ export default function Admissions() {
         searchPlaceholder="Search registrations…"
         exportName="admissions"
         filterable={[
-          { id: 'unit', label: 'Unit' },
-          { id: 'programme', label: 'Programme' },
-          { id: 'df', label: 'DF status' },
+          { id: 'unit', label: L('Unit') },
+          { id: 'programme', label: L('Programme') },
+          { id: 'df', label: L('DF status') },
         ]}
         onRowClick={(row) => setOpen(row)}
       />

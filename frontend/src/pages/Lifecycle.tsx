@@ -4,7 +4,7 @@ import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { Plus, ShieldAlert } from 'lucide-react';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 const defaults: any = {
   title: '',
   eventDate: new Date().toISOString().slice(0, 10),
@@ -12,6 +12,7 @@ const defaults: any = {
   details: '',
 };
 export default function Lifecycle() {
+  const L = useLabels();
   const { t } = useI18n();
   const qc = useQueryClient();
   const [studentId, setStudentId] = useState('');

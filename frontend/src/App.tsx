@@ -51,164 +51,176 @@ function Protected({ children }: { children: React.ReactNode }) {
   return <AppLayout>{children}</AppLayout>;
 }
 
+/**
+ * Route tree. It remounts on a language switch (`key={lang}`): column labels are
+ * memoised inside each page, and a remount is the only honest way to force every
+ * `useMemo` to rebuild with the new language.
+ */
+function Shell() {
+  const { lang } = useI18n();
+  return (
+    <Suspense key={lang} fallback={<RouteFallback />}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/"
+          element={
+            <Protected>
+              <Dashboard />
+            </Protected>
+          }
+        />
+        <Route
+          path="/students"
+          element={
+            <Protected>
+              <Students />
+            </Protected>
+          }
+        />
+        <Route
+          path="/lifecycle"
+          element={
+            <Protected>
+              <Lifecycle />
+            </Protected>
+          }
+        />
+        <Route
+          path="/academic"
+          element={
+            <Protected>
+              <Academic />
+            </Protected>
+          }
+        />
+        <Route
+          path="/inventory"
+          element={
+            <Protected>
+              <Inventory />
+            </Protected>
+          }
+        />
+        <Route
+          path="/me"
+          element={
+            <Protected>
+              <Me />
+            </Protected>
+          }
+        />
+        <Route
+          path="/ptm"
+          element={
+            <Protected>
+              <PTM />
+            </Protected>
+          }
+        />
+        <Route
+          path="/evening"
+          element={
+            <Protected>
+              <Evening />
+            </Protected>
+          }
+        />
+        <Route
+          path="/hr"
+          element={
+            <Protected>
+              <HR />
+            </Protected>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <Protected>
+              <Analytics />
+            </Protected>
+          }
+        />
+        <Route
+          path="/leads"
+          element={
+            <Protected>
+              <Leads />
+            </Protected>
+          }
+        />
+        <Route
+          path="/admissions"
+          element={
+            <Protected>
+              <Admissions />
+            </Protected>
+          }
+        />
+        <Route
+          path="/attendance"
+          element={
+            <Protected>
+              <Attendance />
+            </Protected>
+          }
+        />
+        <Route
+          path="/fees"
+          element={
+            <Protected>
+              <Fees />
+            </Protected>
+          }
+        />
+        <Route
+          path="/certificates"
+          element={
+            <Protected>
+              <Certificates />
+            </Protected>
+          }
+        />
+        <Route
+          path="/comms"
+          element={
+            <Protected>
+              <Comms />
+            </Protected>
+          }
+        />
+        {/* Parent PWA — handles its own phone + admission-no auth */}
+        <Route path="/parent" element={<ParentPortal />} />
+        <Route
+          path="/units"
+          element={
+            <Protected>
+              <Units />
+            </Protected>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <Protected>
+              <SettingsPage />
+            </Protected>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
       <I18nProvider>
         <AuthProvider>
           <BrowserRouter>
-            <Suspense fallback={<RouteFallback />}>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route
-                  path="/"
-                  element={
-                    <Protected>
-                      <Dashboard />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/students"
-                  element={
-                    <Protected>
-                      <Students />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/lifecycle"
-                  element={
-                    <Protected>
-                      <Lifecycle />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/academic"
-                  element={
-                    <Protected>
-                      <Academic />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/inventory"
-                  element={
-                    <Protected>
-                      <Inventory />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/me"
-                  element={
-                    <Protected>
-                      <Me />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/ptm"
-                  element={
-                    <Protected>
-                      <PTM />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/evening"
-                  element={
-                    <Protected>
-                      <Evening />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/hr"
-                  element={
-                    <Protected>
-                      <HR />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/analytics"
-                  element={
-                    <Protected>
-                      <Analytics />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/leads"
-                  element={
-                    <Protected>
-                      <Leads />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/admissions"
-                  element={
-                    <Protected>
-                      <Admissions />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/attendance"
-                  element={
-                    <Protected>
-                      <Attendance />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/fees"
-                  element={
-                    <Protected>
-                      <Fees />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/certificates"
-                  element={
-                    <Protected>
-                      <Certificates />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/comms"
-                  element={
-                    <Protected>
-                      <Comms />
-                    </Protected>
-                  }
-                />
-                {/* Parent PWA — handles its own phone + admission-no auth */}
-                <Route path="/parent" element={<ParentPortal />} />
-                <Route
-                  path="/units"
-                  element={
-                    <Protected>
-                      <Units />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <Protected>
-                      <SettingsPage />
-                    </Protected>
-                  }
-                />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
+            <Shell />
           </BrowserRouter>
         </AuthProvider>
       </I18nProvider>

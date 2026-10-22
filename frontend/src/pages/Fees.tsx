@@ -18,7 +18,7 @@ import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useAuth, HO_ROLES } from '../lib/auth';
 import { cn } from '../lib/utils';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 
 const inr = (n: number) => '₹' + Number(n || 0).toLocaleString('en-IN');
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -570,6 +570,7 @@ function LedgerModal({ row, onClose }: { row: any; onClose: () => void }) {
 
 // ───────────────────────── Structures tab ─────────────────────────
 function StructuresTab() {
+  const L = useLabels();
   const { t: tr } = useI18n();
   const { user } = useAuth();
   const canEdit = ['FOUNDER', 'ACADEMIC_DIR'].includes(user!.role);
@@ -594,22 +595,22 @@ function StructuresTab() {
     () => [
       {
         accessorKey: 'unit.code',
-        header: 'Unit',
+        header: L('Unit'),
         cell: ({ row }) => <span className="chip">{row.original.unit.code}</span>,
       },
       {
         accessorKey: 'programme.name',
-        header: 'Programme',
+        header: L('Programme'),
         cell: ({ row }) => <span className="font-bold">{row.original.programme.name}</span>,
       },
       {
         accessorKey: 'totalFee',
-        header: 'Annual fee',
+        header: L('Annual fee'),
         cell: ({ row }) => <span className="font-extrabold">{inr(row.original.totalFee)}</span>,
       },
       {
         id: 'split',
-        header: 'Instalments (Plan A)',
+        header: L('Instalments (Plan A)'),
         cell: ({ row }) => (
           <span className="text-[12px] font-semibold text-stone-600">
             {inr(row.original.instalment1)} / {inr(row.original.instalment2)} /{' '}
@@ -619,14 +620,14 @@ function StructuresTab() {
       },
       {
         accessorKey: 'siblingDiscountPct',
-        header: 'Sibling %',
+        header: L('Sibling %'),
         cell: ({ row }) => (
           <Badge tone="pink">{Number(row.original.siblingDiscountPct ?? 0)}%</Badge>
         ),
       },
       {
         accessorKey: 'locked',
-        header: 'Status',
+        header: L('Status'),
         cell: ({ row }) => (
           <Badge tone={row.original.locked ? 'green' : 'honey'}>
             {row.original.locked ? 'Locked for AY' : 'Draft'}
@@ -824,6 +825,7 @@ function RemindersTab() {
 
 // ───────────────────────── Page ─────────────────────────
 export default function Fees() {
+  const L = useLabels();
   const { t: tr } = useI18n();
   const { user } = useAuth();
   const [tab, setTab] = useState<'ledger' | 'structures' | 'reminders' | 'reports'>('ledger');
@@ -839,14 +841,14 @@ export default function Fees() {
     () => [
       {
         accessorKey: 'admissionNo',
-        header: 'Admission №',
+        header: L('Admission №'),
         cell: ({ row }) => (
           <span className="font-bold text-honey-800">{row.original.admissionNo}</span>
         ),
       },
       {
         accessorKey: 'name',
-        header: 'Student',
+        header: L('Student'),
         cell: ({ row }) => (
           <div>
             <span className="font-bold">{row.original.name}</span>
@@ -856,13 +858,13 @@ export default function Fees() {
       },
       {
         accessorKey: 'unit',
-        header: 'Unit',
+        header: L('Unit'),
         cell: ({ row }) => <span className="chip">{row.original.unit}</span>,
       },
-      { id: 'programme', accessorFn: (r: any) => r.programme?.name, header: 'Programme' },
+      { id: 'programme', accessorFn: (r: any) => r.programme?.name, header: L('Programme') },
       {
         accessorKey: 'plan',
-        header: 'Plan',
+        header: L('Plan'),
         cell: ({ row }) => (
           <span className="text-[12px] font-semibold text-stone-600">
             {PLAN_LABEL[row.original.plan] ?? row.original.plan}
@@ -871,19 +873,19 @@ export default function Fees() {
       },
       {
         accessorKey: 'net',
-        header: 'Net fee',
+        header: L('Net fee'),
         cell: ({ row }) => <span className="font-bold">{inr(row.original.net)}</span>,
       },
       {
         accessorKey: 'paid',
-        header: 'Paid',
+        header: L('Paid'),
         cell: ({ row }) => (
           <span className="font-semibold text-emerald-700">{inr(row.original.paid)}</span>
         ),
       },
       {
         accessorKey: 'balance',
-        header: 'Balance',
+        header: L('Balance'),
         cell: ({ row }) => (
           <span
             className={cn(
@@ -897,7 +899,7 @@ export default function Fees() {
       },
       {
         accessorKey: 'status',
-        header: 'Status',
+        header: L('Status'),
         cell: ({ row }) => (
           <Badge tone={STATUS_TONE[row.original.status]} dot>
             {row.original.status}
@@ -962,9 +964,9 @@ export default function Fees() {
           searchPlaceholder="Search student / admission no…"
           exportName="fee-ledger"
           filterable={[
-            { id: 'unit', label: 'Unit' },
-            { id: 'status', label: 'Status' },
-            { id: 'plan', label: 'Plan' },
+            { id: 'unit', label: L('Unit') },
+            { id: 'status', label: L('Status') },
+            { id: 'plan', label: L('Plan') },
           ]}
           onRowClick={(r: any) => setSelected(r)}
         />

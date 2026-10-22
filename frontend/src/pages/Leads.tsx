@@ -20,7 +20,7 @@ import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useAuth, HO_ROLES } from '../lib/auth';
 import { cn } from '../lib/utils';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 
 interface LeadRow {
   id: string;
@@ -72,6 +72,7 @@ const CHANNEL_ICON: Record<string, string> = {
 
 // ───────────────────────── Add Lead (First Buzz Forms A & B) ─────────────────────────
 function AddLeadModal({ onClose }: { onClose: () => void }) {
+  const L = useLabels();
   const { user } = useAuth();
   const qc = useQueryClient();
   const isHO = HO_ROLES.includes(user!.role);
@@ -98,7 +99,7 @@ function AddLeadModal({ onClose }: { onClose: () => void }) {
 
   if (created) {
     return (
-      <Modal title="Inquiry created 🐝" onClose={onClose}>
+      <Modal title={L('Inquiry created 🐝')} onClose={onClose}>
         <div className="space-y-3">
           <div className="rounded-xl bg-emerald-100/70 px-4 py-3 text-sm font-bold text-emerald-700">
             {created.inquiryNo}
@@ -131,7 +132,7 @@ function AddLeadModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal title="New inquiry — First Buzz" onClose={onClose} wide>
+    <Modal title={L('New inquiry — First Buzz')} onClose={onClose} wide>
       <div className="seg mb-4">
         <button
           className={cn('seg-item', ver === 'A' && 'seg-item-active')}
@@ -209,7 +210,7 @@ function AddLeadModal({ onClose }: { onClose: () => void }) {
               <input
                 className="input"
                 list="bb-areas"
-                placeholder="e.g. Kalawad Road"
+                placeholder={L('e.g. Kalawad Road')}
                 value={form.areaLocality ?? ''}
                 onChange={(e) => setForm({ ...form, areaLocality: e.target.value })}
               />
@@ -256,7 +257,7 @@ function AddLeadModal({ onClose }: { onClose: () => void }) {
         <Field label="Source campaign">
           <input
             className="input"
-            placeholder="e.g. Navratri stall"
+            placeholder={L('e.g. Navratri stall')}
             value={form.sourceCampaign ?? ''}
             onChange={(e) => setForm({ ...form, sourceCampaign: e.target.value })}
           />
@@ -305,6 +306,7 @@ function AddLeadModal({ onClose }: { onClose: () => void }) {
 
 // ───────────────────────── Register (Stage-2) modal ─────────────────────────
 function RegisterModal({ lead, onClose }: { lead: any; onClose: () => void }) {
+  const L = useLabels();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data: programmes } = useQuery({
@@ -334,7 +336,7 @@ function RegisterModal({ lead, onClose }: { lead: any; onClose: () => void }) {
 
   if (done) {
     return (
-      <Modal title="Registration complete" onClose={onClose}>
+      <Modal title={L('Registration complete')} onClose={onClose}>
         <div className="space-y-3">
           <div className="rounded-xl bg-emerald-100/70 px-4 py-3 text-sm font-bold text-emerald-700">
             {done.admissionNo}
@@ -491,6 +493,7 @@ function RegisterModal({ lead, onClose }: { lead: any; onClose: () => void }) {
 
 // ───────────────────────── Lead detail drawer ─────────────────────────
 function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }) {
+  const L = useLabels();
   const qc = useQueryClient();
   const { user } = useAuth();
   const { data: lead } = useQuery({
@@ -681,7 +684,7 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
                 <div className="space-y-2">
                   <input
                     className="input"
-                    placeholder="Reason (mandatory)"
+                    placeholder={L('Reason (mandatory)')}
                     value={lostNote}
                     onChange={(e) => setLostNote(e.target.value)}
                   />
@@ -708,7 +711,7 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
             <div className="flex gap-2 mb-3">
               <input
                 className="input"
-                placeholder="Add a note…"
+                placeholder={L('Add a note…')}
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && noteText.trim() && doNote.mutate()}
@@ -754,6 +757,7 @@ function LeadDrawer({ leadId, onClose }: { leadId: string; onClose: () => void }
 
 // ───────────────────────── Page ─────────────────────────
 export default function Leads() {
+  const L = useLabels();
   const { t } = useI18n();
   const { data, isLoading } = useQuery({
     queryKey: ['leads'],
@@ -774,7 +778,7 @@ export default function Leads() {
     () => [
       {
         id: 'parent',
-        header: 'Parent / Child',
+        header: L('Parent / Child'),
         accessorFn: (r) => `${r.parentName} ${r.childName ?? ''} ${r.inquiryNo}`,
         cell: ({ row }) => (
           <div>
@@ -788,7 +792,7 @@ export default function Leads() {
       },
       {
         id: 'stage',
-        header: 'Stage',
+        header: L('Stage'),
         accessorFn: (r) => STAGE_META[r.stage]?.label ?? r.stage,
         cell: ({ row }) => {
           const m = STAGE_META[row.original.stage] ?? { label: row.original.stage, tone: 'stone' };
@@ -801,7 +805,7 @@ export default function Leads() {
       },
       {
         id: 'programme',
-        header: 'Programme',
+        header: L('Programme'),
         accessorFn: (r) => r.programmeInterest?.name ?? '',
         cell: ({ row }) =>
           row.original.programmeInterest ? (
@@ -820,7 +824,7 @@ export default function Leads() {
       },
       {
         id: 'channel',
-        header: 'Channel',
+        header: L('Channel'),
         accessorFn: (r) => r.inquiryChannel,
         cell: ({ getValue }) => (
           <span className="text-[12.5px]">
@@ -830,7 +834,7 @@ export default function Leads() {
       },
       {
         id: 'routing',
-        header: 'Routing',
+        header: L('Routing'),
         accessorFn: (r) => r.assignedUnit?.code ?? 'unrouted',
         cell: ({ row }) => {
           const l = row.original;
@@ -845,7 +849,7 @@ export default function Leads() {
       },
       {
         id: 'area',
-        header: 'Area',
+        header: L('Area'),
         accessorFn: (r) => r.areaLocality ?? '',
         cell: ({ getValue }) =>
           getValue() ? (
@@ -859,7 +863,7 @@ export default function Leads() {
       },
       {
         id: 'score',
-        header: 'Score',
+        header: L('Score'),
         accessorFn: (r) => r.leadScore,
         cell: ({ getValue }) => {
           const v = Number(getValue());
@@ -881,7 +885,7 @@ export default function Leads() {
       },
       {
         id: 'received',
-        header: 'Received',
+        header: L('Received'),
         accessorFn: (r) => r.createdAt,
         cell: ({ getValue }) => (
           <span className="text-xs text-stone-600">{fmtDate(getValue())}</span>
@@ -951,10 +955,10 @@ export default function Leads() {
           searchPlaceholder="Search pipeline…"
           exportName="leads"
           filterable={[
-            { id: 'stage', label: 'Stage' },
-            { id: 'routing', label: 'Routing' },
-            { id: 'programme', label: 'Programme' },
-            { id: 'channel', label: 'Channel' },
+            { id: 'stage', label: L('Stage') },
+            { id: 'routing', label: L('Routing') },
+            { id: 'programme', label: L('Programme') },
+            { id: 'channel', label: L('Channel') },
           ]}
           onRowClick={(row) => setOpenLead(row.id)}
         />

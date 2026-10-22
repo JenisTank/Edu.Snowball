@@ -6,7 +6,7 @@ import { PageHeader } from '../components/layout/AppLayout';
 import { Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { cn } from '../lib/utils';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 
 // ═══════════════════════════════════════════════════════════════════
 // Inventory — stock, procurement (PRF → PO → GRN), petty cash, reports.
@@ -19,6 +19,7 @@ const TABS = ['stock', 'procurement', 'petty-cash', 'reports'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Inventory() {
+  const L = useLabels();
   const { t: tr } = useI18n();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>('stock');
@@ -156,7 +157,7 @@ export default function Inventory() {
       {tab === 'reports' && <Reports />}
 
       {open && (
-        <Modal title="Create inventory SKU" onClose={() => setOpen(false)}>
+        <Modal title={L('Create inventory SKU')} onClose={() => setOpen(false)}>
           <div className="space-y-3">
             <Field label="SKU">
               <input
@@ -216,6 +217,7 @@ export default function Inventory() {
 
 // ─────────────────────────── procurement ───────────────────────────
 function Procurement({ items }: { items: any[] }) {
+  const L = useLabels();
   const qc = useQueryClient();
   const [err, setErr] = useState('');
   const [vendor, setVendor] = useState<any>({
@@ -360,19 +362,19 @@ function Procurement({ items }: { items: any[] }) {
           <div className="mt-3 grid grid-cols-2 gap-2">
             <input
               className="input"
-              placeholder="Vendor name"
+              placeholder={L('Vendor name')}
               value={vendor.name}
               onChange={(e) => setVendor({ ...vendor, name: e.target.value })}
             />
             <input
               className="input"
-              placeholder="Code (VND-01)"
+              placeholder={L('Code (VND-01)')}
               value={vendor.code}
               onChange={(e) => setVendor({ ...vendor, code: e.target.value })}
             />
             <input
               className="input"
-              placeholder="Phone"
+              placeholder={L('Phone')}
               value={vendor.phone}
               onChange={(e) => setVendor({ ...vendor, phone: e.target.value })}
             />
@@ -475,7 +477,7 @@ function Procurement({ items }: { items: any[] }) {
           <div className="mt-3 space-y-2">
             <input
               className="input"
-              placeholder="What do you need? (e.g. Craft paper for K1)"
+              placeholder={L('What do you need? (e.g. Craft paper for K1)')}
               value={request.title}
               onChange={(e) => setRequest({ ...request, title: e.target.value })}
             />
@@ -484,7 +486,7 @@ function Procurement({ items }: { items: any[] }) {
                 <div key={i} className="flex flex-1 gap-1.5">
                   <input
                     className="input flex-1"
-                    placeholder="Item"
+                    placeholder={L('Item')}
                     value={l.description}
                     onChange={(e) => {
                       const lines = [...request.lines];
@@ -505,7 +507,7 @@ function Procurement({ items }: { items: any[] }) {
                   <input
                     type="number"
                     className="input !w-20"
-                    placeholder="Cost"
+                    placeholder={L('Cost')}
                     value={l.estimatedCost}
                     onChange={(e) => {
                       const lines = [...request.lines];
@@ -719,6 +721,7 @@ function Procurement({ items }: { items: any[] }) {
 
 // ─────────────────────────── petty cash ───────────────────────────
 function PettyCash() {
+  const L = useLabels();
   const qc = useQueryClient();
   const [f, setF] = useState<any>({ type: 'SPEND', amount: '', description: '', receiptRef: '' });
   const [err, setErr] = useState('');
@@ -787,20 +790,20 @@ function PettyCash() {
           </select>
           <input
             className="input"
-            placeholder="Amount"
+            placeholder={L('Amount')}
             type="number"
             value={f.amount}
             onChange={(e) => setF({ ...f, amount: e.target.value })}
           />
           <input
             className="input"
-            placeholder="What was it for?"
+            placeholder={L('What was it for?')}
             value={f.description}
             onChange={(e) => setF({ ...f, description: e.target.value })}
           />
           <input
             className="input"
-            placeholder="Bill / receipt no. (optional)"
+            placeholder={L('Bill / receipt no. (optional)')}
             value={f.receiptRef}
             onChange={(e) => setF({ ...f, receiptRef: e.target.value })}
           />

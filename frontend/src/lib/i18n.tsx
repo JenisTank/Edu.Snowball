@@ -427,6 +427,123 @@ const gu: Partial<Record<TKey, string>> = {
   'settings.subtitle': 'ટીમ, બેચ માસ્ટર, યુનિટ સેટિંગ્સ અને ઓડિટ ટ્રેલ — દરેક ફેરફાર નોંધાય છે',
 };
 
+/**
+ * Field and column labels: English → Gujarati.
+ *
+ * These are the words inside a screen — column headers, filter menus, form
+ * placeholders — rather than the page chrome, which uses named keys above.
+ * The English string *is* the lookup key, so adding a column never means
+ * inventing a key name, and an untranslated label degrades to English instead
+ * of showing a raw key on screen.
+ *
+ * `scripts/check-i18n.mjs` fails the build if an `L('…')` label is missing here.
+ */
+const LABELS_GU: Record<string, string> = {
+  Admitted: 'પ્રવેશ થયેલા',
+  Batch: 'બેચ',
+  'Fee Plan': 'ફી પ્લાન',
+  'Parent Contact': 'વાલીનો સંપર્ક',
+  Programme: 'કાર્યક્રમ',
+  Status: 'સ્થિતિ',
+  Student: 'વિદ્યાર્થી',
+  Unit: 'યુનિટ',
+  'Override reason (required — goes to audit log)': 'ઓવરરાઇડનું કારણ (ફરજિયાત — ઓડિટ લોગમાં જશે)',
+  'Reason (visible to the family)': 'કારણ (પરિવારને દેખાશે)',
+  'Admission №': 'પ્રવેશ ક્રમાંક',
+  'Annual fee': 'વાર્ષિક ફી',
+  Balance: 'બાકી',
+  'Instalments (Plan A)': 'હપ્તા (પ્લાન A)',
+  'Net fee': 'ચોખ્ખી ફી',
+  Paid: 'ચૂકવેલ',
+  Plan: 'પ્લાન',
+  'Sibling %': 'ભાઈ-બહેન %',
+  Area: 'વિસ્તાર',
+  Channel: 'માધ્યમ',
+  'Parent / Child': 'વાલી / બાળક',
+  Received: 'મળેલ',
+  Routing: 'રૂટિંગ',
+  Score: 'સ્કોર',
+  Stage: 'તબક્કો',
+  'Add a note…': 'નોંધ ઉમેરો…',
+  'Reason (mandatory)': 'કારણ (ફરજિયાત)',
+  'e.g. Kalawad Road': 'દા.ત. કાળાવડ રોડ',
+  'e.g. Navratri stall': 'દા.ત. નવરાત્રી સ્ટોલ',
+  'Inquiry created 🐝': 'પૂછપરછ નોંધાઈ 🐝',
+  'New inquiry — First Buzz': 'નવી પૂછપરછ — ફર્સ્ટ બઝ',
+  'Registration complete': 'નોંધણી પૂર્ણ',
+  Child: 'બાળક',
+  'Discovery Flight': 'ડિસ્કવરી ફ્લાઇટ',
+  Inquiry: 'પૂછપરછ',
+  'Next step': 'આગળનું પગલું',
+  'Plan (auto)': 'પ્લાન (આપોઆપ)',
+  'DF status': 'DF સ્થિતિ',
+  'Added to the waitlist': 'વેઇટલિસ્ટમાં ઉમેરાયું',
+  'Admission confirmed 🎉': 'પ્રવેશ પુષ્ટિ 🎉',
+  Designation: 'હોદ્દો',
+  Employee: 'કર્મચારી',
+  'Employee №': 'કર્મચારી ક્રમાંક',
+  Joined: 'જોડાયા',
+  'Reports to': 'રિપોર્ટિંગ',
+  Team: 'ટીમ',
+  Type: 'પ્રકાર',
+  'Add employee': 'કર્મચારી ઉમેરો',
+  Content: 'સામગ્રી',
+  Date: 'તારીખ',
+  To: 'પ્રતિ',
+  'Dear parents…': 'પ્રિય વાલીઓ…',
+  'Diwali Break 🎆': 'દિવાળી રજા 🎆',
+  '📣 New announcement': '📣 નવી જાહેરાત',
+  Issued: 'જારી',
+  'Serial №': 'ક્રમિક №',
+  'Annual Day 2026': 'વાર્ષિક ઉત્સવ 2026',
+  'helping friends in class': 'વર્ગમાં મિત્રોને મદદ કરવી',
+  Amount: 'રકમ',
+  'Bill / receipt no. (optional)': 'બિલ / રસીદ ક્રમાંક (વૈકલ્પિક)',
+  'Code (VND-01)': 'કોડ (VND-01)',
+  Cost: 'ખર્ચ',
+  Item: 'વસ્તુ',
+  Phone: 'ફોન',
+  'Vendor name': 'વેન્ડરનું નામ',
+  'What do you need? (e.g. Craft paper for K1)': 'શું જોઈએ છે? (દા.ત. K1 માટે ક્રાફ્ટ પેપર)',
+  'What was it for?': 'કઈ કામ માટે હતું?',
+  'Create inventory SKU': 'નવો માલસામાન SKU',
+  AY: 'શૈક્ષણિક વર્ષ',
+  Action: 'ક્રિયા',
+  IP: 'IP',
+  'Last login': 'છેલ્લું લોગિન',
+  Locality: 'વિસ્તાર',
+  Member: 'સભ્ય',
+  Pincode: 'પિનકોડ',
+  Record: 'નોંધ',
+  Role: 'ભૂમિકા',
+  'Routes to': 'રૂટ થાય છે',
+  Seats: 'બેઠકો',
+  Shift: 'શિફ્ટ',
+  Table: 'ટેબલ',
+  Timing: 'સમય',
+  When: 'ક્યારે',
+  Who: 'કોણ',
+  Appearance: 'દેખાવ',
+  Areas: 'વિસ્તારો',
+  'Audit Log': 'ઓડિટ લોગ',
+  Batches: 'બેચ',
+  'My Account': 'મારું ખાતું',
+  Programmes: 'કાર્યક્રમો',
+  Units: 'યુનિટ',
+  'New password…': 'નવો પાસવર્ડ…',
+  'e.g. K1 Morning Gujarati': 'દા.ત. K1 સવાર ગુજરાતી',
+  'New evening activity': 'નવી સાંજની પ્રવૃત્તિ',
+};
+
+/**
+ * Translate a label literal. Falls back to English, never to a key, so a
+ * missing translation is a missing line rather than a broken screen.
+ */
+export function useLabels(): (text: string) => string {
+  const { lang } = useI18n();
+  return useCallback((text: string) => (lang === 'gu' ? (LABELS_GU[text] ?? text) : text), [lang]);
+}
+
 const DICTIONARIES: Record<Lang, Partial<Record<TKey, string>>> = { en, gu };
 
 export const LANGUAGES: { id: Lang; label: string; native: string }[] = [

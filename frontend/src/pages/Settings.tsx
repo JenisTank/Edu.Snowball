@@ -9,7 +9,7 @@ import { useAuth, ROLE_LABELS } from '../lib/auth';
 import { cn } from '../lib/utils';
 import { loadTheme, themesEqual, type Theme } from '@snowball/ui/theme';
 import { APP_THEMES, selectTheme } from '../lib/appTheme';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 
 const ADMIN_ROLES = ['FOUNDER', 'ACADEMIC_DIR'];
 const CH_ROLES = ['COORDINATOR', 'TEACHER', 'RECEPTIONIST'];
@@ -60,6 +60,7 @@ function Field({ label, children, hint }: { label: string; children: ReactNode; 
 
 // ───────────────────────── Team tab ─────────────────────────
 function TeamTab() {
+  const L = useLabels();
   const { user } = useAuth();
   const qc = useQueryClient();
   const isAdmin = ADMIN_ROLES.includes(user!.role);
@@ -110,7 +111,7 @@ function TeamTab() {
     () => [
       {
         id: 'member',
-        header: 'Member',
+        header: L('Member'),
         accessorFn: (r) => r.fullName,
         cell: ({ row }) => (
           <div className="flex items-center gap-3">
@@ -132,7 +133,7 @@ function TeamTab() {
       },
       {
         id: 'role',
-        header: 'Role',
+        header: L('Role'),
         accessorFn: (r) => ROLE_LABELS[r.role] ?? r.role,
         cell: ({ row }) => (
           <Badge tone={ROLE_TONES[row.original.role]} dot>
@@ -142,13 +143,13 @@ function TeamTab() {
       },
       {
         id: 'unit',
-        header: 'Unit',
+        header: L('Unit'),
         accessorFn: (r) => (r.unit ? `${r.unit.code} · ${r.unit.name}` : 'Head Office'),
       },
-      { id: 'phone', header: 'Phone', accessorFn: (r) => r.phone ?? '—' },
+      { id: 'phone', header: L('Phone'), accessorFn: (r) => r.phone ?? '—' },
       {
         id: 'status',
-        header: 'Status',
+        header: L('Status'),
         accessorFn: (r) => (r.isActive ? 'Active' : 'Disabled'),
         cell: ({ row }) => (
           <Badge tone={row.original.isActive ? 'green' : 'red'} dot>
@@ -158,7 +159,7 @@ function TeamTab() {
       },
       {
         id: 'last',
-        header: 'Last login',
+        header: L('Last login'),
         accessorFn: (r) => (r.lastLoginAt ? fmtDate(r.lastLoginAt) : 'Never'),
       },
     ],
@@ -190,9 +191,9 @@ function TeamTab() {
         searchPlaceholder="Search team…"
         exportName="team"
         filterable={[
-          { id: 'role', label: 'Role' },
-          { id: 'unit', label: 'Unit' },
-          { id: 'status', label: 'Status' },
+          { id: 'role', label: L('Role') },
+          { id: 'unit', label: L('Unit') },
+          { id: 'status', label: L('Status') },
         ]}
         onRowClick={(row) => {
           setErr('');
@@ -293,7 +294,7 @@ function TeamTab() {
                   <input
                     className="input"
                     type="text"
-                    placeholder="New password…"
+                    placeholder={L('New password…')}
                     value={form.newPassword ?? ''}
                     onChange={(e) => setForm({ ...form, newPassword: e.target.value })}
                   />
@@ -341,6 +342,7 @@ function TeamTab() {
 
 // ───────────────────────── Batches tab ─────────────────────────
 function BatchesTab() {
+  const L = useLabels();
   const { user } = useAuth();
   const qc = useQueryClient();
   const isAdmin = ADMIN_ROLES.includes(user!.role);
@@ -376,14 +378,14 @@ function BatchesTab() {
     () => [
       {
         id: 'name',
-        header: 'Batch',
+        header: L('Batch'),
         accessorFn: (r) => r.name,
         cell: ({ row }) => <span className="font-bold">{row.original.name}</span>,
       },
-      { id: 'unit', header: 'Unit', accessorFn: (r) => r.unit?.code ?? '' },
+      { id: 'unit', header: L('Unit'), accessorFn: (r) => r.unit?.code ?? '' },
       {
         id: 'programme',
-        header: 'Programme',
+        header: L('Programme'),
         accessorFn: (r) => r.programme?.name ?? '',
         cell: ({ row }) => (
           <span className="inline-flex items-center gap-2">
@@ -397,7 +399,7 @@ function BatchesTab() {
       },
       {
         id: 'shift',
-        header: 'Shift',
+        header: L('Shift'),
         accessorFn: (r) => r.shift,
         cell: ({ row }) => (
           <Badge tone={row.original.shift === 'evening' ? 'violet' : 'sky'}>
@@ -407,7 +409,7 @@ function BatchesTab() {
       },
       {
         id: 'timing',
-        header: 'Timing',
+        header: L('Timing'),
         accessorFn: (r) => r.startTime,
         cell: ({ row }) => (
           <span className="inline-flex items-center gap-1.5 text-stone-700">
@@ -419,13 +421,13 @@ function BatchesTab() {
       },
       {
         id: 'seats',
-        header: 'Seats',
+        header: L('Seats'),
         accessorFn: (r) => `${r._count?.students ?? 0} / ${r.capacity}`,
       },
-      { id: 'ay', header: 'AY', accessorFn: (r) => r.academicYear },
+      { id: 'ay', header: L('AY'), accessorFn: (r) => r.academicYear },
       {
         id: 'status',
-        header: 'Status',
+        header: L('Status'),
         accessorFn: (r) => (r.isActive ? 'Active' : 'Inactive'),
         cell: ({ row }) => (
           <Badge tone={row.original.isActive ? 'green' : 'stone'} dot>
@@ -480,10 +482,10 @@ function BatchesTab() {
         searchPlaceholder="Search batches…"
         exportName="batches"
         filterable={[
-          { id: 'unit', label: 'Unit' },
-          { id: 'programme', label: 'Programme' },
-          { id: 'shift', label: 'Shift' },
-          { id: 'status', label: 'Status' },
+          { id: 'unit', label: L('Unit') },
+          { id: 'programme', label: L('Programme') },
+          { id: 'shift', label: L('Shift') },
+          { id: 'status', label: L('Status') },
         ]}
         onRowClick={(row) => open('edit', row)}
       />
@@ -502,7 +504,7 @@ function BatchesTab() {
             <Field label="Batch name">
               <input
                 className="input"
-                placeholder="e.g. K1 Morning Gujarati"
+                placeholder={L('e.g. K1 Morning Gujarati')}
                 value={form.name ?? ''}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
@@ -631,6 +633,7 @@ function BatchesTab() {
 
 // ───────────────────────── Units tab (HO) ─────────────────────────
 function UnitsTab() {
+  const L = useLabels();
   const { user } = useAuth();
   const qc = useQueryClient();
   const isFounder = user!.role === 'FOUNDER';
@@ -804,7 +807,7 @@ function UnitsTab() {
             <Field label="Calendly link (Discovery Flight bookings)">
               <input
                 className="input"
-                placeholder="https://calendly.com/…"
+                placeholder={L('https://calendly.com/…')}
                 value={form.calendlyLink}
                 onChange={(e) => setForm({ ...form, calendlyLink: e.target.value })}
               />
@@ -872,6 +875,7 @@ function ProgrammesTab() {
 
 // ───────────────────────── Areas tab (routing lookup, HO-maintained) ─────────────────────────
 function AreasTab() {
+  const L = useLabels();
   const qc = useQueryClient();
   const { data: areas, isLoading } = useQuery({
     queryKey: ['areas'],
@@ -896,14 +900,14 @@ function AreasTab() {
     () => [
       {
         id: 'locality',
-        header: 'Locality',
+        header: L('Locality'),
         accessorFn: (r) => r.locality,
         cell: ({ row }) => <span className="font-bold">{row.original.locality}</span>,
       },
-      { id: 'pincode', header: 'Pincode', accessorFn: (r) => r.pincode ?? '—' },
+      { id: 'pincode', header: L('Pincode'), accessorFn: (r) => r.pincode ?? '—' },
       {
         id: 'unit',
-        header: 'Routes to',
+        header: L('Routes to'),
         accessorFn: (r) => r.suggestedUnit.code,
         cell: ({ row }) => (
           <Badge tone="honey">
@@ -913,7 +917,7 @@ function AreasTab() {
       },
       {
         id: 'status',
-        header: 'Status',
+        header: L('Status'),
         accessorFn: (r) => (r.isActive ? 'Active' : 'Disabled'),
         cell: ({ row }) => (
           <Badge tone={row.original.isActive ? 'green' : 'red'} dot>
@@ -939,8 +943,8 @@ function AreasTab() {
         searchPlaceholder="Search localities…"
         exportName="areas"
         filterable={[
-          { id: 'unit', label: 'Routes to' },
-          { id: 'status', label: 'Status' },
+          { id: 'unit', label: L('Routes to') },
+          { id: 'status', label: L('Status') },
         ]}
         onRowClick={(row) => {
           setErr('');
@@ -1037,12 +1041,13 @@ function AreasTab() {
 
 // ───────────────────────── Audit tab ─────────────────────────
 function AuditTab() {
+  const L = useLabels();
   const { data: logs, isLoading } = useQuery({ queryKey: ['audit'], queryFn: () => api('/audit') });
   const columns = useMemo<ColumnDef<any>[]>(
     () => [
       {
         id: 'when',
-        header: 'When',
+        header: L('When'),
         accessorFn: (r) => r.changedAt,
         cell: ({ row }) => (
           <span className="text-stone-700">
@@ -1057,7 +1062,7 @@ function AuditTab() {
       },
       {
         id: 'who',
-        header: 'Who',
+        header: L('Who'),
         accessorFn: (r) => r.changedBy?.fullName ?? 'System',
         cell: ({ row }) => (
           <div>
@@ -1070,7 +1075,7 @@ function AuditTab() {
       },
       {
         id: 'action',
-        header: 'Action',
+        header: L('Action'),
         accessorFn: (r) => r.action,
         cell: ({ row }) => (
           <Badge
@@ -1087,10 +1092,10 @@ function AuditTab() {
           </Badge>
         ),
       },
-      { id: 'table', header: 'Table', accessorFn: (r) => r.tableName },
+      { id: 'table', header: L('Table'), accessorFn: (r) => r.tableName },
       {
         id: 'record',
-        header: 'Record',
+        header: L('Record'),
         accessorFn: (r) => r.recordId,
         cell: ({ row }) => (
           <span className="font-mono text-[11px] text-stone-500">
@@ -1098,7 +1103,7 @@ function AuditTab() {
           </span>
         ),
       },
-      { id: 'ip', header: 'IP', accessorFn: (r) => r.ipAddress ?? '—' },
+      { id: 'ip', header: L('IP'), accessorFn: (r) => r.ipAddress ?? '—' },
     ],
     [],
   );
@@ -1111,9 +1116,9 @@ function AuditTab() {
       searchPlaceholder="Search audit…"
       exportName="audit"
       filterable={[
-        { id: 'action', label: 'Action' },
-        { id: 'table', label: 'Table' },
-        { id: 'who', label: 'Who' },
+        { id: 'action', label: L('Action') },
+        { id: 'table', label: L('Table') },
+        { id: 'who', label: L('Who') },
       ]}
     />
   );
@@ -1272,6 +1277,7 @@ function AppearanceTab({ founder }: { founder: boolean }) {
 
 // ───────────────────────── Page ─────────────────────────
 export default function SettingsPage() {
+  const L = useLabels();
   const { t: tr } = useI18n();
   const { user } = useAuth();
   const isAdmin = ADMIN_ROLES.includes(user!.role);
@@ -1280,20 +1286,20 @@ export default function SettingsPage() {
   const tabs = [
     ...(isAdmin || isCH
       ? [
-          { id: 'team', label: 'Team' },
-          { id: 'batches', label: 'Batches' },
+          { id: 'team', label: L('Team') },
+          { id: 'batches', label: L('Batches') },
         ]
       : []),
     ...(isAdmin
       ? [
-          { id: 'units', label: 'Units' },
-          { id: 'areas', label: 'Areas' },
-          { id: 'programmes', label: 'Programmes' },
-          { id: 'audit', label: 'Audit Log' },
+          { id: 'units', label: L('Units') },
+          { id: 'areas', label: L('Areas') },
+          { id: 'programmes', label: L('Programmes') },
+          { id: 'audit', label: L('Audit Log') },
         ]
       : []),
-    { id: 'appearance', label: 'Appearance' },
-    { id: 'account', label: 'My Account' },
+    { id: 'appearance', label: L('Appearance') },
+    { id: 'account', label: L('My Account') },
   ];
   const [tab, setTab] = useState(tabs[0].id);
 

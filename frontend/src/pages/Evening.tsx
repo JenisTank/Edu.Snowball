@@ -4,8 +4,9 @@ import { api } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { Modal, Field } from '../components/ui/Modal';
 import { Plus } from 'lucide-react';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 export default function Evening() {
+  const L = useLabels();
   const { t } = useI18n();
   const qc = useQueryClient(),
     [open, setOpen] = useState(false),
@@ -64,7 +65,7 @@ export default function Evening() {
         })}
       </div>
       {open && (
-        <Modal title="New evening activity" onClose={() => setOpen(false)}>
+        <Modal title={L('New evening activity')} onClose={() => setOpen(false)}>
           <Field label="Activity name">
             <input
               className="input"

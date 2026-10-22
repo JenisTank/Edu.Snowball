@@ -36,6 +36,18 @@ function keysOf(name) {
 const en = keysOf('en');
 const gu = keysOf('gu');
 
+/** Label dictionary (English literal → Gujarati), used by `useLabels()`. */
+function labelKeys() {
+  const start = source.indexOf('const LABELS_GU');
+  const end = source.indexOf('\n};', start);
+  const block = source.slice(start, end);
+  const out = new Set();
+  for (const m of block.matchAll(/^\s*(?:['"](.+?)['"]|([A-Za-z_$][\w$]*))\s*:/gm))
+    out.add(m[1] ?? m[2]);
+  return out;
+}
+const labels = labelKeys();
+
 function walk(dir) {
   return readdirSync(dir).flatMap((entry) => {
     const full = join(dir, entry);
@@ -54,6 +66,19 @@ for (const file of walk(join(root, 'src'))) {
   }
 }
 
+const usedLabels = new Map(); // English literal -> [files]
+for (const file of walk(join(root, 'src'))) {
+  if (file.endsWith(join('lib', 'i18n.tsx'))) continue;
+  const text = readFileSync(file, 'utf8');
+  for (const m of text.matchAll(/\bL\(\s*['"](.+?)['"]\s*\)/g)) {
+    if (/^https?:/.test(m[1])) continue; // URL placeholders stay as-is
+    const list = usedLabels.get(m[1]) ?? [];
+    list.push(file.replace(root + '/', ''));
+    usedLabels.set(m[1], list);
+  }
+}
+
+const missingLabels = [...usedLabels.keys()].filter((k) => !labels.has(k));
 const missingInEn = [...used.keys()].filter((k) => !en.has(k));
 const missingInGu = [...en].filter((k) => !gu.has(k));
 const unused = [...en].filter((k) => !used.has(k));
@@ -63,6 +88,12 @@ if (missingInEn.length) {
   problems.push(
     `Unknown keys used in code (rendered literally on screen):\n` +
       missingInEn.map((k) => `  ${k}  ← ${used.get(k).join(', ')}`).join('\n'),
+  );
+}
+if (missingLabels.length) {
+  problems.push(
+    `Labels with no Gujarati translation (falling back to English):\n` +
+      missingLabels.map((k) => `  ${k}  ← ${usedLabels.get(k).join(', ')}`).join('\n'),
   );
 }
 if (missingInGu.length) {
@@ -75,6 +106,6 @@ if (problems.length) {
 }
 
 console.log(
-  `✓ i18n: ${en.size} keys · ${used.size} used · ${unused.length} defined but unused` +
+  `✓ i18n: ${en.size} keys · ${used.size} used · ${labels.size} labels (${usedLabels.size} in use) · ${unused.length} unused keys` +
     (unused.length ? ` (${unused.slice(0, 8).join(', ')}${unused.length > 8 ? '…' : ''})` : ''),
 );

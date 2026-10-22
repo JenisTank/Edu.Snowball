@@ -6,7 +6,7 @@ import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 const initial = {
   fullName: '',
   email: '',
@@ -22,6 +22,7 @@ const initial = {
   ptEnabled: false,
 };
 export default function HR() {
+  const L = useLabels();
   const { t } = useI18n();
   const qc = useQueryClient();
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -55,12 +56,12 @@ export default function HR() {
     () => [
       {
         accessorKey: 'employeeNo',
-        header: 'Employee №',
+        header: L('Employee №'),
         cell: ({ getValue }) => <b className="text-honey-800">{getValue() as string}</b>,
       },
       {
         accessorKey: 'fullName',
-        header: 'Employee',
+        header: L('Employee'),
         cell: ({ row }) => (
           <div>
             <b>{row.original.fullName}</b>
@@ -72,7 +73,7 @@ export default function HR() {
       },
       {
         accessorKey: 'designation',
-        header: 'Designation',
+        header: L('Designation'),
         cell: ({ row }) => (
           <div>
             <b>{row.original.designation}</b>
@@ -82,25 +83,29 @@ export default function HR() {
       },
       {
         accessorKey: 'employmentType',
-        header: 'Type',
+        header: L('Type'),
         cell: ({ getValue }) => <Badge tone="sky">{String(getValue()).replace(/_/g, ' ')}</Badge>,
       },
-      { id: 'manager', header: 'Reports to', accessorFn: (r: any) => r.manager?.fullName || '—' },
+      {
+        id: 'manager',
+        header: L('Reports to'),
+        accessorFn: (r: any) => r.manager?.fullName || '—',
+      },
       {
         accessorKey: 'joiningDate',
-        header: 'Joined',
+        header: L('Joined'),
         cell: ({ getValue }) => <span>{fmtDate(getValue() as string)}</span>,
       },
       {
         accessorKey: 'status',
-        header: 'Status',
+        header: L('Status'),
         cell: ({ getValue }) => (
           <Badge tone={getValue() === 'ACTIVE' ? 'green' : 'stone'} dot>
             {getValue() as string}
           </Badge>
         ),
       },
-      { id: 'reports', header: 'Team', accessorFn: (r: any) => r._count?.directReports || 0 },
+      { id: 'reports', header: L('Team'), accessorFn: (r: any) => r._count?.directReports || 0 },
     ],
     [],
   );
@@ -217,12 +222,12 @@ export default function HR() {
         searchPlaceholder="Search employee…"
         exportName="employees"
         filterable={[
-          { id: 'employmentType', label: 'Type' },
-          { id: 'status', label: 'Status' },
+          { id: 'employmentType', label: L('Type') },
+          { id: 'status', label: L('Status') },
         ]}
       />
       {open && (
-        <Modal title="Add employee" onClose={() => setOpen(false)}>
+        <Modal title={L('Add employee')} onClose={() => setOpen(false)}>
           {err && <ErrorNote msg={err} />}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Full name *">

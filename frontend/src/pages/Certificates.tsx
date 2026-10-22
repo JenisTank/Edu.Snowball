@@ -7,9 +7,10 @@ import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useAuth } from '../lib/auth';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 
 export default function Certificates() {
+  const L = useLabels();
   const { t } = useI18n();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -60,7 +61,7 @@ export default function Certificates() {
     () => [
       {
         accessorKey: 'serialNo',
-        header: 'Serial №',
+        header: L('Serial №'),
         cell: ({ row }) => (
           <span className="font-bold text-honey-800">{row.original.serialNo}</span>
         ),
@@ -68,25 +69,25 @@ export default function Certificates() {
       {
         id: 'student',
         accessorFn: (r: any) => `${r.student.firstName} ${r.student.lastName}`,
-        header: 'Student',
+        header: L('Student'),
         cell: ({ getValue }) => <span className="font-bold">{getValue() as string}</span>,
       },
       {
         id: 'unit',
         accessorFn: (r: any) => r.student.unit.code,
-        header: 'Unit',
+        header: L('Unit'),
         cell: ({ getValue }) => <span className="chip">{getValue() as string}</span>,
       },
       {
         accessorKey: 'type',
-        header: 'Type',
+        header: L('Type'),
         cell: ({ row }) => (
           <Badge tone={row.original.type === 'TC' ? 'red' : 'honey'}>{row.original.type}</Badge>
         ),
       },
       {
         accessorKey: 'issuedAt',
-        header: 'Issued',
+        header: L('Issued'),
         cell: ({ row }) => (
           <span className="text-[12px] font-semibold text-stone-600">
             {fmtDate(row.original.issuedAt)}
@@ -208,8 +209,8 @@ export default function Certificates() {
         searchPlaceholder="Search serial / student…"
         exportName="certificates"
         filterable={[
-          { id: 'type', label: 'Type' },
-          { id: 'unit', label: 'Unit' },
+          { id: 'type', label: L('Type') },
+          { id: 'unit', label: L('Unit') },
         ]}
       />
 
@@ -261,7 +262,7 @@ export default function Certificates() {
                       className="input"
                       value={form.event}
                       onChange={(e) => setForm({ ...form, event: e.target.value })}
-                      placeholder="Annual Day 2026"
+                      placeholder={L('Annual Day 2026')}
                     />
                   </Field>
                 )}
@@ -271,7 +272,7 @@ export default function Certificates() {
                       className="input"
                       value={form.reason}
                       onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                      placeholder="helping friends in class"
+                      placeholder={L('helping friends in class')}
                     />
                   </Field>
                 )}

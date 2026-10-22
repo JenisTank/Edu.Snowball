@@ -4,7 +4,7 @@ import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
 import { useAuth, HO_ROLES } from '../lib/auth';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useLabels } from '../lib/i18n';
 
 interface StudentRow {
   id: string;
@@ -32,6 +32,7 @@ const PLAN_LABEL: Record<string, string> = {
 };
 
 export default function Students() {
+  const L = useLabels();
   const { t } = useI18n();
   const { user } = useAuth();
   const { data, isLoading } = useQuery({
@@ -51,7 +52,7 @@ export default function Students() {
   const columns: ColumnDef<StudentRow, any>[] = [
     {
       id: 'student',
-      header: 'Student',
+      header: L('Student'),
       accessorFn: (r) => `${r.firstName} ${r.lastName} ${r.admissionNo}`,
       cell: ({ row }) => {
         const s = row.original;
@@ -77,7 +78,7 @@ export default function Students() {
     },
     {
       id: 'programme',
-      header: 'Programme',
+      header: L('Programme'),
       accessorFn: (r) => r.programme?.name ?? '',
       cell: ({ row }) => {
         const p = row.original.programme;
@@ -99,7 +100,7 @@ export default function Students() {
     },
     {
       id: 'batch',
-      header: 'Batch',
+      header: L('Batch'),
       accessorFn: (r) => r.batch?.name ?? '—',
       cell: ({ row }) => (
         <span className="text-[12px] text-stone-700">{row.original.batch?.name ?? '—'}</span>
@@ -109,7 +110,7 @@ export default function Students() {
       ? [
           {
             id: 'unit',
-            header: 'Unit',
+            header: L('Unit'),
             accessorFn: (r: StudentRow) => r.unit.code,
             cell: ({ row }: any) => <Badge tone="sky">{row.original.unit.code}</Badge>,
           } as ColumnDef<StudentRow, any>,
@@ -117,7 +118,7 @@ export default function Students() {
       : []),
     {
       id: 'parent',
-      header: 'Parent Contact',
+      header: L('Parent Contact'),
       accessorFn: (r) => `${r.fatherName} ${r.fatherPhone}`,
       cell: ({ row }) => (
         <div>
@@ -128,13 +129,13 @@ export default function Students() {
     },
     {
       id: 'plan',
-      header: 'Fee Plan',
+      header: L('Fee Plan'),
       accessorFn: (r) => PLAN_LABEL[r.instalmentPlan] ?? '',
       cell: ({ getValue }) => <Badge tone="violet">{getValue() || '—'}</Badge>,
     },
     {
       id: 'admitted',
-      header: 'Admitted',
+      header: L('Admitted'),
       accessorFn: (r) => r.admissionDate,
       cell: ({ getValue }) => (
         <span className="text-[12px] text-stone-600">{getValue() ? fmtDate(getValue()) : '—'}</span>
@@ -142,7 +143,7 @@ export default function Students() {
     },
     {
       id: 'status',
-      header: 'Status',
+      header: L('Status'),
       accessorFn: (r) => r.status,
       cell: ({ getValue }) => (
         <Badge
@@ -188,10 +189,10 @@ export default function Students() {
         searchPlaceholder="Search name, admission no, parent…"
         exportName="students"
         filterable={[
-          { id: 'programme', label: 'Programme' },
-          { id: 'status', label: 'Status' },
-          { id: 'plan', label: 'Fee Plan' },
-          ...(isHO ? [{ id: 'unit', label: 'Unit' }] : []),
+          { id: 'programme', label: L('Programme') },
+          { id: 'status', label: L('Status') },
+          { id: 'plan', label: L('Fee Plan') },
+          ...(isHO ? [{ id: 'unit', label: L('Unit') }] : []),
         ]}
         onRowClick={() => {
           /* 18-tab profile — Slice 3 */
