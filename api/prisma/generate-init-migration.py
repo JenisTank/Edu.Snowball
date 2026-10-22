@@ -258,11 +258,17 @@ def main():
             local_cols = [column_name(field_by_name(model, c)) for c in local]
             remote_cols = [column_name(field_by_name(target, c)) for c in remote]
             fk_name = f'{table_name(model)}_{"_".join(local_cols)}_fkey'
+            # Prisma's defaults depend on optionality: a required relation is
+            # RESTRICT, an optional one SET NULL. Explicit @relation(onDelete:…)
+            # wins. Getting this wrong makes `migrate diff` rewrite every FK.
+            optional = f['type'].rstrip('[]').endswith('?')
+            on_delete = attr_arg(rel, 'onDelete') or ('SET NULL' if optional else 'RESTRICT')
+            on_update = attr_arg(rel, 'onUpdate') or 'CASCADE'
             lines.append(
                 f'ALTER TABLE {q(table_name(model))} ADD CONSTRAINT {q(trunc(fk_name))} '
                 f'FOREIGN KEY ({", ".join(q(c) for c in local_cols)}) REFERENCES '
                 f'{q(table_name(target))}({", ".join(q(c) for c in remote_cols)}) '
-                'ON DELETE RESTRICT ON UPDATE CASCADE;'
+                f'ON DELETE {on_delete} ON UPDATE {on_update};'
             )
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
