@@ -263,6 +263,7 @@ CREATE TABLE "students" (
 );
 
 CREATE UNIQUE INDEX "students_admission_no_key" ON "students"("admission_no");
+CREATE UNIQUE INDEX "students_lead_id_key" ON "students"("lead_id");
 
 -- CreateTable
 CREATE TABLE "waitlist_entries" (
@@ -694,6 +695,7 @@ CREATE TABLE "online_payments" (
 );
 
 CREATE UNIQUE INDEX "online_payments_order_id_key" ON "online_payments"("order_id");
+CREATE UNIQUE INDEX "online_payments_transaction_id_key" ON "online_payments"("transaction_id");
 CREATE INDEX "online_payments_student_id_status_idx" ON "online_payments"("student_id", "status");
 CREATE INDEX "online_payments_unit_id_created_at_idx" ON "online_payments"("unit_id", "created_at");
 
@@ -941,6 +943,7 @@ CREATE TABLE "employees" (
 );
 
 CREATE UNIQUE INDEX "employees_employee_no_key" ON "employees"("employee_no");
+CREATE UNIQUE INDEX "employees_email_key" ON "employees"("email");
 CREATE INDEX "employees_unit_id_status_idx" ON "employees"("unit_id", "status");
 CREATE INDEX "employees_reporting_manager_id_idx" ON "employees"("reporting_manager_id");
 

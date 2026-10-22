@@ -222,7 +222,10 @@ def main():
             cols.append('    ' + ' '.join(parts))
             if attr_attr(f['attrs'], 'id'):
                 pks.append(col)
-            if attr_attr(f['attrs'], 'unique') and not nullable:
+            # `@unique` on an optional column is still a unique index in Postgres
+            # (NULLs compare distinct), and Prisma emits it — skipping it here
+            # would make `migrate diff` re-add the index forever.
+            if attr_attr(f['attrs'], 'unique'):
                 uniques.append((f'{table_name(model)}_{col}_key', [col]))
         if pks:
             cols.append(f'    CONSTRAINT {q(table_name(model) + "_pkey")} PRIMARY KEY ({", ".join(q(c) for c in pks)})')
