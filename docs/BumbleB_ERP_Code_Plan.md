@@ -177,7 +177,7 @@ Evening Activity Centre → Analytics dashboard → Franchise layer → AI integ
 | 4   | Unit 1 & 3 contacts, emails, Calendly links                              | Slice 1                  | NOTE   |
 | 5   | Domain name (e.g. erp.bumblebkidz.com) + VPS account                     | Slice 7                  | —      |
 | 6   | OT1: overtime multiplier (1x / 1.25x / 1.5x)                             | before payroll (Phase 2) | OT1    |
-| 7   | PC-1: confirm fee reminder schedule with FA                              | Slice 5                  | PC-1   |
+| 7   | PC-1: confirm fee reminder schedule with the Academic Lead               | Slice 5                  | PC-1   |
 | 8   | BumbleB logo files (white-bg + dark variants, high-res)                  | Slice 0                  | Brand  |
 | 9   | Real fee structures per programme per unit for AY 2026-27                | Slice 5                  | —      |
 

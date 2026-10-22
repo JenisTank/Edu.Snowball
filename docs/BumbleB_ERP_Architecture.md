@@ -2,7 +2,7 @@
 
 **Version:** Session 2.1 (April 2026)
 **Scope:** 27 modules · 3 layers · 4 phases · Multi-unit preschool chain
-**Architect:** Parth (ERP Developer)
+**Architect:** ERP Developer
 **Status:** Phase 1 build-ready. Phase 2 spec complete. Phases 3–4 pending.
 
 ---
@@ -46,21 +46,21 @@ BumbleB Kidz ERP is a **custom-built, multi-unit school management platform** fo
 | Replaces       | Vercel temp CRM, Saraswati ERP, Butterfly Lab LMS                                        |
 | Compliance     | DPDP (India Digital Personal Data Protection Act), Gujarat regulations                   |
 
-### Key People
+### Key Roles
 
-| Person       | Role                     | ERP Authority                                          |
-| ------------ | ------------------------ | ------------------------------------------------------ |
-| Helly        | Founder / Decision-maker | Full access — all modules, all units                   |
-| Parth        | ERP Developer            | Builds and maintains BumbleB ERP                       |
-| Priyank      | CA / Legal               | Franchise T&C, DPDP compliance, financial audit access |
-| FA / Falguni | Academic Lead            | Curriculum, record book, activity log management       |
-| Meena        | Training & Resources     | EduGrowth Matrix integration                           |
+| Role                     | ERP Authority                                          |
+| ------------------------ | ------------------------------------------------------ |
+| Founder / Decision-maker | Full access — all modules, all units                   |
+| ERP Developer            | Builds and maintains BumbleB ERP (architecture owner)  |
+| CA / Legal               | Franchise T&C, DPDP compliance, financial audit access |
+| Academic Lead            | Curriculum, record book, activity log management       |
+| Training & Resources     | EduGrowth Matrix integration                           |
 
 ---
 
 ## 2. Tech Stack
 
-> Tech stack is **Parth's call** (resolved, open question E1). The recommendations below are based on the system's requirements: multi-unit real-time ops, mobile-first parent portal, PDF generation, WhatsApp automation, and Indian payment gateway integration.
+> Tech stack is **the ERP Developer's call** (resolved, open question E1). The recommendations below are based on the system's requirements: multi-unit real-time ops, mobile-first parent portal, PDF generation, WhatsApp automation, and Indian payment gateway integration.
 
 ### Recommended Stack
 
@@ -99,18 +99,18 @@ BumbleB Kidz ERP is a **custom-built, multi-unit school management platform** fo
 
 #### Infrastructure
 
-| Component        | Technology                                                                                    |
-| ---------------- | --------------------------------------------------------------------------------------------- |
-| Hosting          | Parth's call (E2 resolved) — recommend **Vercel** (Next.js) + **Railway/Render** (NestJS API) |
-| Database hosting | **Supabase** (managed PostgreSQL) or **Neon** (serverless Postgres)                           |
-| File storage     | **AWS S3** or **Supabase Storage** — student docs, certificates, gallery                      |
-| Payments         | **Razorpay** (primary) + UPI                                                                  |
-| WhatsApp         | **WhatsApp Business API** via BSP (BSP vs Meta direct — Parth's call, PC-3 deferred)          |
-| Email            | **Resend** or **SendGrid** (SMTP) — receipts, certificates only                               |
-| SMS              | Phase 3 only (PC-6 deferred)                                                                  |
-| CDN              | **Cloudflare** — static assets, brand fonts                                                   |
-| Monitoring       | **Sentry** (errors) + **Pino** (structured logs)                                              |
-| CI/CD            | **GitHub Actions**                                                                            |
+| Component        | Technology                                                                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------------- |
+| Hosting          | ERP Developer's call (E2 resolved) — recommend **Vercel** (Next.js) + **Railway/Render** (NestJS API) |
+| Database hosting | **Supabase** (managed PostgreSQL) or **Neon** (serverless Postgres)                                   |
+| File storage     | **AWS S3** or **Supabase Storage** — student docs, certificates, gallery                              |
+| Payments         | **Razorpay** (primary) + UPI                                                                          |
+| WhatsApp         | **WhatsApp Business API** via BSP (BSP vs Meta direct — ERP Developer's call, PC-3 deferred)          |
+| Email            | **Resend** or **SendGrid** (SMTP) — receipts, certificates only                                       |
+| SMS              | Phase 3 only (PC-6 deferred)                                                                          |
+| CDN              | **Cloudflare** — static assets, brand fonts                                                           |
+| Monitoring       | **Sentry** (errors) + **Pino** (structured logs)                                                      |
+| CI/CD            | **GitHub Actions**                                                                                    |
 
 #### Language Reference
 
@@ -165,7 +165,7 @@ For language selection reasoning, see [Ciphereleven.com](https://www.ciphereleve
 
 ### Multi-Unit Data Isolation
 
-Every database table carrying operational data includes a `unit_id` foreign key. API middleware automatically scopes all queries to the authenticated user's unit(s). Founder (Helly) and HO-level roles see cross-unit data via explicit `unit_id: null` or array queries.
+Every database table carrying operational data includes a `unit_id` foreign key. API middleware automatically scopes all queries to the authenticated user's unit(s). The Founder and HO-level roles see cross-unit data via explicit `unit_id: null` or array queries.
 
 ---
 
@@ -622,9 +622,9 @@ CREATE TABLE purchase_requisitions (
 
 ```typescript
 enum UserRole {
-  FOUNDER = 'FOUNDER', // Helly — all modules, all units
+  FOUNDER = 'FOUNDER', // Founder — all modules, all units
   ACADEMIC_DIR = 'ACADEMIC_DIR', // HO — AD level; author academic content
-  CURRICULUM_LEAD = 'CURRICULUM_LEAD', // HO / FA — propose academic content
+  CURRICULUM_LEAD = 'CURRICULUM_LEAD', // HO — propose academic content
   CENTRE_HEAD = 'CENTRE_HEAD', // Per unit — approvals, ops authority
   COORDINATOR = 'COORDINATOR', // Per unit — draft, operations
   TEACHER = 'TEACHER', // Per unit — own class only
@@ -635,13 +635,13 @@ enum UserRole {
 
 ### Permission Matrix (Academic Module example)
 
-| Role                     | Yearly Goals | Big Rocks                | Calendar         | Log Plan Master | Unit Overlay                      | Daily Done-Marking |
-| ------------------------ | ------------ | ------------------------ | ---------------- | --------------- | --------------------------------- | ------------------ |
-| Academic Director (HO)   | ✅ author    | ✅ author                | view             | ✅ author       | view all                          | view               |
-| Curriculum Lead (HO, FA) | propose      | propose                  | view             | propose         | view all                          | view               |
-| Centre Head (Unit)       | view         | timeline tweak + approve | ✅ approve       | view            | ✅ approve/ack                    | view               |
-| Coordinator (Unit)       | view         | edit-draft               | ✅ draft         | view            | propose on teacher's behalf       | view               |
-| Teacher                  | view         | view (own grade)         | view (own grade) | view            | propose date shifts + add details | ✅ mark done       |
+| Role                   | Yearly Goals | Big Rocks                | Calendar         | Log Plan Master | Unit Overlay                      | Daily Done-Marking |
+| ---------------------- | ------------ | ------------------------ | ---------------- | --------------- | --------------------------------- | ------------------ |
+| Academic Director (HO) | ✅ author    | ✅ author                | view             | ✅ author       | view all                          | view               |
+| Curriculum Lead (HO)   | propose      | propose                  | view             | propose         | view all                          | view               |
+| Centre Head (Unit)     | view         | timeline tweak + approve | ✅ approve       | view            | ✅ approve/ack                    | view               |
+| Coordinator (Unit)     | view         | edit-draft               | ✅ draft         | view            | propose on teacher's behalf       | view               |
+| Teacher                | view         | view (own grade)         | view (own grade) | view            | propose date shifts + add details | ✅ mark done       |
 
 ### JWT Strategy
 
@@ -771,7 +771,7 @@ interface WhatsAppTrigger {
 }
 
 // Absence notification trigger (auto, post-lock)
-// Fee reminders: T-5 / T-0 / T+3 / T+7 schedule (PC-1 pending Helly/FA review)
+// Fee reminders: T-5 / T-0 / T+3 / T+7 schedule (PC-1 pending Founder/Academic Lead review)
 // All comms logged in communication_threads table
 ```
 
@@ -976,7 +976,7 @@ async function runMorningPayroll(unitId: string, month: number, year: number) {
 // Earnings = (Minutes worked ÷ 60) × hourly_rate
 // Deduction for short attendance = short_minutes × (hourly_rate ÷ 60)
 // No security deposit. No NACH. Monthly sum of all session earnings disbursed.
-// PT applicability if earnings cross ₹12,000/month (pending Priyank confirmation)
+// PT applicability if earnings cross ₹12,000/month (pending CA / Legal confirmation)
 ```
 
 ---
@@ -1160,7 +1160,7 @@ jobs:
 
 - **Sentry:** Error tracking — web, API, mobile
 - **Pino:** Structured JSON logging in NestJS
-- **Uptime:** Betterstack or UptimeRobot (per Parth's choice)
+- **Uptime:** Betterstack or UptimeRobot (per the ERP Developer's choice)
 - **DB metrics:** Supabase dashboard
 - **Alerts:** Critical errors → WhatsApp Business API (irony intended)
 
@@ -1197,27 +1197,27 @@ jobs:
 
 ### 🔴 Blockers for Phase 1
 
-| Code | Item                                                      | Owner                                         |
-| ---- | --------------------------------------------------------- | --------------------------------------------- |
-| OT1  | Overtime rate multiplier (1x / 1.25x / 1.5x)              | Helly — confirm before first payroll run      |
-| INV2 | Reorder quantities per CLS sub-category                   | Lock when Unit 1 class strength confirmed     |
-| PC-1 | Fee reminder schedule (T-5/T-0/T+3/T+7)                   | Helly + FA review                             |
-| NOTE | Unit 1 and Unit 3 contact numbers, emails, Calendly links | Set up and share with Parth before ERP launch |
-| NOTE | Central hub admission phone number                        | Procure and share with Parth                  |
-| NOTE | STU/UNI opening stock sizing ratio for Rajkot             | Determine before opening stock procurement    |
+| Code | Item                                                      | Owner                                      |
+| ---- | --------------------------------------------------------- | ------------------------------------------ |
+| OT1  | Overtime rate multiplier (1x / 1.25x / 1.5x)              | Founder — confirm before first payroll run |
+| INV2 | Reorder quantities per CLS sub-category                   | Lock when Unit 1 class strength confirmed  |
+| PC-1 | Fee reminder schedule (T-5/T-0/T+3/T+7)                   | Founder + Academic Lead review             |
+| NOTE | Unit 1 and Unit 3 contact numbers, emails, Calendly links | Set up and share with the ERP Developer    |
+| NOTE | Central hub admission phone number                        | Procure and share with the ERP Developer   |
+| NOTE | STU/UNI opening stock sizing ratio for Rajkot             | Determine before opening stock procurement |
 
 ### 🟡 Blockers for Phase 2
 
-| Code       | Item                                                            | Owner                                |
-| ---------- | --------------------------------------------------------------- | ------------------------------------ |
-| ACA-LP-1   | Todd Care + PlayHouse curriculum bank structure                 | FA's input + Unit 0 reference needed |
-| ACA-SEED-1 | PreK Big Rocks source: 2024-25 data; needs 2025-26 update       | FA team                              |
-| ACA-SEED-2 | K1 Big Rocks: Dec–April content missing from source PDF         | FA team before AY rollout            |
-| ACA-CAL-4  | Saturday teacher working-hours policy                           | Lock in HR Manual Section 2          |
-| ACA-OUT-1  | Outcome taxonomy alignment (Academic Module ↔ EduGrowth Matrix) | When EduGrowth tech brief taken up   |
-| PC-3       | WhatsApp BSP vs Meta direct decision                            | Parth                                |
-| NOTE       | Todd Care evening shift (5:30–7:00 PM) confirmation             | Helly                                |
-| NOTE       | PT applicability on hourly evening staff if earnings > ₹12,000  | Priyank                              |
+| Code       | Item                                                            | Owner                                    |
+| ---------- | --------------------------------------------------------------- | ---------------------------------------- |
+| ACA-LP-1   | Todd Care + PlayHouse curriculum bank structure                 | Academic Lead's input + Unit 0 reference |
+| ACA-SEED-1 | PreK Big Rocks source: 2024-25 data; needs 2025-26 update       | Academic Lead                            |
+| ACA-SEED-2 | K1 Big Rocks: Dec–April content missing from source PDF         | Academic Lead before AY rollout          |
+| ACA-CAL-4  | Saturday teacher working-hours policy                           | Lock in HR Manual Section 2              |
+| ACA-OUT-1  | Outcome taxonomy alignment (Academic Module ↔ EduGrowth Matrix) | When EduGrowth tech brief taken up       |
+| PC-3       | WhatsApp BSP vs Meta direct decision                            | ERP Developer                            |
+| NOTE       | Todd Care evening shift (5:30–7:00 PM) confirmation             | Founder                                  |
+| NOTE       | PT applicability on hourly evening staff if earnings > ₹12,000  | CA / Legal                               |
 
 ### 🔵 Deferred to Phase 3+
 

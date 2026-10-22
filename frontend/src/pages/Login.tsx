@@ -101,7 +101,7 @@ export default function Login() {
           {new URLSearchParams(window.location.search).get('reason') === 'session' && (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-700">
               Your session could not be renewed, so you were signed out. Please sign in again — if
-              this keeps happening repeatedly, tell Parth's AI developer 🐝
+              this keeps happening repeatedly, contact the ERP support team 🐝
             </div>
           )}
 

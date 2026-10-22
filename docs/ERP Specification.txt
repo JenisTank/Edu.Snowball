@@ -68,14 +68,14 @@ Unit 3	Company- oWned,	Rajkot Public School building, Jivraj Park	In development
 	leased	Main Road			
 Future distinction: Company-owned units vs franchise units will be built as a separate layer when franchise module is scoped. For now all 3 units are treated identically in the ERP. Franchise-specific features (mandatory vs optional) will be discussed module by module when that phase begins.
 
-Key People
+Key Profiles
 
-Person	Role	ERP Relevance
-Admin	Founder Decision-maker	Founder access — all modules, all units
-Developer	ERP developer	Builds and maintains BumbleB ERP
-Priyank	CA Legal	Franchise T&C, DPDP compliance, financial audit access
-FA Falguni	Academic lead	Curriculum, record book, activity log management
-Meena	Training & resources	EduGrowth Matrix integration
+Profile	Role	ERP Relevance
+Founder	Founder / Decision-maker	Founder access — all modules, all units
+ERP Developer	ERP developer	Builds and maintains BumbleB ERP
+CA / Legal	CA Legal	Franchise T&C, DPDP compliance, financial audit access
+Academic Lead	Academic lead	Curriculum, record book, activity log management
+Training & Resources	Training & resources	EduGrowth Matrix integration
 
 Unit Contact Details — Public Facing
 
@@ -283,7 +283,7 @@ Phase 3	16, 17, 18, 19, 20, 21, 22, 23	Franchisor control + governance
 Phase 4	26, 27	AI, forecasting, scale intelligence
 
 
-Data Protection (DPDP): Runs across all modules — not a standalone module. Child data encryption, role-based access, consent tracking, audit logs, and data retention policies are embedded system-wide. Priyank to confirm PT applicability on hourly evening staff and DPDP compliance requirements.
+Data Protection (DPDP): Runs across all modules — not a standalone module. Child data encryption, role-based access, consent tracking, audit logs, and data retention policies are embedded system-wide. CA / Legal to confirm PT applicability on hourly evening staff and DPDP compliance requirements.
 
 
 Section 5 • Centralised Admission Hub
@@ -741,7 +741,7 @@ P2 — Accounting
 •	Accounting Export (Tally CA)
 
 Fee Reminder Schedule
-Default schedule (per Module 12 Q13, pending FA review):
+Default schedule (per Module 12 Q13, pending Academic Lead review):
 •	T-S days: due reminder (Transactional)
 •	T-0: due date (Essential)
 •	T+3 days: overdue (Essential)
@@ -878,7 +878,7 @@ Completely separate from morning engine.
 •	Earnings = (Minutes actually worked + h0)	Hourly Rate
 •	Deduction for short attendance = Short minutes	(Hourly Rate :— 60)
 •	No security deposit. No NACH. Monthly sum of all session earnings disbursed.
-•	PT applicability on hourly staff if earnings cross t12,000/month — Priyank to confirm.
+•	PT applicability on hourly staff if earnings cross t12,000/month — CA / Legal to confirm.
  
 Leave Management
 
@@ -1186,7 +1186,7 @@ CH-signed PDF export
 
  
 
-Seed data ready (PreK/K1/K2): Topic content collated from Unit 0 source files, structured as Python dict, ready to convert to JSON/CSV for dev environment. PreIl source = 2024-25 (FA team to confirm 2025-26 update). K1 Dec-April content missing in source — flagged for FA to provide. 112 = complete for 2025-26.
+Seed data ready (PreK/K1/K2): Topic content collated from Unit 0 source files, structured as Python dict, ready to convert to JSON/CSV for dev environment. PreIl source = 2024-25 (Academic Lead to confirm 2025-26 update). K1 Dec-April content missing in source — flagged for the Academic Lead to provide. 112 = complete for 2025-26.
 
 Sub-Module 3 — Calendar
 
@@ -1346,7 +1346,7 @@ Outcome taxonomy
 Independent overlay pef section.  section	d is mandatory on
 o	plan un	ove rlay , not nullable. Each section's teacher owns their own overlay.
 
-Chain-controlled library curated by HO Curriculum Lead (FA). Teachers can propose new activities; HO curates monthly into the bank. Teachers cannot inject directly.
+Chain-controlled library curated by the HO Curriculum Lead. Teachers can propose new activities; HO curates monthly into the bank. Teachers cannot inject directly.
 
 Hierarchical, 3 levels:	u   come   doma   n	o   tcve rand	utc    me
  
@@ -1447,7 +1447,7 @@ Role	Yearly Goals	BigRoeks	Calendar	LogPlan Master	IJnltoverlay	Daily Done- Mark
 Academic	author	author	view	author	view all	view
 Director (HO)						
 Curriculum	propose	propose	view	propose	view all	view
-Lead (HO, FA)						
+Lead (HO)						
 Centre Head
 (Unit)	view	timeline tweak +	approve	view	approve
 ack	view
@@ -1539,7 +1539,7 @@ Preii K1 K2 Big Rocks + Log Plan rollout
  
 Status
 
-Ready to build (subject to FA confirmation of PreK 2025-26 content + K1 Dec-April content)
+Ready to build (subject to Academic Lead confirmation of PreK 2025-26 content + K1 Dec-April content)
  
 
  
@@ -1769,7 +1769,7 @@ All other Academic Module open questions (ACA-BR-1 through 6, ACA-CAL-1 through 
 
 Code	Status	Question / Note
 ACA-		Todd Care * PlayHouse curriculum bank structure — areas differ from Prelt/K1/K2
-LP-1	Open	(sensory, motor, language exposure, music, f’ree-play). Needs FA's input + Unit 0
+LP-1	Open	(sensory, motor, language exposure, music, f’ree-play). Needs Academic Lead's input + Unit 0
 		reference. Blocker for TCJPH Log Plan rollout. PreK/I11/K2 rollout can proceed
 		independently.
 ACA-		Saturday teacher working-hours policy (exact start/end times, lunch, half-day
@@ -1778,10 +1778,10 @@ ACA—		Hierarchical outcome taxonomy alignment between Academic Module and
 OUT-1	Open	EduGrowth Matrix — three-level structure locked (domain	strand	outcome,
 mirroring D1-D6); concfete strand and outcome rows to be authored when
 		EduGrowth tech brief is taken up.
-ACA-		PreI4 Big Rocks source - 2024-25 in current seed data; FA team to confirm/provide
+ACA-		PreI4 Big Rocks source - 2024-25 in current seed data; Academic Lead to confirm/provide
 SEED-1	Open	2025-26 update.
 ACA-		K1 Big Rocks source PDF only contains June-November detail. December-April
-SEED-2	Open	content missing — flagged for FA team to provide before AY rollout.
+SEED-2	Open	content missing — flagged for the Academic Lead to provide before AY rollout.
 
 
 Parent Communication — Open Items (from Module 12 spec)
@@ -1827,7 +1827,7 @@ Detatl
 
 Todd Care evening shift (S.30-7:00 PM) — confirm if/when this transition happens. Developer to keep shift master configurable.
 
-PT applicability on hourly evening staff if monthly earnings exceed t12,000 — Priyank to
+PT applicability on hourly evening staff if monthly earnings exceed t12,000 — CA / Legal to
 confirm.
 
 Unit 1 and Unit 3 contact numbers, emails, Calendly links — to be set up and shared with Developer before ERP launch.

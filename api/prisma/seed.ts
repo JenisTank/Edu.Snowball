@@ -232,11 +232,11 @@ async function main() {
   // ── Users (one per role — every person has own login, DPDP) ──
   const pw = await bcrypt.hash('bumbleb123', 10);
   const usersDef: { email: string; name: string; role: UserRole; unitId: string | null }[] = [
-    { email: 'founder@bumblebkidz.com', name: 'Helly (Founder)', role: 'FOUNDER', unitId: null },
+    { email: 'founder@bumblebkidz.com', name: 'Founder', role: 'FOUNDER', unitId: null },
     { email: 'ad@bumblebkidz.com', name: 'Academic Director', role: 'ACADEMIC_DIR', unitId: null },
     {
-      email: 'falguni@bumblebkidz.com',
-      name: 'Falguni (Curriculum Lead)',
+      email: 'curriculum@bumblebkidz.com',
+      name: 'Curriculum Lead',
       role: 'CURRICULUM_LEAD',
       unitId: null,
     },

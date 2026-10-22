@@ -139,7 +139,7 @@ logo files · real fee structures per programme/unit · confirm reminder schedul
 - Restore a fresh dev env: `bash scripts/dev-restore.sh` (installs PG+Redis, restores
   `backups/latest.sql` or seeds). Start: `cd api && npm run dev` (:3000),
   `cd frontend && npm run dev` (:5173, proxies /api).
-- Staff demo logins (password `bumbleb123`): founder@ / ad@ / falguni@ / ch.u1@ / ch.u2@ /
+- Staff demo logins (password `bumbleb123`): founder@ / ad@ / curriculum@ / ch.u1@ / ch.u2@ /
   coord.u1@ / teacher.u1@ / reception@ bumblebkidz.com
 - Parent demo: phone `+91 9100000000` + admission `BB-U1-2627-0001`
 - Gotchas: seed parent phones contain a space — strip `[\s-]` on both sides when comparing;

@@ -106,7 +106,7 @@ bash scripts/restore.sh <dump.sql.gz>      # restores into a scratch DB and prin
 | ------------------ | -------------------------- |
 | Founder            | founder@bumblebkidz.com    |
 | Academic Director  | ad@bumblebkidz.com         |
-| Curriculum Lead    | falguni@bumblebkidz.com    |
+| Curriculum Lead    | curriculum@bumblebkidz.com |
 | Centre Head U1     | ch.u1@bumblebkidz.com      |
 | Centre Head U2     | ch.u2@bumblebkidz.com      |
 | Coordinator U1     | coord.u1@bumblebkidz.com   |

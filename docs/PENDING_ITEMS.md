@@ -324,19 +324,19 @@ scans). The real open surface is Phase 3 (franchisor control).
 
 ## 7. Blocked on the founder (cannot be coded around)
 
-| #   | Item                                                  | Blocks                                                                      |
-| --- | ----------------------------------------------------- | --------------------------------------------------------------------------- |
-| 1   | Razorpay merchant KYC                                 | Online fee payment, auto-receipt, parent "Pay Now"                          |
-| 2   | WhatsApp BSP account + template approval              | All live messaging, welcome/absence/receipt sends, template screen          |
-| 3   | Domain + VPS                                          | Production deployment                                                       |
-| 4   | Logo files (light/dark, high-res) + brand TTF         | Real branding; rupee glyph in PDFs needs an embedded font                   |
-| 5   | Real fee structures per programme/unit for AY 2026-27 | Go-live data                                                                |
-| 6   | PC-1: confirm reminder schedule with FA               | Reminder defaults (currently T-5/T-0/T+3/T+7)                               |
-| 7   | OT1: overtime multiplier                              | First real payroll run                                                      |
-| 8   | INV2: reorder-quantity basis                          | Automated reorder alerts                                                    |
-| 9   | ACA-LP-1, ACA-CAL-4, ACA-SEED-1/2, ACA-OUT-1          | Todd Care/PlayHouse curriculum, Saturday hours, Big Rocks content, taxonomy |
-| 10  | Priyank: PT applicability for hourly evening staff    | Evening payroll statutory                                                   |
-| 11  | Central hub admission phone number                    | Hub settings                                                                |
+| #   | Item                                                   | Blocks                                                                      |
+| --- | ------------------------------------------------------ | --------------------------------------------------------------------------- |
+| 1   | Razorpay merchant KYC                                  | Online fee payment, auto-receipt, parent "Pay Now"                          |
+| 2   | WhatsApp BSP account + template approval               | All live messaging, welcome/absence/receipt sends, template screen          |
+| 3   | Domain + VPS                                           | Production deployment                                                       |
+| 4   | Logo files (light/dark, high-res) + brand TTF          | Real branding; rupee glyph in PDFs needs an embedded font                   |
+| 5   | Real fee structures per programme/unit for AY 2026-27  | Go-live data                                                                |
+| 6   | PC-1: confirm reminder schedule with the Academic Lead | Reminder defaults (currently T-5/T-0/T+3/T+7)                               |
+| 7   | OT1: overtime multiplier                               | First real payroll run                                                      |
+| 8   | INV2: reorder-quantity basis                           | Automated reorder alerts                                                    |
+| 9   | ACA-LP-1, ACA-CAL-4, ACA-SEED-1/2, ACA-OUT-1           | Todd Care/PlayHouse curriculum, Saturday hours, Big Rocks content, taxonomy |
+| 10  | CA / Legal: PT applicability for hourly evening staff  | Evening payroll statutory                                                   |
+| 11  | Central hub admission phone number                     | Hub settings                                                                |
 
 ---
 
