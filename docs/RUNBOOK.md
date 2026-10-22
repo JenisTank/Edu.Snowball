@@ -10,14 +10,14 @@ blocked) and [`CODE_STRUCTURE.md`](./CODE_STRUCTURE.md) (how the code is laid ou
 
 ## 1. What runs where
 
-| Piece      | Technology                    | Container     | Port | Notes                                   |
-| ---------- | ----------------------------- | ------------- | ---- | --------------------------------------- |
-| API        | NestJS 10 + Prisma            | `api`         | 3000 | `/api/*`, global JWT guard per route    |
-| Staff SPA  | Vite + React (Snowball UI)    | `frontend`    | 80   | nginx; proxies `/api` to the API        |
-| Parent PWA | Same bundle, `/parent` route  | —             | —    | Installable; no separate deploy         |
-| Database   | PostgreSQL 16                 | `db`          | 5432 | Named volume `pgdata`                   |
-| Queue      | Redis 7 + BullMQ              | `redis`       | 6379 | Named volume `redisdata`                |
-| Scheduler  | In-process (05:00 IST tick)   | inside `api`  | —    | Must never run twice — keep API at 1 replica |
+| Piece      | Technology                   | Container    | Port | Notes                                        |
+| ---------- | ---------------------------- | ------------ | ---- | -------------------------------------------- |
+| API        | NestJS 10 + Prisma           | `api`        | 3000 | `/api/*`, global JWT guard per route         |
+| Staff SPA  | Vite + React (Snowball UI)   | `frontend`   | 80   | nginx; proxies `/api` to the API             |
+| Parent PWA | Same bundle, `/parent` route | —            | —    | Installable; no separate deploy              |
+| Database   | PostgreSQL 16                | `db`         | 5432 | Named volume `pgdata`                        |
+| Queue      | Redis 7 + BullMQ             | `redis`      | 6379 | Named volume `redisdata`                     |
+| Scheduler  | In-process (05:00 IST tick)  | inside `api` | —    | Must never run twice — keep API at 1 replica |
 
 > **Single-replica rule.** The daily scheduler and the BullMQ worker live in the
 > API process. Running two API replicas would double-send absence alerts. Scale
@@ -35,17 +35,17 @@ cp .env.example .env
 
 Fill in `.env` before starting anything:
 
-| Variable                                     | Required | Effect when missing                             |
-| -------------------------------------------- | -------- | ----------------------------------------------- |
-| `DB_PASSWORD`                                | yes      | Compose refuses to start                        |
-| `JWT_SECRET`                                 | yes      | Compose refuses to start (32+ random chars)     |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`    | no       | Sandbox adapter — no online money can move      |
-| `RAZORPAY_WEBHOOK_SECRET`                    | no       | Webhook rejects every call (safe default)       |
-| `WA_BSP_KEY`                                 | no       | Comms outbox stays in sandbox mode              |
-| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`     | no       | Push disabled; portal keeps working             |
-| `PII_KEY`                                    | no       | PAN/UAN/bank encryption skipped (logged at boot)|
-| `SENTRY_DSN`                                 | no       | Error reporting off                             |
-| `APP_RELEASE`                                | no       | Release tag defaults to the package version     |
+| Variable                                  | Required | Effect when missing                              |
+| ----------------------------------------- | -------- | ------------------------------------------------ |
+| `DB_PASSWORD`                             | yes      | Compose refuses to start                         |
+| `JWT_SECRET`                              | yes      | Compose refuses to start (32+ random chars)      |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | no       | Sandbox adapter — no online money can move       |
+| `RAZORPAY_WEBHOOK_SECRET`                 | no       | Webhook rejects every call (safe default)        |
+| `WA_BSP_KEY`                              | no       | Comms outbox stays in sandbox mode               |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`  | no       | Push disabled; portal keeps working              |
+| `PII_KEY`                                 | no       | PAN/UAN/bank encryption skipped (logged at boot) |
+| `SENTRY_DSN`                              | no       | Error reporting off                              |
+| `APP_RELEASE`                             | no       | Release tag defaults to the package version      |
 
 ```bash
 docker compose up -d --build
@@ -67,10 +67,10 @@ works over TLS.
 
 ## 3. Health & monitoring
 
-| Endpoint             | Use                                             | Behaviour                                  |
-| -------------------- | ----------------------------------------------- | ------------------------------------------ |
-| `GET /api/health`    | dashboards, humans                              | Always 200; body lists `issues`            |
-| `GET /api/health/ready` | load balancer / Docker healthcheck           | 503 when any dependency is down            |
+| Endpoint                | Use                                | Behaviour                       |
+| ----------------------- | ---------------------------------- | ------------------------------- |
+| `GET /api/health`       | dashboards, humans                 | Always 200; body lists `issues` |
+| `GET /api/health/ready` | load balancer / Docker healthcheck | 503 when any dependency is down |
 
 The body reports `database`, `redis`, queue depths (`waiting`, `active`,
 `failed`, `delayed`), `version`, `uptimeSeconds` and `issues`. Rules live in
@@ -135,13 +135,13 @@ curl -fsS localhost:3000/api/health/ready
 
 ## 6. Scheduled work
 
-| Time (IST) | Job                      | What it does                                                   |
-| ---------- | ------------------------ | -------------------------------------------------------------- |
-| 05:00      | `daily-attendance-plan`  | Builds the per-batch lock/alert/call timeline for the day      |
-| lock + 30m | `absence-scan`           | Absence alerts, approved-leave suppression, 3-day escalation   |
-| lock + 2h  | `admin-call-list`        | Call tasks for unmarked or absent children                     |
-| 05:15      | `unmarked-register-alert`| Tells the Centre Head a register is still blank                |
-| nightly    | `runRetentionTick`       | DPDP retention purge (messages, audit, anonymisation)          |
+| Time (IST) | Job                       | What it does                                                 |
+| ---------- | ------------------------- | ------------------------------------------------------------ |
+| 05:00      | `daily-attendance-plan`   | Builds the per-batch lock/alert/call timeline for the day    |
+| lock + 30m | `absence-scan`            | Absence alerts, approved-leave suppression, 3-day escalation |
+| lock + 2h  | `admin-call-list`         | Call tasks for unmarked or absent children                   |
+| 05:15      | `unmarked-register-alert` | Tells the Centre Head a register is still blank              |
+| nightly    | `runRetentionTick`        | DPDP retention purge (messages, audit, anonymisation)        |
 
 These are BullMQ repeatable jobs registered by `api/src/jobs/scheduler.ts`. If
 the queue is down nothing runs — `/api/health` says so.
@@ -150,14 +150,14 @@ the queue is down nothing runs — `/api/health` says so.
 
 ## 7. Incident playbook
 
-| Symptom                            | First checks                                                     | Likely fix                                                        |
-| ---------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Every screen 500s                  | `/api/health` → `database`                                        | `docker compose ps`, `docker compose logs db`                     |
-| Login works, pages empty           | `/api/health` → `redis`; queue `failed`                           | `docker compose restart redis`; inspect failed jobs               |
-| No absence alerts sent             | Redis up? `MessageLog` rows with status `QUEUED`? BSP key set?    | Add BSP key, run `POST /api/comms/dispatch/run`                   |
-| Webhook 401                        | `RAZORPAY_WEBHOOK_SECRET` matches the dashboard?                 | Fix the secret; Razorpay retries for 24h, receipts are idempotent |
-| Double receipt for one payment     | `online_payments.status` / `transaction_id`                       | Already guarded by `captureDecision` — investigate the manual entry |
-| Restore needed                     | `bash scripts/restore.sh <dump>` (scratch first!)                 | Then `--in-place` after confirming                                |
+| Symptom                        | First checks                                                   | Likely fix                                                          |
+| ------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Every screen 500s              | `/api/health` → `database`                                     | `docker compose ps`, `docker compose logs db`                       |
+| Login works, pages empty       | `/api/health` → `redis`; queue `failed`                        | `docker compose restart redis`; inspect failed jobs                 |
+| No absence alerts sent         | Redis up? `MessageLog` rows with status `QUEUED`? BSP key set? | Add BSP key, run `POST /api/comms/dispatch/run`                     |
+| Webhook 401                    | `RAZORPAY_WEBHOOK_SECRET` matches the dashboard?               | Fix the secret; Razorpay retries for 24h, receipts are idempotent   |
+| Double receipt for one payment | `online_payments.status` / `transaction_id`                    | Already guarded by `captureDecision` — investigate the manual entry |
+| Restore needed                 | `bash scripts/restore.sh <dump>` (scratch first!)              | Then `--in-place` after confirming                                  |
 
 **Data-loss drill:** stop the API, take a fresh dump, restore into scratch,
 compare row counts, then decide. Never point a scratch restore at the live
