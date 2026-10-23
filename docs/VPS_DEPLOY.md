@@ -67,6 +67,11 @@ Edit `.env`:
 
 ## 3. Build and start
 
+> **Shortcut.** `bash deploy/deploy.sh` does §2 checks, §3–§5 and verification in
+> one go, and is idempotent. `--seed` adds demo data, `--caddy` installs the site
+> block, `--dry-run` only runs preflight. The manual steps below are what it
+> executes — useful when something fails and you need to see each step.
+
 ```bash
 docker compose -p bumbleb \
   -f docker-compose.yml \
