@@ -1,32 +1,102 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { CalendarCheck2, CheckCircle2, EyeOff, Rocket, ShieldCheck, Sparkles } from 'lucide-react';
+import {
+  CalendarCheck2,
+  CheckCircle2,
+  Clock,
+  EyeOff,
+  Rocket,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from 'lucide-react';
 import { api, fmtDate } from '../lib/api';
 import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useAuth } from '../lib/auth';
 import { cn } from '../lib/utils';
+import { useI18n, useLabels } from '../lib/i18n';
 
 const RESULT_LABEL: Record<string, string> = {
-  EP: 'EP · Excellent Progress', GP: 'GP · Good Progress', SP: 'SP · Steady Progress',
-  NP: 'NP · Needs Practice', ND: 'ND · Needs Development',
+  EP: 'EP · Excellent Progress',
+  GP: 'GP · Good Progress',
+  SP: 'SP · Steady Progress',
+  NP: 'NP · Needs Practice',
+  ND: 'ND · Needs Development',
 };
 const RECO_LABEL: Record<string, string> = {
-  READY: 'Ready', READY_WITH_SUPPORT: 'Ready with support', ALTERNATE_LEVEL: 'Alternate level',
+  READY: 'Ready',
+  READY_WITH_SUPPORT: 'Ready with support',
+  ALTERNATE_LEVEL: 'Alternate level',
 };
-const PLAN_LABEL: Record<string, string> = { PLAN_A: 'Plan A · 3 inst.', PLAN_B: 'Plan B · 2 inst.', PLAN_C: 'Plan C · Full' };
+const PLAN_LABEL: Record<string, string> = {
+  PLAN_A: 'Plan A · 3 inst.',
+  PLAN_B: 'Plan B · 2 inst.',
+  PLAN_C: 'Plan C · Full',
+};
 
 function dfState(s: any): { label: string; tone: any; step: number } {
   const df = s.discoveryFlights?.[0];
   if (!df) return { label: 'DF not scheduled', tone: 'stone', step: 0 };
   if (!df.resultCode) return { label: 'DF scheduled', tone: 'sky', step: 1 };
-  if (!df.approvedAt) return { label: `${df.resultCode} · awaiting approval`, tone: 'honey', step: 2 };
+  if (!df.approvedAt)
+    return { label: `${df.resultCode} · awaiting approval`, tone: 'honey', step: 2 };
   return { label: `${df.resultCode} · approved`, tone: 'green', step: 3 };
 }
 
+/**
+ * Live preview of the auto-generated summary. The default recommendation is
+ * applied as the observer types, but the dropdown above always wins — this is a
+ * suggestion, not a decision. Screening language stays internal.
+ */
+function DiscoveryPreview({
+  dfId,
+  resultCode,
+  notes,
+  onUse,
+}: {
+  dfId: string;
+  resultCode: string;
+  notes: string;
+  onUse: (rec: string) => void;
+}) {
+  const { data } = useQuery({
+    queryKey: ['df-summary', dfId, resultCode, notes],
+    queryFn: () => api(`/discovery/${dfId}/summary?notes=${encodeURIComponent(notes || '')}`),
+    staleTime: 5_000,
+  });
+  if (!data) return null;
+  return (
+    <div className="neo-inset space-y-1.5 p-3.5 text-xs">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5 text-honey-700" />
+        <b className="font-heading text-[12px]">Auto summary (internal)</b>
+        <button
+          className="btn-neo ml-auto !px-2 !py-1 text-[10.5px]"
+          onClick={() => onUse(data.suggestedRecommendation)}
+        >
+          Use suggestion: {RECO_LABEL[data.suggestedRecommendation] ?? data.suggestedRecommendation}
+        </button>
+      </div>
+      <p className="text-stone-700">{data.summary}</p>
+      <ul className="list-disc pl-4 text-stone-600">
+        {data.strengths.slice(0, 3).map((x: string) => (
+          <li key={x}>{x}</li>
+        ))}
+      </ul>
+      {data.needsReview && (
+        <p className="font-semibold text-amber-700">
+          Flagged: review before approving this result.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function StudentModal({ student, onClose }: { student: any; onClose: () => void }) {
+  const L = useLabels();
   const { user } = useAuth();
   const qc = useQueryClient();
   const df = student.discoveryFlights?.[0];
@@ -34,56 +104,136 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
   const canApprove = ['FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD'].includes(user!.role);
   const { data: batches } = useQuery({ queryKey: ['batches'], queryFn: () => api('/batches') });
   const [err, setErr] = useState('');
-  const [result, setResult] = useState<any>({ resultCode: 'GP', recommendation: 'READY', notes: '' });
-  const [confirmForm, setConfirmForm] = useState<any>({ batchId: '', instalmentPlan: student.instalmentPlan ?? 'PLAN_B' });
+  const [result, setResult] = useState<any>({
+    resultCode: 'GP',
+    recommendation: 'READY',
+    notes: '',
+  });
+  const [confirmForm, setConfirmForm] = useState<any>({
+    batchId: '',
+    instalmentPlan: student.instalmentPlan ?? 'PLAN_B',
+  });
   const [confirmed, setConfirmed] = useState<any>(null);
+  const [waited, setWaited] = useState<any>(null);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['admissions'] });
   const schedule = useMutation({
-    mutationFn: () => api(`/students/${student.id}/discovery`, { method: 'POST', body: JSON.stringify({}) }),
-    onSuccess: () => { refresh(); onClose(); }, onError: (e: any) => setErr(e.message),
+    mutationFn: () =>
+      api(`/students/${student.id}/discovery`, { method: 'POST', body: JSON.stringify({}) }),
+    onSuccess: () => {
+      refresh();
+      onClose();
+    },
+    onError: (e: any) => setErr(e.message),
   });
   const record = useMutation({
-    mutationFn: () => api(`/discovery/${df.id}/result`, { method: 'POST', body: JSON.stringify(result) }),
-    onSuccess: () => { refresh(); onClose(); }, onError: (e: any) => setErr(e.message),
+    mutationFn: () =>
+      api(`/discovery/${df.id}/result`, { method: 'POST', body: JSON.stringify(result) }),
+    onSuccess: () => {
+      refresh();
+      onClose();
+    },
+    onError: (e: any) => setErr(e.message),
   });
   const approve = useMutation({
     mutationFn: () => api(`/discovery/${df.id}/approve`, { method: 'POST' }),
-    onSuccess: () => { refresh(); onClose(); }, onError: (e: any) => setErr(e.message),
+    onSuccess: () => {
+      refresh();
+      onClose();
+    },
+    onError: (e: any) => setErr(e.message),
   });
   const confirm = useMutation({
-    mutationFn: () => api(`/students/${student.id}/confirm`, { method: 'POST', body: JSON.stringify(confirmForm) }),
-    onSuccess: (r) => { qc.invalidateQueries(); setConfirmed(r); }, onError: (e: any) => setErr(e.message),
+    mutationFn: () =>
+      api(`/students/${student.id}/confirm`, { method: 'POST', body: JSON.stringify(confirmForm) }),
+    onSuccess: (r) => {
+      qc.invalidateQueries();
+      if (r?.waitlisted) setWaited(r);
+      else setConfirmed(r);
+    },
+    onError: (e: any) => setErr(e.message),
   });
 
-  if (confirmed) {
+  if (waited) {
     return (
-      <Modal title="Admission confirmed 🎉" onClose={onClose}>
+      <Modal title={L('Added to the waitlist')} onClose={onClose}>
         <div className="space-y-3">
-          <div className="rounded-xl bg-emerald-100/70 px-4 py-3 text-center">
-            <div className="text-lg font-heading font-extrabold text-emerald-700">{confirmed.admissionNo}</div>
-            <div className="text-xs font-semibold text-emerald-600">{confirmed.firstName} {confirmed.lastName} · {confirmed.batch.name}</div>
+          <div className="rounded-xl bg-honey-100/80 px-4 py-3 text-center">
+            <div className="font-heading text-lg font-extrabold text-honey-800">
+              #{waited.entry?.position} in line
+            </div>
+            <div className="text-xs font-semibold text-honey-700">
+              {student.firstName} {student.lastName} · {waited.batch?.name}
+            </div>
           </div>
-          <div className="neo-inset p-3.5 text-xs space-y-1.5">
-            <div className="flex justify-between"><span className="font-semibold text-stone-500">Attendance register</span><span className="font-bold text-emerald-600">Activated</span></div>
-            <div className="flex justify-between"><span className="font-semibold text-stone-500">Fee ledger</span><span className="font-bold">activates in Slice 5</span></div>
-            <div className="flex justify-between"><span className="font-semibold text-stone-500">Parent portal account</span><span className="font-bold">activates in Slice 6</span></div>
-          </div>
-          <button className="btn-primary w-full" onClick={onClose}>Done</button>
+          <p className="text-xs font-semibold text-stone-600">
+            The batch is full ({waited.batch?.filled}/{waited.batch?.capacity}). The office will be
+            prompted to offer a seat the moment one frees. The Discovery Flight approval stays on
+            record, so confirmation is one click when the seat opens.
+          </p>
+          <button className="btn-primary w-full" onClick={onClose}>
+            Done
+          </button>
         </div>
       </Modal>
     );
   }
 
-  const unitBatches = (batches ?? []).filter((b: any) => b.unit.code === student.unit.code && b.isActive);
+  if (confirmed) {
+    return (
+      <Modal title={L('Admission confirmed 🎉')} onClose={onClose}>
+        <div className="space-y-3">
+          <div className="rounded-xl bg-emerald-100/70 px-4 py-3 text-center">
+            <div className="text-lg font-heading font-extrabold text-emerald-700">
+              {confirmed.admissionNo}
+            </div>
+            <div className="text-xs font-semibold text-emerald-600">
+              {confirmed.firstName} {confirmed.lastName} · {confirmed.batch.name}
+            </div>
+          </div>
+          <div className="neo-inset p-3.5 text-xs space-y-1.5">
+            <div className="flex justify-between">
+              <span className="font-semibold text-stone-500">Attendance register</span>
+              <span className="font-bold text-emerald-600">Activated</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-semibold text-stone-500">Fee ledger</span>
+              <span className="font-bold text-emerald-600">Activated</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-semibold text-stone-500">Parent portal account</span>
+              <span className="font-bold text-emerald-600">Activated</span>
+            </div>
+          </div>
+          <button className="btn-primary w-full" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </Modal>
+    );
+  }
+
+  const unitBatches = (batches ?? []).filter(
+    (b: any) => b.unit.code === student.unit.code && b.isActive,
+  );
 
   return (
-    <Modal title={`${student.firstName} ${student.lastName} — ${student.admissionNo}`} onClose={onClose} wide>
+    <Modal
+      title={`${student.firstName} ${student.lastName} — ${student.admissionNo}`}
+      onClose={onClose}
+      wide
+    >
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Badge tone="sky">{student.unit.code}</Badge>
         <Badge tone="honey">{student.programme?.name}</Badge>
-        <Badge tone={state.tone} dot>{state.label}</Badge>
-        {student.siblingGroup && <Badge tone="violet"><Sparkles className="h-3 w-3" /> Sibling — HO-rate concession</Badge>}
+        <Badge tone={state.tone} dot>
+          {state.label}
+        </Badge>
+        {student.siblingGroup && (
+          <Badge tone="violet">
+            <Sparkles className="h-3 w-3" /> Sibling — HO-rate concession
+          </Badge>
+        )}
         <Badge tone="stone">{PLAN_LABEL[student.instalmentPlan] ?? '—'}</Badge>
       </div>
 
@@ -95,8 +245,14 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
       {/* Step 1: schedule */}
       {state.step === 0 && (
         <div className="space-y-3">
-          <p className="text-sm text-stone-600">Next step: schedule the Discovery Flight readiness interaction.</p>
-          <button className="btn-primary w-full" disabled={schedule.isPending} onClick={() => schedule.mutate()}>
+          <p className="text-sm text-stone-600">
+            Next step: schedule the Discovery Flight readiness interaction.
+          </p>
+          <button
+            className="btn-primary w-full"
+            disabled={schedule.isPending}
+            onClick={() => schedule.mutate()}
+          >
             <CalendarCheck2 className="h-4 w-4" /> Schedule Discovery Flight (today)
           </button>
         </div>
@@ -107,18 +263,53 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
         <div className="space-y-3.5">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Result code">
-              <select className="input" value={result.resultCode} onChange={e => setResult({ ...result, resultCode: e.target.value })}>
-                {Object.entries(RESULT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              <select
+                className="input"
+                value={result.resultCode}
+                onChange={(e) => setResult({ ...result, resultCode: e.target.value })}
+              >
+                {Object.entries(RESULT_LABEL).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
               </select>
             </Field>
             <Field label="Recommendation">
-              <select className="input" value={result.recommendation} onChange={e => setResult({ ...result, recommendation: e.target.value })}>
-                {Object.entries(RECO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              <select
+                className="input"
+                value={result.recommendation}
+                onChange={(e) => setResult({ ...result, recommendation: e.target.value })}
+              >
+                {Object.entries(RECO_LABEL).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
               </select>
             </Field>
           </div>
-          <Field label="Observer notes"><textarea className="input" rows={3} value={result.notes} onChange={e => setResult({ ...result, notes: e.target.value })} /></Field>
-          <button className="btn-primary w-full" disabled={record.isPending} onClick={() => record.mutate()}>Record result</button>
+          <Field label="Observer notes">
+            <textarea
+              className="input"
+              rows={3}
+              value={result.notes}
+              onChange={(e) => setResult({ ...result, notes: e.target.value })}
+            />
+          </Field>
+          <DiscoveryPreview
+            dfId={df.id}
+            resultCode={result.resultCode}
+            notes={result.notes}
+            onUse={(rec) => setResult((r: any) => ({ ...r, recommendation: rec }))}
+          />
+          <button
+            className="btn-primary w-full"
+            disabled={record.isPending}
+            onClick={() => record.mutate()}
+          >
+            Record result
+          </button>
         </div>
       )}
 
@@ -126,13 +317,29 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
       {state.step === 2 && (
         <div className="space-y-3">
           <div className="neo-inset p-3.5 text-xs space-y-1.5">
-            <div className="flex justify-between"><span className="font-semibold text-stone-500">Result</span><span className="font-bold">{RESULT_LABEL[df.resultCode]}</span></div>
-            <div className="flex justify-between"><span className="font-semibold text-stone-500">Recommendation</span><span className="font-bold">{RECO_LABEL[df.recommendation] ?? df.recommendation}</span></div>
+            <div className="flex justify-between">
+              <span className="font-semibold text-stone-500">Result</span>
+              <span className="font-bold">{RESULT_LABEL[df.resultCode]}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-semibold text-stone-500">Recommendation</span>
+              <span className="font-bold">
+                {RECO_LABEL[df.recommendation] ?? df.recommendation}
+              </span>
+            </div>
             {df.notes && <div className="pt-1 text-stone-600">{df.notes}</div>}
           </div>
-          {canApprove
-            ? <button className="btn-primary w-full" disabled={approve.isPending} onClick={() => approve.mutate()}><ShieldCheck className="h-4 w-4" /> Approve (Centre Head gate)</button>
-            : <p className="text-xs font-semibold text-honey-700">Awaiting Centre Head approval.</p>}
+          {canApprove ? (
+            <button
+              className="btn-primary w-full"
+              disabled={approve.isPending}
+              onClick={() => approve.mutate()}
+            >
+              <ShieldCheck className="h-4 w-4" /> Approve (Centre Head gate)
+            </button>
+          ) : (
+            <p className="text-xs font-semibold text-honey-700">Awaiting Centre Head approval.</p>
+          )}
         </div>
       )}
 
@@ -141,33 +348,178 @@ function StudentModal({ student, onClose }: { student: any; onClose: () => void 
         <div className="space-y-3.5">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Batch (live seat tracker)">
-              <select className="input" value={confirmForm.batchId} onChange={e => setConfirmForm({ ...confirmForm, batchId: e.target.value })}>
+              <select
+                className="input"
+                value={confirmForm.batchId}
+                onChange={(e) => setConfirmForm({ ...confirmForm, batchId: e.target.value })}
+              >
                 <option value="">— pick batch —</option>
                 {unitBatches.map((b: any) => {
                   const left = b.capacity - (b._count?.students ?? 0);
-                  return <option key={b.id} value={b.id} disabled={left <= 0}>{b.name} · {left > 0 ? `${left} seats left` : 'FULL'}</option>;
+                  return (
+                    <option key={b.id} value={b.id}>
+                      {b.name} · {left > 0 ? `${left} seats left` : 'FULL — waitlist'}
+                    </option>
+                  );
                 })}
               </select>
             </Field>
             <Field label="Instalment plan">
-              <select className="input" value={confirmForm.instalmentPlan} onChange={e => setConfirmForm({ ...confirmForm, instalmentPlan: e.target.value })}>
-                {Object.entries(PLAN_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              <select
+                className="input"
+                value={confirmForm.instalmentPlan}
+                onChange={(e) => setConfirmForm({ ...confirmForm, instalmentPlan: e.target.value })}
+              >
+                {Object.entries(PLAN_LABEL).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
               </select>
             </Field>
           </div>
-          <button className="btn-primary w-full" disabled={!confirmForm.batchId || confirm.isPending} onClick={() => confirm.mutate()}>
-            <Rocket className="h-4 w-4" /> Confirm admission — generate admission number
-          </button>
+          {(() => {
+            const picked = unitBatches.find((b: any) => b.id === confirmForm.batchId);
+            const full = picked ? picked.capacity - (picked._count?.students ?? 0) <= 0 : false;
+            return full ? (
+              <button
+                className="btn-primary w-full"
+                disabled={confirm.isPending}
+                onClick={() => confirm.mutate()}
+              >
+                <Clock className="h-4 w-4" /> Batch full — add to waitlist
+              </button>
+            ) : (
+              <button
+                className="btn-primary w-full"
+                disabled={!confirmForm.batchId || confirm.isPending}
+                onClick={() => confirm.mutate()}
+              >
+                <Rocket className="h-4 w-4" /> Confirm admission — generate admission number
+              </button>
+            );
+          })()}
         </div>
       )}
 
-      <div className="mt-3"><ErrorNote>{err}</ErrorNote></div>
+      <div className="mt-3">
+        <ErrorNote>{err}</ErrorNote>
+      </div>
     </Modal>
   );
 }
 
+/** The queue for full batches, plus which seats are about to open. */
+function WaitlistPanel() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const { data: rows = [] } = useQuery({
+    queryKey: ['waitlist'],
+    queryFn: () => api('/admissions/waitlist'),
+    enabled: open,
+  });
+  const { data: vacancies = [] } = useQuery({
+    queryKey: ['waitlist-vacancies'],
+    queryFn: () => api('/admissions/waitlist/vacancies'),
+    enabled: open,
+  });
+  const act = useMutation({
+    mutationFn: ({ id, action, reason }: any) =>
+      api(`/admissions/waitlist/${id}/${action}`, {
+        method: 'POST',
+        body: JSON.stringify(action === 'decline' ? { reason } : {}),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['waitlist'] });
+      qc.invalidateQueries({ queryKey: ['waitlist-vacancies'] });
+    },
+  });
+
+  const waiting = rows.filter((r: any) => r.status === 'WAITING').length;
+  return (
+    <div className="mb-4">
+      <button className="btn-neo !px-3 !py-1.5 text-[11.5px]" onClick={() => setOpen((v) => !v)}>
+        <Users className="mr-1 inline h-3.5 w-3.5" />
+        Waitlist{waiting ? ` · ${waiting} waiting` : ''}
+        {open ? ' ▴' : ' ▾'}
+      </button>
+      {open && (
+        <div className="card mt-2 p-4">
+          {vacancies.some((v: any) => v.seats > 0 && v.waiting > 0) && (
+            <div className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11.5px] font-bold text-emerald-700">
+              {vacancies
+                .filter((v: any) => v.seats > 0 && v.waiting > 0)
+                .map((v: any) => `${v.batch}: ${v.seats} seat(s) free, ${v.waiting} waiting`)
+                .join(' · ')}
+            </div>
+          )}
+          {!rows.length ? (
+            <p className="py-3 text-center text-[12px] font-semibold text-stone-400">
+              Nobody is waiting — a full batch adds families here automatically.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {rows.map((r: any) => (
+                <div
+                  key={r.id}
+                  className="flex flex-wrap items-center gap-2 rounded-xl bg-white/60 px-3 py-2 text-[12px]"
+                >
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-honey-100 text-[11px] font-extrabold text-honey-800">
+                    {r.position}
+                  </span>
+                  <b>{r.childName}</b>
+                  <span className="text-stone-500">{r.batch?.name}</span>
+                  <span className="text-stone-400">{r.guardianPhone}</span>
+                  <Badge tone={r.lapsed ? 'red' : r.status === 'CONVERTED' ? 'green' : 'honey'}>
+                    {r.lapsed ? 'OFFER LAPSED' : r.status}
+                  </Badge>
+                  <div className="ml-auto flex gap-1">
+                    {(r.status === 'WAITING' || r.lapsed) && (
+                      <button
+                        className="btn-neo !px-2 !py-1 text-[11px]"
+                        disabled={act.isPending}
+                        onClick={() => act.mutate({ id: r.id, action: 'offer' })}
+                      >
+                        Offer seat
+                      </button>
+                    )}
+                    {r.status === 'OFFERED' && (
+                      <button
+                        className="btn-primary !px-2 !py-1 text-[11px]"
+                        disabled={act.isPending}
+                        onClick={() => act.mutate({ id: r.id, action: 'convert' })}
+                      >
+                        Mark converted
+                      </button>
+                    )}
+                    {(r.status === 'WAITING' || r.status === 'OFFERED') && (
+                      <button
+                        className="btn-neo !px-2 !py-1 text-[11px]"
+                        disabled={act.isPending}
+                        onClick={() => act.mutate({ id: r.id, action: 'decline' })}
+                      >
+                        Decline
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <ErrorNote msg={(act.error as Error)?.message} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Admissions() {
-  const { data, isLoading } = useQuery({ queryKey: ['admissions'], queryFn: () => api('/admissions') });
+  const L = useLabels();
+  const { t } = useI18n();
+  const { data, isLoading } = useQuery({
+    queryKey: ['admissions'],
+    queryFn: () => api('/admissions'),
+  });
   const [open, setOpen] = useState<any>(null);
   const rows = data ?? [];
 
@@ -179,65 +531,135 @@ export default function Admissions() {
     ready: rows.filter((s: any) => dfState(s).step === 3).length,
   };
 
-  const columns = useMemo<ColumnDef<any>[]>(() => [
-    {
-      id: 'child', header: 'Child', accessorFn: (r: any) => `${r.firstName} ${r.lastName} ${r.admissionNo}`,
-      cell: ({ row }) => (
-        <div>
-          <div className="font-bold text-[13px]">{row.original.firstName} {row.original.lastName}
-            {row.original.siblingGroup && <Sparkles className="ml-1.5 inline h-3.5 w-3.5 text-honey-500" />}
+  const columns = useMemo<ColumnDef<any>[]>(
+    () => [
+      {
+        id: 'child',
+        header: L('Child'),
+        accessorFn: (r: any) => `${r.firstName} ${r.lastName} ${r.admissionNo}`,
+        cell: ({ row }) => (
+          <div>
+            <div className="font-bold text-[13px]">
+              {row.original.firstName} {row.original.lastName}
+              {row.original.siblingGroup && (
+                <Sparkles className="ml-1.5 inline h-3.5 w-3.5 text-honey-500" />
+              )}
+            </div>
+            <div className="text-[11px] text-stone-500">
+              {row.original.admissionNo} · reg {fmtDate(row.original.createdAt)}
+            </div>
           </div>
-          <div className="text-[11px] text-stone-500">{row.original.admissionNo} · reg {fmtDate(row.original.createdAt)}</div>
-        </div>
-      ),
-    },
-    { id: 'unit', header: 'Unit', accessorFn: (r: any) => r.unit.code },
-    {
-      id: 'programme', header: 'Programme', accessorFn: (r: any) => r.programme?.name ?? '',
-      cell: ({ row }) => (
-        <span className="inline-flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full border border-black/10" style={{ background: row.original.programme?.levelColour }} />
-          {row.original.programme?.name}
-        </span>
-      ),
-    },
-    { id: 'plan', header: 'Plan (auto)', accessorFn: (r: any) => PLAN_LABEL[r.instalmentPlan] ?? '—' },
-    {
-      id: 'df', header: 'Discovery Flight', accessorFn: (r: any) => dfState(r).label,
-      cell: ({ row }) => { const s = dfState(row.original); return <Badge tone={s.tone} dot>{s.label}</Badge>; },
-    },
-    {
-      id: 'next', header: 'Next step', accessorFn: (r: any) => dfState(r).step,
-      cell: ({ row }) => {
-        const step = dfState(row.original).step;
-        const labels = ['Schedule DF', 'Record result', 'CH approval', 'Confirm admission'];
-        return <span className={cn('text-xs font-bold', step === 3 ? 'text-emerald-600' : 'text-honey-700')}>{labels[step]} →</span>;
+        ),
       },
-    },
-    { id: 'source', header: 'Inquiry', accessorFn: (r: any) => r.lead?.inquiryNo ?? '—', cell: ({ getValue }) => <span className="text-[11px] text-stone-500">{getValue() as string}</span> },
-  ], []);
+      { id: 'unit', header: L('Unit'), accessorFn: (r: any) => r.unit.code },
+      {
+        id: 'programme',
+        header: L('Programme'),
+        accessorFn: (r: any) => r.programme?.name ?? '',
+        cell: ({ row }) => (
+          <span className="inline-flex items-center gap-2">
+            <span
+              className="h-2.5 w-2.5 rounded-full border border-black/10"
+              style={{ background: row.original.programme?.levelColour }}
+            />
+            {row.original.programme?.name}
+          </span>
+        ),
+      },
+      {
+        id: 'plan',
+        header: L('Plan (auto)'),
+        accessorFn: (r: any) => PLAN_LABEL[r.instalmentPlan] ?? '—',
+      },
+      {
+        id: 'df',
+        header: L('Discovery Flight'),
+        accessorFn: (r: any) => dfState(r).label,
+        cell: ({ row }) => {
+          const s = dfState(row.original);
+          return (
+            <Badge tone={s.tone} dot>
+              {s.label}
+            </Badge>
+          );
+        },
+      },
+      {
+        id: 'next',
+        header: L('Next step'),
+        accessorFn: (r: any) => dfState(r).step,
+        cell: ({ row }) => {
+          const step = dfState(row.original).step;
+          const labels = ['Schedule DF', 'Record result', 'CH approval', 'Confirm admission'];
+          return (
+            <span
+              className={cn(
+                'text-xs font-bold',
+                step === 3 ? 'text-emerald-600' : 'text-honey-700',
+              )}
+            >
+              {labels[step]} →
+            </span>
+          );
+        },
+      },
+      {
+        id: 'source',
+        header: L('Inquiry'),
+        accessorFn: (r: any) => r.lead?.inquiryNo ?? '—',
+        cell: ({ getValue }) => (
+          <span className="text-[11px] text-stone-500">{getValue() as string}</span>
+        ),
+      },
+    ],
+    [],
+  );
 
   return (
     <div>
       <PageHeader
-        title="Admissions" count={`${rows.length} in pipeline`}
-        subtitle="Stage-2 registration → Discovery Flight → CH approval → confirmation"
+        title={t('admissions.title')}
+        count={`${rows.length} in pipeline`}
+        subtitle={t('admissions.subtitle')}
       />
+      <WaitlistPanel />
       <div className="mb-4 flex flex-wrap gap-2.5">
-        <span className="chip">Registered <b>{counts.total}</b></span>
-        <span className="chip"><span className="chip-dot bg-stone-300" /> DF pending <b>{counts.noDf}</b></span>
-        <span className="chip"><span className="chip-dot bg-sky-400" /> DF scheduled <b>{counts.scheduled}</b></span>
-        <span className="chip"><span className="chip-dot bg-honey-400" /> Awaiting approval <b>{counts.approval}</b></span>
-        <span className="chip"><span className="chip-dot bg-emerald-400" /> Ready to confirm <b className="text-emerald-600">{counts.ready}</b></span>
+        <span className="chip">
+          Registered <b>{counts.total}</b>
+        </span>
+        <span className="chip">
+          <span className="chip-dot bg-stone-300" /> DF pending <b>{counts.noDf}</b>
+        </span>
+        <span className="chip">
+          <span className="chip-dot bg-sky-400" /> DF scheduled <b>{counts.scheduled}</b>
+        </span>
+        <span className="chip">
+          <span className="chip-dot bg-honey-400" /> Awaiting approval <b>{counts.approval}</b>
+        </span>
+        <span className="chip">
+          <span className="chip-dot bg-emerald-400" /> Ready to confirm{' '}
+          <b className="text-emerald-600">{counts.ready}</b>
+        </span>
       </div>
       <DataTable
-        columns={columns} data={rows} isLoading={isLoading}
-        title="Admission Pipeline" searchPlaceholder="Search registrations…" exportName="admissions"
-        filterable={[{ id: 'unit', label: 'Unit' }, { id: 'programme', label: 'Programme' }, { id: 'df', label: 'DF status' }]}
-        onRowClick={row => setOpen(row)}
+        columns={columns}
+        data={rows}
+        isLoading={isLoading}
+        title={t('admissions.pipeline')}
+        searchPlaceholder="Search registrations…"
+        exportName="admissions"
+        filterable={[
+          { id: 'unit', label: L('Unit') },
+          { id: 'programme', label: L('Programme') },
+          { id: 'df', label: L('DF status') },
+        ]}
+        onRowClick={(row) => setOpen(row)}
       />
       {rows.length === 0 && !isLoading && (
-        <p className="mt-3 text-xs text-stone-500">No registrations pending — register a lead from First Buzz CRM → lead → Start Stage-2 Registration.</p>
+        <p className="mt-3 text-xs text-stone-500">
+          No registrations pending — register a lead from First Buzz CRM → lead → Start Stage-2
+          Registration.
+        </p>
       )}
       {open && <StudentModal student={open} onClose={() => setOpen(null)} />}
     </div>

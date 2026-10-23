@@ -88,8 +88,8 @@ enum PaymentMode {
   CASH
   CHEQUE
   UPI
+  UPI_QR // online UPI collected through the parent app
   POS
-  RAZORPAY
   NEFT
 }
 
@@ -121,8 +121,15 @@ model Unit {
   feeStructures     FeeStructure[]
   feeTransactions   FeeTransaction[]
   attendanceRecords AttendanceRecord[]
+  studentLeaves    StudentLeave[]
+  feeAddons        FeeAddon[]
   discoveryFlights  DiscoveryFlight[]
   areaMappings      AreaMaster[]
+  waitlistEntries   WaitlistEntry[]
+  onlinePayments    OnlinePayment[]
+  securityDeposits  SecurityDeposit[]
+  guestLogs         GuestLog[]
+  studentDocuments  StudentDocument[]
 
   @@map("units")
 }
@@ -131,7 +138,12 @@ model UnitSettings {
   unitId          String  @id @map("unit_id") @db.Uuid
   pettyCashFloat  Decimal @default(5000.00) @map("petty_cash_float") @db.Decimal(10, 2) // HO-edit only
   admissionNumber String? @map("admission_number") // published central hub number only
-  calendlyLink    String? @map("calendly_link")
+  phone           String? // front-desk number, shown on letters and the parent app
+  // UPI collection: the centre's own VPA. No gateway, no KYC — a QR is built
+  // per amount and the front desk confirms the credit.
+  upiVpa          String? @map("upi_vpa")
+  upiPayeeName    String? @map("upi_payee_name")
+  ptEnabled       Boolean @default(true) @map("pt_enabled") // Professional Tax default for this unit
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   unit Unit @relation(fields: [unitId], references: [id])
@@ -175,6 +187,7 @@ model Batch {
   programme Programme @relation(fields: [programmeId], references: [id])
   students  Student[]
   attendanceRecords AttendanceRecord[]
+  waitlistEntries   WaitlistEntry[]
 
   @@map("batches")
 }
@@ -283,10 +296,13 @@ model Student {
   fatherPhone   String?       @map("father_phone")
   motherName    String?       @map("mother_name")
   motherPhone   String?       @map("mother_phone")
+  guardianEmail String?       @map("guardian_email") // email fallback channel
   addressArea   String?       @map("address_area")
   programmeId   String?       @map("programme_id") @db.Uuid
   batchId       String?       @map("batch_id") @db.Uuid
   admissionDate DateTime?     @map("admission_date") @db.Date
+  orientationDate DateTime?   @map("orientation_date") @db.Date // set at confirmation (spec, module 3)
+  anonymisedAt  DateTime?     @map("anonymised_at") // DPDP erasure: PII cleared, finance retained
   instalmentPlan InstalmentPlan? @map("instalment_plan")
   status        StudentStatus @default(ACTIVE)
   academicYear  String        @map("academic_year")
@@ -301,6 +317,8 @@ model Student {
   lead      Lead?      @relation(fields: [leadId], references: [id])
 
   attendanceRecords AttendanceRecord[]
+  leaves            StudentLeave[]
+  feeAddons         FeeAddon[]
   feeTransactions   FeeTransaction[]
   discoveryFlights  DiscoveryFlight[]
   messageLogs       MessageLog[]
@@ -309,11 +327,43 @@ model Student {
   lifecycleRecords  StudentLifecycleRecord[]
   ptmRecords        PtmRecord[]
   eveningEnrollments EveningEnrollment[]
+  eveningAttendance  EveningAttendance[]
+  waitlistEntries    WaitlistEntry[]
+  onlinePayments     OnlinePayment[]
+  securityDeposits   SecurityDeposit[]
+  documents          StudentDocument[]
 
   @@map("students")
 }
 
 // ─────────────────────────── DISCOVERY FLIGHT ───────────────────────────
+
+// ─────────────────────────── WAITLIST ───────────────────────────
+
+// A full batch must not dead-end the admission conversation at the front desk.
+// The child keeps their place in line; the office offers the seat when one frees.
+model WaitlistEntry {
+  id             String    @id @default(uuid()) @db.Uuid
+  unitId         String    @map("unit_id") @db.Uuid
+  batchId        String    @map("batch_id") @db.Uuid
+  studentId      String?   @map("student_id") @db.Uuid
+  childName      String    @map("child_name")
+  guardianPhone  String    @map("guardian_phone")
+  position       Int
+  status         String    @default("WAITING") // WAITING | OFFERED | CONVERTED | DECLINED | EXPIRED
+  note           String?
+  offeredAt      DateTime? @map("offered_at")
+  offerExpiresAt DateTime? @map("offer_expires_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  unit    Unit     @relation(fields: [unitId], references: [id])
+  batch   Batch    @relation(fields: [batchId], references: [id])
+  student Student? @relation(fields: [studentId], references: [id])
+
+  @@index([unitId, status, position])
+  @@index([batchId, status])
+  @@map("waitlist_entries")
+}
 
 model DiscoveryFlight {
   id           String           @id @default(uuid()) @db.Uuid
@@ -359,6 +409,32 @@ model AttendanceRecord {
 
   @@unique([studentId, date, batchId])
   @@map("attendance_records")
+}
+
+// Parent- or staff-filed leave. An APPROVED leave is the only thing that
+// suppresses the absence alert chain — attendance still defaults to ABSENT.
+model StudentLeave {
+  id           String    @id @default(uuid()) @db.Uuid
+  studentId    String    @map("student_id") @db.Uuid
+  unitId       String    @map("unit_id") @db.Uuid
+  fromDate     DateTime  @map("from_date") @db.Date
+  toDate       DateTime  @map("to_date") @db.Date
+  type         String    @default("PLANNED") // PLANNED | SICK | FAMILY | OTHER
+  reason       String
+  status       String    @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELLED
+  source       String    @default("PARENT") // PARENT | STAFF
+  appliedById  String?   @map("applied_by_id") @db.Uuid
+  decidedById  String?   @map("decided_by_id") @db.Uuid
+  decidedAt    DateTime? @map("decided_at")
+  decisionNote String?   @map("decision_note")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@index([studentId, fromDate])
+  @@index([unitId, status, fromDate])
+  @@map("student_leaves")
 }
 
 // ─────────────────────────── FEES ───────────────────────────
@@ -407,6 +483,33 @@ model FeeTransaction {
   @@map("fee_transactions")
 }
 
+// Add-on charges (kit, transport, event fee) are billed separately from the
+// annual tuition schedule so the instalment maths stays exact. A settled
+// add-on is money received; it never re-allocates tuition instalments.
+model FeeAddon {
+  id            String      @id @default(uuid()) @db.Uuid
+  studentId     String      @map("student_id") @db.Uuid
+  unitId        String      @map("unit_id") @db.Uuid
+  label         String
+  amount        Decimal     @db.Decimal(10, 2)
+  ledgerType    LedgerType  @default(PRESCHOOL) @map("ledger_type")
+  status        String      @default("PENDING") // PENDING | PAID | WAIVED
+  paymentMode   PaymentMode? @map("payment_mode")
+  reference     String?
+  notes         String?
+  billedAt      DateTime    @default(now()) @map("billed_at")
+  settledAt     DateTime?   @map("settled_at")
+  settledById   String?     @map("settled_by_id") @db.Uuid
+  createdById   String?     @map("created_by_id") @db.Uuid
+
+  student Student @relation(fields: [studentId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@index([unitId, status])
+  @@index([studentId, billedAt])
+  @@map("fee_addons")
+}
+
 // ─────────────────────────── DPDP / AUDIT ───────────────────────────
 
 model AuditLog {
@@ -450,14 +553,37 @@ model MessageLog {
   studentId    String?   @map("student_id") @db.Uuid
   unitId       String?   @map("unit_id") @db.Uuid
   payload      Json?
-  status       String    @default("QUEUED") // QUEUED | SENT | FAILED
+  status       String    @default("QUEUED") // QUEUED | SENT | FAILED | SUPPRESSED
   scheduledFor DateTime? @map("scheduled_for")
   sentAt       DateTime? @map("sent_at")
+  attempts     Int       @default(0)
+  lastError    String?   @map("last_error")
+  deliveredVia String?   @map("delivered_via") // PUSH | WHATSAPP | EMAIL (+ _SANDBOX)
+  templateCode String?   @map("template_code")
   createdAt    DateTime  @default(now()) @map("created_at")
 
   student Student? @relation(fields: [studentId], references: [id])
 
   @@map("message_logs")
+}
+
+// HO-managed message templates (spec: B2 template management). Wording is
+// locked at Head Office; units choose when to send, never what it says.
+model MessageTemplate {
+  id           String   @id @default(uuid()) @db.Uuid
+  code         String   @unique
+  name         String
+  channel      String   @default("WHATSAPP") // WHATSAPP | EMAIL | INTERNAL
+  language     String   @default("en") // en | gu
+  body         String
+  metaTemplate String?  @map("meta_template") // BSP-approved template name
+  approved     Boolean  @default(false)
+  active       Boolean  @default(true)
+  updatedById  String?  @map("updated_by_id") @db.Uuid
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("message_templates")
 }
 
 model ConsentLog {
@@ -491,10 +617,12 @@ model ParentMessage {
   id        String   @id @default(uuid()) @db.Uuid
   studentId String   @map("student_id") @db.Uuid
   unitId    String   @map("unit_id") @db.Uuid
-  sender    String   // PARENT | CENTRE_HEAD
-  body      String
-  readAt    DateTime? @map("read_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  sender      String    // PARENT | CENTRE_HEAD
+  body        String
+  readAt      DateTime? @map("read_at")
+  repliedAt   DateTime? @map("replied_at") // set when the CH replies to this thread
+  escalatedAt DateTime? @map("escalated_at") // AD escalation after the reply SLA
+  createdAt   DateTime @default(now()) @map("created_at")
 
   student Student @relation(fields: [studentId], references: [id])
 
@@ -539,20 +667,405 @@ model AcademicPlan {
  authoredById String? @map("authored_by_id") @db.Uuid
  approvedById String? @map("approved_by_id") @db.Uuid
  approvedAt DateTime? @map("approved_at")
+ // ── HO-locked authoring ──
+ // The Academic Director authors a master record and locks it; units consume
+ // the locked master and may only add their own overlay (see `masterId`).
+ version Int @default(1)
+ lockedById String? @map("locked_by_id") @db.Uuid
+ lockedAt DateTime? @map("locked_at")
+ // A unit overlay points at the AD master it adapts. Self-relation: deleting
+ // the master leaves the overlay in place (SET NULL).
+ masterId String? @map("master_id") @db.Uuid
+ master AcademicPlan? @relation("PlanOverlay", fields: [masterId], references: [id], onDelete: SetNull)
+ overlays AcademicPlan[] @relation("PlanOverlay")
  createdAt DateTime @default(now()) @map("created_at")
  updatedAt DateTime @updatedAt @map("updated_at")
  @@index([academicYear,kind])
  @@index([unitId])
+ @@index([masterId])
  @@map("academic_plans")
 }
-model InventoryItem { id String @id @default(uuid()) @db.Uuid unitId String? @map("unit_id") @db.Uuid sku String @unique name String category String reorderLevel Int @default(0) @map("reorder_level") quantity Int @default(0) unitCost Decimal @default(0) @map("unit_cost") @db.Decimal(10,2) active Boolean @default(true) movements InventoryMovement[] @@map("inventory_items") }
-model InventoryMovement { id String @id @default(uuid()) @db.Uuid itemId String @map("item_id") @db.Uuid unitId String @map("unit_id") @db.Uuid type String quantity Int unitCost Decimal? @map("unit_cost") @db.Decimal(10,2) reference String? notes String? createdById String? @map("created_by_id") @db.Uuid createdAt DateTime @default(now()) @map("created_at") item InventoryItem @relation(fields:[itemId],references:[id]) @@index([unitId,createdAt]) @@map("inventory_movements") }
-model PtmSession { id String @id @default(uuid()) @db.Uuid unitId String @map("unit_id") @db.Uuid batchId String? @map("batch_id") @db.Uuid title String scheduledAt DateTime @map("scheduled_at") status String @default("SCHEDULED") records PtmRecord[] createdAt DateTime @default(now()) @map("created_at") @@index([unitId,scheduledAt]) @@map("ptm_sessions") }
-model PtmRecord { id String @id @default(uuid()) @db.Uuid sessionId String @map("session_id") @db.Uuid studentId String @map("student_id") @db.Uuid attended Boolean @default(false) parentNames String? @map("parent_names") teacherNotes String? @map("teacher_notes") signedFormUrl String? @map("signed_form_url") recordedById String? @map("recorded_by_id") recordedAt DateTime? @map("recorded_at") session PtmSession @relation(fields:[sessionId],references:[id]) student Student @relation(fields:[studentId],references:[id]) @@unique([sessionId,studentId]) @@map("ptm_records") }
-model EveningActivity { id String @id @default(uuid()) @db.Uuid unitId String @map("unit_id") @db.Uuid name String schedule String? fee Decimal @db.Decimal(10,2) capacity Int active Boolean @default(true) enrollments EveningEnrollment[] @@index([unitId]) @@map("evening_activities") }
-model EveningEnrollment { id String @id @default(uuid()) @db.Uuid activityId String @map("activity_id") @db.Uuid studentId String @map("student_id") @db.Uuid startDate DateTime @map("start_date") @db.Date endDate DateTime? @map("end_date") @db.Date status String @default("ACTIVE") amountDue Decimal @map("amount_due") @db.Decimal(10,2) payments EveningPayment[] activity EveningActivity @relation(fields:[activityId],references:[id]) student Student @relation(fields:[studentId],references:[id]) @@unique([activityId,studentId]) @@map("evening_enrollments") }
-model EveningPayment { id String @id @default(uuid()) @db.Uuid enrollmentId String @map("enrollment_id") @db.Uuid amount Decimal @db.Decimal(10,2) mode PaymentMode reference String? receiptNo String @unique @map("receipt_no") paidAt DateTime @default(now()) @map("paid_at") collectedById String? @map("collected_by_id") @db.Uuid enrollment EveningEnrollment @relation(fields:[enrollmentId],references:[id]) @@map("evening_payments") }
 
+model InventoryItem {
+  id String @id @default(uuid()) @db.Uuid
+  unitId String? @map("unit_id") @db.Uuid
+  sku String @unique
+  name String
+  category String
+  reorderLevel Int @default(0) @map("reorder_level")
+  quantity Int @default(0)
+  unitCost Decimal @default(0) @map("unit_cost") @db.Decimal(10,2)
+  active Boolean @default(true)
+  movements InventoryMovement[]
+  reorderAlerts ReorderAlert[]
+  @@map("inventory_items")
+}
+
+model InventoryMovement {
+  id String @id @default(uuid()) @db.Uuid
+  itemId String @map("item_id") @db.Uuid
+  unitId String @map("unit_id") @db.Uuid
+  type String
+  quantity Int
+  unitCost Decimal? @map("unit_cost") @db.Decimal(10,2)
+  reference String?
+  notes String?
+  createdById String? @map("created_by_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  item InventoryItem @relation(fields:[itemId],references:[id])
+  @@index([unitId,createdAt])
+  @@map("inventory_movements")
+}
+
+model PtmSession {
+  id String @id @default(uuid()) @db.Uuid
+  unitId String @map("unit_id") @db.Uuid
+  batchId String? @map("batch_id") @db.Uuid
+  title String
+  scheduledAt DateTime @map("scheduled_at")
+  status String @default("SCHEDULED")
+  records PtmRecord[]
+  slots PtmSlot[]
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([unitId,scheduledAt])
+  @@map("ptm_sessions")
+}
+
+model PtmRecord {
+  id String @id @default(uuid()) @db.Uuid
+  sessionId String @map("session_id") @db.Uuid
+  studentId String @map("student_id") @db.Uuid
+  attended Boolean @default(false)
+  parentNames String? @map("parent_names")
+  teacherNotes String? @map("teacher_notes")
+  signedFormUrl String? @map("signed_form_url")
+  recordedById String? @map("recorded_by_id")
+  recordedAt DateTime? @map("recorded_at")
+  session PtmSession @relation(fields:[sessionId],references:[id])
+  student Student @relation(fields:[studentId],references:[id])
+  @@unique([sessionId,studentId])
+  @@map("ptm_records")
+}
+
+model EveningActivity {
+  id String @id @default(uuid()) @db.Uuid
+  unitId String @map("unit_id") @db.Uuid
+  name String
+  schedule String?
+  fee Decimal @db.Decimal(10,2)
+  capacity Int
+  active Boolean @default(true)
+  enrollments EveningEnrollment[]
+  sessions EveningSession[]
+  @@index([unitId])
+  @@map("evening_activities")
+}
+
+model EveningEnrollment {
+  id String @id @default(uuid()) @db.Uuid
+  activityId String @map("activity_id") @db.Uuid
+  studentId String? @map("student_id") @db.Uuid
+  participantId String? @map("participant_id") @db.Uuid
+  startDate DateTime @map("start_date") @db.Date
+  endDate DateTime? @map("end_date") @db.Date
+  status String @default("ACTIVE")
+  amountDue Decimal @map("amount_due") @db.Decimal(10,2)
+  payments EveningPayment[]
+  activity EveningActivity @relation(fields:[activityId],references:[id])
+  student Student? @relation(fields:[studentId],references:[id])
+  participant EveningParticipant? @relation(fields:[participantId],references:[id])
+  @@unique([activityId,studentId])
+  @@unique([activityId,participantId])
+  @@map("evening_enrollments")
+}
+
+model EveningPayment {
+  id String @id @default(uuid()) @db.Uuid
+  enrollmentId String @map("enrollment_id") @db.Uuid
+  amount Decimal @db.Decimal(10,2)
+  mode PaymentMode
+  reference String?
+  receiptNo String @unique @map("receipt_no")
+  paidAt DateTime @default(now()) @map("paid_at")
+  collectedById String? @map("collected_by_id") @db.Uuid
+  enrollment EveningEnrollment @relation(fields:[enrollmentId],references:[id])
+  @@map("evening_payments")
+}
+
+// ─────────────────────────── PROCUREMENT ───────────────────────────
+// PRF → PO → GRN. Stock only ever moves through the GRN (or an explicit
+// adjustment), so the ledger and the shelf can never disagree.
+
+// ─────────────────────────── ONLINE PAYMENTS (Razorpay) ───────────────────────────
+
+// One row per checkout attempt. `mode` records whether a real merchant account
+// created the order (LIVE) or the built-in sandbox did (MOCK). Mock rows never
+// produce a FeeTransaction, so sandbox testing cannot pollute the money reports.
+model OnlinePayment {
+  id                String     @id @default(uuid()) @db.Uuid
+  studentId         String     @map("student_id") @db.Uuid
+  unitId            String     @map("unit_id") @db.Uuid
+  amount            Decimal    @db.Decimal(10, 2)
+  ledgerType        LedgerType @default(PRESCHOOL) @map("ledger_type")
+  provider          String     @default("UPI") // UPI | CASHIER
+  mode              String     @default("QR") // QR (self-service) | COUNTER
+  orderId           String     @unique @map("order_id") // our reference, quoted in the note
+  upiLink           String?    @map("upi_link") // upi://pay?… — also the QR payload
+  payerRef          String?    @map("payer_ref") // UTR / UPI reference the parent reports
+  providerPaymentId String?    @map("provider_payment_id")
+  status            String     @default("CREATED") // CREATED | CLAIMED | PAID | FAILED | EXPIRED
+  failureReason     String?    @map("failure_reason")
+  transactionId     String?    @unique @map("transaction_id") @db.Uuid
+  createdAt         DateTime   @default(now()) @map("created_at")
+  claimedAt         DateTime?  @map("claimed_at")
+  paidAt            DateTime?  @map("paid_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@index([studentId, status])
+  @@index([unitId, createdAt])
+  @@map("online_payments")
+}
+
+model Vendor {
+  id           String   @id @default(uuid()) @db.Uuid
+  unitId       String?  @map("unit_id") @db.Uuid // null = HO-preferred vendor
+  code         String   @unique
+  name         String
+  category     String? // matches the inventory category it supplies
+  contactName  String?  @map("contact_name")
+  phone        String?
+  email        String?
+  gstin        String?
+  address      String?
+  preApproved  Boolean  @default(false) @map("pre_approved")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  orders PurchaseOrder[]
+
+  @@index([unitId, active])
+  @@map("vendors")
+}
+
+model PurchaseRequest {
+  id            String    @id @default(uuid()) @db.Uuid
+  unitId        String    @map("unit_id") @db.Uuid
+  title         String
+  justification String?
+  status        String    @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | REJECTED | ORDERED | CLOSED
+  requestedById String?   @map("requested_by_id") @db.Uuid
+  approvedById  String?   @map("approved_by_id") @db.Uuid
+  approvedAt    DateTime? @map("approved_at")
+  decisionNote  String?   @map("decision_note")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  lines  PurchaseRequestLine[]
+  orders PurchaseOrder[]
+
+  @@index([unitId, status])
+  @@map("purchase_requests")
+}
+
+model PurchaseRequestLine {
+  id            String  @id @default(uuid()) @db.Uuid
+  requestId     String  @map("request_id") @db.Uuid
+  itemId        String? @map("item_id") @db.Uuid
+  description   String
+  quantity      Int
+  estimatedCost Decimal @default(0) @map("estimated_cost") @db.Decimal(10, 2)
+
+  request PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("purchase_request_lines")
+}
+
+model PurchaseOrder {
+  id          String    @id @default(uuid()) @db.Uuid
+  unitId      String    @map("unit_id") @db.Uuid
+  vendorId    String    @map("vendor_id") @db.Uuid
+  requestId   String?   @map("request_id") @db.Uuid
+  poNo        String    @unique @map("po_no")
+  status      String    @default("DRAFT") // DRAFT | SENT | PARTIAL | RECEIVED | CANCELLED
+  orderedAt   DateTime? @map("ordered_at")
+  expectedAt  DateTime? @map("expected_at") @db.Date
+  totalAmount Decimal   @default(0) @map("total_amount") @db.Decimal(12, 2)
+  notes       String?
+  createdById String?   @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  vendor   Vendor           @relation(fields: [vendorId], references: [id])
+  request  PurchaseRequest? @relation(fields: [requestId], references: [id])
+  lines    PurchaseOrderLine[]
+  receipts GoodsReceipt[]
+
+  @@index([unitId, status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id          String  @id @default(uuid()) @db.Uuid
+  orderId     String  @map("order_id") @db.Uuid
+  itemId      String? @map("item_id") @db.Uuid
+  description String
+  quantity    Int
+  unitCost    Decimal @default(0) @map("unit_cost") @db.Decimal(10, 2)
+  receivedQty Int     @default(0) @map("received_qty")
+
+  order        PurchaseOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  receiptLines GoodsReceiptLine[]
+
+  @@index([orderId])
+  @@map("purchase_order_lines")
+}
+
+model GoodsReceipt {
+  id           String    @id @default(uuid()) @db.Uuid
+  orderId      String    @map("order_id") @db.Uuid
+  unitId       String    @map("unit_id") @db.Uuid
+  grnNo        String    @unique @map("grn_no")
+  invoiceNo    String?   @map("invoice_no")
+  invoiceDate  DateTime? @map("invoice_date") @db.Date
+  receivedById String?   @map("received_by_id") @db.Uuid
+  notes        String?
+  receivedAt   DateTime  @default(now()) @map("received_at")
+
+  order PurchaseOrder      @relation(fields: [orderId], references: [id])
+  lines GoodsReceiptLine[]
+
+  @@index([unitId, receivedAt])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptLine {
+  id          String  @id @default(uuid()) @db.Uuid
+  receiptId   String  @map("receipt_id") @db.Uuid
+  orderLineId String? @map("order_line_id") @db.Uuid
+  itemId      String? @map("item_id") @db.Uuid
+  description String
+  quantity    Int
+  unitCost    Decimal @default(0) @map("unit_cost") @db.Decimal(10, 2)
+
+  receipt   GoodsReceipt       @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  orderLine PurchaseOrderLine? @relation(fields: [orderLineId], references: [id])
+
+  @@index([receiptId])
+  @@map("goods_receipt_lines")
+}
+
+/// Petty-cash ledger per unit. The float itself is a unit setting; this table
+/// records every rupee in and out so the balance is always reconstructable.
+model PettyCashEntry {
+  id           String   @id @default(uuid()) @db.Uuid
+  unitId       String   @map("unit_id") @db.Uuid
+  date         DateTime @db.Date
+  type         String // TOPUP | SPEND | RETURN
+  description  String
+  amount       Decimal  @db.Decimal(10, 2)
+  receiptRef   String?  @map("receipt_ref")
+  recordedById String?  @map("recorded_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([unitId, date])
+  @@map("petty_cash_entries")
+}
+
+// Inward / Outward register (spec module 16) — every non-stock item that enters
+// or leaves the premises: courier, documents, keys, repairs.
+model InwardOutwardEntry {
+  id           String   @id @default(uuid()) @db.Uuid
+  unitId       String   @map("unit_id") @db.Uuid
+  direction    String // INWARD | OUTWARD
+  date         DateTime @db.Date
+  category     String // COURIER | DOCUMENT | ASSET | REPAIR | VISITOR | OTHER
+  party        String // who sent it or who took it
+  description  String
+  reference    String?
+  handledById  String?  @map("handled_by_id") @db.Uuid
+  acknowledged Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([unitId, date])
+  @@map("inward_outward_entries")
+}
+
+/// A child who attends the evening centre without being enrolled in the
+/// preschool (spec: external registration). Kept separate from Student so a
+/// non-student never appears in attendance or fee reports.
+model EveningParticipant {
+  id            String   @id @default(uuid()) @db.Uuid
+  unitId        String   @map("unit_id") @db.Uuid
+  fullName      String   @map("full_name")
+  dob           DateTime? @db.Date
+  guardianName  String?  @map("guardian_name")
+  guardianPhone String?  @map("guardian_phone")
+  school        String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  enrollments EveningEnrollment[]
+  attendance  EveningAttendance[]
+
+  @@index([unitId, active])
+  @@map("evening_participants")
+}
+
+/// One class occurrence of an evening activity.
+model EveningSession {
+  id         String   @id @default(uuid()) @db.Uuid
+  activityId String   @map("activity_id") @db.Uuid
+  date       DateTime @db.Date
+  startTime  String?  @map("start_time")
+  endTime    String?  @map("end_time")
+  topic      String?
+  status     String   @default("SCHEDULED") // SCHEDULED | HELD | CANCELLED
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  activity   EveningActivity   @relation(fields: [activityId], references: [id])
+  attendance EveningAttendance[]
+
+  @@unique([activityId, date])
+  @@map("evening_sessions")
+}
+
+model EveningAttendance {
+  id            String    @id @default(uuid()) @db.Uuid
+  sessionId     String    @map("session_id") @db.Uuid
+  studentId     String?   @map("student_id") @db.Uuid
+  participantId String?   @map("participant_id") @db.Uuid
+  status        String    @default("PRESENT") // PRESENT | ABSENT
+  markedById    String?   @map("marked_by_id") @db.Uuid
+  markedAt      DateTime? @map("marked_at")
+
+  session     EveningSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student     Student?             @relation(fields: [studentId], references: [id])
+  participant EveningParticipant?  @relation(fields: [participantId], references: [id])
+
+  @@unique([sessionId, studentId])
+  @@unique([sessionId, participantId])
+  @@index([sessionId])
+  @@map("evening_attendance")
+}
+
+/// Parent-bookable PTM slot. One booking per slot keeps the queue honest.
+model PtmSlot {
+  id         String    @id @default(uuid()) @db.Uuid
+  sessionId  String    @map("session_id") @db.Uuid
+  startTime  DateTime  @map("start_time")
+  endTime    DateTime  @map("end_time")
+  studentId  String?   @map("student_id") @db.Uuid
+  bookedAt   DateTime? @map("booked_at")
+  bookedById String?   @map("booked_by_id") @db.Uuid // parent user id or staff user id
+  notes      String?
+
+  session PtmSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, startTime])
+  @@index([sessionId])
+  @@map("ptm_slots")
+}
 
 model Employee {
   id                String   @id @default(uuid()) @db.Uuid
@@ -593,6 +1106,7 @@ model Employee {
   payrollLines PayrollLine[]
   payrollAdjustments PayrollAdjustment[]
   minuteRates EmployeeMinuteRate[]
+  securityDeposits SecurityDeposit[]
 
   @@index([unitId, status])
   @@index([reportingManagerId])
@@ -617,21 +1131,363 @@ model EmploymentHistory {
   @@map("employment_history")
 }
 
-model HrShift { id String @id @default(uuid()) @db.Uuid name String code String @unique startTime String @map("start_time") endTime String @map("end_time") workingMinutes Int @map("working_minutes") halfDayMinutes Int @map("half_day_minutes") otTriggerTime String? @map("ot_trigger_time") active Boolean @default(true) assignments EmployeeShift[] @@map("hr_shifts") }
-model EmployeeShift { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") shiftId String @map("shift_id") effectiveFrom DateTime @map("effective_from") @db.Date effectiveTo DateTime? @map("effective_to") @db.Date employee Employee @relation(fields:[employeeId],references:[id]) shift HrShift @relation(fields:[shiftId],references:[id]) @@index([employeeId,effectiveFrom]) @@map("employee_shifts") }
-model HrHoliday { id String @id @default(uuid()) @db.Uuid unitId String? @map("unit_id") @db.Uuid date DateTime @db.Date name String paid Boolean @default(true) @@unique([unitId,date]) @@map("hr_holidays") }
-model SalaryComponent { id String @id @default(uuid()) @db.Uuid code String @unique name String type String calculationType String @map("calculation_type") defaultValue Decimal @default(0) @map("default_value") @db.Decimal(12,4) pfApplicable Boolean @default(false) @map("pf_applicable") esicApplicable Boolean @default(false) @map("esic_applicable") ptApplicable Boolean @default(false) @map("pt_applicable") active Boolean @default(true) values EmployeeSalaryComponent[] @@map("salary_components") }
-model EmployeeSalaryComponent { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") componentId String @map("component_id") value Decimal @db.Decimal(12,4) effectiveFrom DateTime @map("effective_from") @db.Date effectiveTo DateTime? @map("effective_to") @db.Date employee Employee @relation(fields:[employeeId],references:[id]) component SalaryComponent @relation(fields:[componentId],references:[id]) @@index([employeeId,effectiveFrom]) @@map("employee_salary_components") }
-model AttendanceImport { id String @id @default(uuid()) @db.Uuid fileName String @map("file_name") source String status String @default("PROCESSED") totalRows Int @default(0) errorRows Int @default(0) importedById String? @map("imported_by_id") @db.Uuid createdAt DateTime @default(now()) @map("created_at") records StaffAttendance[] @@map("attendance_imports") }
-model StaffAttendance { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") @db.Uuid date DateTime @db.Date firstIn DateTime? @map("first_in") lastOut DateTime? @map("last_out") workedMinutes Int @default(0) @map("worked_minutes") lateMinutes Int @default(0) @map("late_minutes") status String @default("PRESENT") exception String? exceptionResolved Boolean @default(false) @map("exception_resolved") correctionReason String? @map("correction_reason") importId String? @map("import_id") @db.Uuid employee Employee @relation(fields:[employeeId],references:[id]) import AttendanceImport? @relation(fields:[importId],references:[id]) @@unique([employeeId,date]) @@index([date,exceptionResolved]) @@map("staff_attendance") }
-model LeavePolicy { id String @id @default(uuid()) @db.Uuid year Int leaveType String allocation Decimal @db.Decimal(6,2) carryForwardCap Decimal @map("carry_forward_cap") @db.Decimal(6,2) effectiveFrom DateTime @map("effective_from") @db.Date active Boolean @default(true) @@unique([year,leaveType]) @@map("leave_policies") }
-model StaffLeave { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") @db.Uuid leaveType String fromDate DateTime @map("from_date") @db.Date toDate DateTime @map("to_date") @db.Date days Decimal @db.Decimal(6,2) reason String status String @default("PENDING_MANAGER") managerApprovedById String? @map("manager_approved_by_id") @db.Uuid hrApprovedById String? @map("hr_approved_by_id") @db.Uuid isLwp Boolean @default(false) @map("is_lwp") createdAt DateTime @default(now()) @map("created_at") employee Employee @relation(fields:[employeeId],references:[id]) @@index([employeeId,fromDate]) @@map("staff_leaves") }
-model LeaveBalance { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") @db.Uuid year Int leaveType String opening Decimal @default(0) @db.Decimal(6,2) allocated Decimal @default(0) @db.Decimal(6,2) used Decimal @default(0) @db.Decimal(6,2) carried Decimal @default(0) @db.Decimal(6,2) employee Employee @relation(fields:[employeeId],references:[id]) @@unique([employeeId,year,leaveType]) @@map("leave_balances") }
-model OvertimeAuthorisation { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") @db.Uuid date DateTime @db.Date expectedMinutes Int @map("expected_minutes") reason String multiplier Decimal @default(1) @db.Decimal(5,2) status String @default("REQUESTED") approvedById String? @map("approved_by_id") @db.Uuid approvedAt DateTime? @map("approved_at") actualMinutes Int? @map("actual_minutes") eligibleMinutes Int? @map("eligible_minutes") createdAt DateTime @default(now()) @map("created_at") employee Employee @relation(fields:[employeeId],references:[id]) @@unique([employeeId,date]) @@map("overtime_authorisations") }
-model PayrollRun { id String @id @default(uuid()) @db.Uuid type String month String unitId String? @map("unit_id") @db.Uuid status String @default("DRAFT") version Int @default(1) createdById String @map("created_by_id") @db.Uuid submittedById String? @map("submitted_by_id") @db.Uuid approvedById String? @map("approved_by_id") @db.Uuid approvedAt DateTime? @map("approved_at") lockedAt DateTime? @map("locked_at") reversalOfId String? @map("reversal_of_id") @db.Uuid createdAt DateTime @default(now()) @map("created_at") lines PayrollLine[] @@unique([type,month,unitId,version]) @@map("payroll_runs") }
-model PayrollLine { id String @id @default(uuid()) @db.Uuid runId String @map("run_id") @db.Uuid employeeId String @map("employee_id") @db.Uuid gross Decimal @db.Decimal(12,2) deductions Decimal @db.Decimal(12,2) employerContributions Decimal @default(0) @map("employer_contributions") @db.Decimal(12,2) net Decimal @db.Decimal(12,2) workedMinutes Int @default(0) @map("worked_minutes") otMinutes Int @default(0) @map("ot_minutes") lwpDays Decimal @default(0) @map("lwp_days") @db.Decimal(6,2) details Json run PayrollRun @relation(fields:[runId],references:[id]) employee Employee @relation(fields:[employeeId],references:[id]) @@unique([runId,employeeId]) @@map("payroll_lines") }
-model PayrollAdjustment { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") month String type String amount Decimal @db.Decimal(12,2) reason String status String @default("APPROVED") sourceRunId String? @map("source_run_id") @db.Uuid createdById String @map("created_by_id") @db.Uuid createdAt DateTime @default(now()) @map("created_at") employee Employee @relation(fields:[employeeId],references:[id]) @@index([employeeId,month]) @@map("payroll_adjustments") }
-model EmployeeMinuteRate { id String @id @default(uuid()) @db.Uuid employeeId String @map("employee_id") @db.Uuid rate Decimal @db.Decimal(10,4) effectiveFrom DateTime @map("effective_from") @db.Date effectiveTo DateTime? @map("effective_to") @db.Date employee Employee @relation(fields:[employeeId],references:[id]) @@index([employeeId,effectiveFrom]) @@map("employee_minute_rates") }
-model StatutoryScheme { id String @id @default(uuid()) @db.Uuid code String name String effectiveFrom DateTime @map("effective_from") @db.Date effectiveTo DateTime? @map("effective_to") @db.Date employeeRate Decimal @map("employee_rate") @db.Decimal(7,4) employerRate Decimal @default(0) @map("employer_rate") @db.Decimal(7,4) wageCeiling Decimal? @map("wage_ceiling") @db.Decimal(12,2) calculationBasis String @map("calculation_basis") active Boolean @default(true) slabs StatutorySlab[] @@index([code,effectiveFrom]) @@map("statutory_schemes") }
-model StatutorySlab { id String @id @default(uuid()) @db.Uuid schemeId String @map("scheme_id") @db.Uuid minAmount Decimal @map("min_amount") @db.Decimal(12,2) maxAmount Decimal? @map("max_amount") @db.Decimal(12,2) deduction Decimal @db.Decimal(12,2) scheme StatutoryScheme @relation(fields:[schemeId],references:[id]) @@map("statutory_slabs") }
-model AppSetting { key String @id value Json updatedById String? @map("updated_by_id") @db.Uuid updatedAt DateTime @updatedAt @map("updated_at") @@map("app_settings") }
+model HrShift {
+  id String @id @default(uuid()) @db.Uuid
+  name String
+  code String @unique
+  startTime String @map("start_time")
+  endTime String @map("end_time")
+  workingMinutes Int @map("working_minutes")
+  halfDayMinutes Int @map("half_day_minutes")
+  otTriggerTime String? @map("ot_trigger_time")
+  active Boolean @default(true)
+  assignments EmployeeShift[]
+  @@map("hr_shifts")
+}
+
+model EmployeeShift {
+  id String @id @default(uuid()) @db.Uuid
+  employeeId String @map("employee_id") @db.Uuid
+  shiftId String @map("shift_id") @db.Uuid
+  effectiveFrom DateTime @map("effective_from") @db.Date
+  effectiveTo DateTime? @map("effective_to") @db.Date
+  employee Employee @relation(fields:[employeeId],references:[id])
+  shift HrShift @relation(fields:[shiftId],references:[id])
+  @@index([employeeId,effectiveFrom])
+  @@map("employee_shifts")
+}
+
+model HrHoliday {
+  id String @id @default(uuid()) @db.Uuid
+  unitId String? @map("unit_id") @db.Uuid
+  date DateTime @db.Date
+  name String
+  paid Boolean @default(true)
+  @@unique([unitId,date])
+  @@map("hr_holidays")
+}
+
+model SalaryComponent {
+  id String @id @default(uuid()) @db.Uuid
+  code String @unique
+  name String
+  type String
+  calculationType String @map("calculation_type")
+  defaultValue Decimal @default(0) @map("default_value") @db.Decimal(12,4)
+  pfApplicable Boolean @default(false) @map("pf_applicable")
+  esicApplicable Boolean @default(false) @map("esic_applicable")
+  ptApplicable Boolean @default(false) @map("pt_applicable")
+  active Boolean @default(true)
+  values EmployeeSalaryComponent[]
+  @@map("salary_components")
+}
+
+model EmployeeSalaryComponent {
+  id String @id @default(uuid()) @db.Uuid
+  employeeId String @map("employee_id") @db.Uuid
+  componentId String @map("component_id") @db.Uuid
+  value Decimal @db.Decimal(12,4)
+  effectiveFrom DateTime @map("effective_from") @db.Date
+  effectiveTo DateTime? @map("effective_to") @db.Date
+  employee Employee @relation(fields:[employeeId],references:[id])
+  component SalaryComponent @relation(fields:[componentId],references:[id])
+  @@index([employeeId,effectiveFrom])
+  @@map("employee_salary_components")
+}
+
+model AttendanceImport {
+  id String @id @default(uuid()) @db.Uuid
+  fileName String @map("file_name")
+  source String
+  status String @default("PROCESSED")
+  totalRows Int @default(0)
+  errorRows Int @default(0)
+  importedById String? @map("imported_by_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  records StaffAttendance[]
+  @@map("attendance_imports")
+}
+
+model StaffAttendance {
+  id String @id @default(uuid()) @db.Uuid
+  employeeId String @map("employee_id") @db.Uuid
+  date DateTime @db.Date
+  firstIn DateTime? @map("first_in")
+  lastOut DateTime? @map("last_out")
+  workedMinutes Int @default(0) @map("worked_minutes")
+  lateMinutes Int @default(0) @map("late_minutes")
+  status String @default("PRESENT")
+  exception String?
+  exceptionResolved Boolean @default(false) @map("exception_resolved")
+  correctionReason String? @map("correction_reason")
+  importId String? @map("import_id") @db.Uuid
+  employee Employee @relation(fields:[employeeId],references:[id])
+  import AttendanceImport? @relation(fields:[importId],references:[id])
+  @@unique([employeeId,date])
+  @@index([date,exceptionResolved])
+  @@map("staff_attendance")
+}
+
+model LeavePolicy {
+  id String @id @default(uuid()) @db.Uuid
+  year Int
+  leaveType String
+  allocation Decimal @db.Decimal(6,2)
+  carryForwardCap Decimal @map("carry_forward_cap") @db.Decimal(6,2)
+  effectiveFrom DateTime @map("effective_from") @db.Date
+  active Boolean @default(true)
+  @@unique([year,leaveType])
+  @@map("leave_policies")
+}
+
+model StaffLeave {
+  id String @id @default(uuid()) @db.Uuid
+  employeeId String @map("employee_id") @db.Uuid
+  leaveType String
+  fromDate DateTime @map("from_date") @db.Date
+  toDate DateTime @map("to_date") @db.Date
+  days Decimal @db.Decimal(6,2)
+  reason String
+  status String @default("PENDING_MANAGER")
+  managerApprovedById String? @map("manager_approved_by_id") @db.Uuid
+  hrApprovedById String? @map("hr_approved_by_id") @db.Uuid
+  isLwp Boolean @default(false) @map("is_lwp")
+  createdAt DateTime @default(now()) @map("created_at")
+  employee Employee @relation(fields:[employeeId],references:[id])
+  @@index([employeeId,fromDate])
+  @@map("staff_leaves")
+}
+
+model LeaveBalance {
+  id String @id @default(uuid()) @db.Uuid
+  employeeId String @map("employee_id") @db.Uuid
+  year Int
+  leaveType String
+  opening Decimal @default(0) @db.Decimal(6,2)
+  allocated Decimal @default(0) @db.Decimal(6,2)
+  used Decimal @default(0) @db.Decimal(6,2)
+  carried Decimal @default(0) @db.Decimal(6,2)
+  employee Employee @relation(fields:[employeeId],references:[id])
+  @@unique([employeeId,year,leaveType])
+  @@map("leave_balances")
+}
+
+model OvertimeAuthorisation {
+  id String @id @default(uuid()) @db.Uuid
+  employeeId String @map("employee_id") @db.Uuid
+  date DateTime @db.Date
+  expectedMinutes Int @map("expected_minutes")
+  reason String
+  multiplier Decimal @default(1) @db.Decimal(5,2)
+  status String @default("REQUESTED")
+  approvedById String? @map("approved_by_id") @db.Uuid
+  approvedAt DateTime? @map("approved_at")
+  actualMinutes Int? @map("actual_minutes")
+  eligibleMinutes Int? @map("eligible_minutes")
+  createdAt DateTime @default(now()) @map("created_at")
+  employee Employee @relation(fields:[employeeId],references:[id])
+  @@unique([employeeId,date])
+  @@map("overtime_authorisations")
+}
+
+model PayrollRun {
+  id String @id @default(uuid()) @db.Uuid
+  type String
+  month String
+  unitId String? @map("unit_id") @db.Uuid
+  status String @default("DRAFT")
+  version Int @default(1)
+  createdById String @map("created_by_id") @db.Uuid
+  submittedById String? @map("submitted_by_id") @db.Uuid
+  approvedById String? @map("approved_by_id") @db.Uuid
+  approvedAt DateTime? @map("approved_at")
+  lockedAt DateTime? @map("locked_at")
+  reversalOfId String? @map("reversal_of_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  lines PayrollLine[]
+  @@unique([type,month,unitId,version])
+  @@map("payroll_runs")
+}
+
+model PayrollLine {
+  id String @id @default(uuid()) @db.Uuid
+  runId String @map("run_id") @db.Uuid
+  employeeId String @map("employee_id") @db.Uuid
+  gross Decimal @db.Decimal(12,2)
+  deductions Decimal @db.Decimal(12,2)
+  employerContributions Decimal @default(0) @map("employer_contributions") @db.Decimal(12,2)
+  net Decimal @db.Decimal(12,2)
+  workedMinutes Int @default(0) @map("worked_minutes")
+  otMinutes Int @default(0) @map("ot_minutes")
+  lwpDays Decimal @default(0) @map("lwp_days") @db.Decimal(6,2)
+  details Json
+  run PayrollRun @relation(fields:[runId],references:[id])
+  employee Employee @relation(fields:[employeeId],references:[id])
+  @@unique([runId,employeeId])
+  @@map("payroll_lines")
+}
+
+model PayrollAdjustment {
+  id String @id @default(uuid()) @db.Uuid
+  employeeId String @map("employee_id") @db.Uuid
+  month String
+  type String
+  amount Decimal @db.Decimal(12,2)
+  reason String
+  status String @default("APPROVED")
+  sourceRunId String? @map("source_run_id") @db.Uuid
+  createdById String @map("created_by_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  employee Employee @relation(fields:[employeeId],references:[id])
+  @@index([employeeId,month])
+  @@map("payroll_adjustments")
+}
+
+model EmployeeMinuteRate {
+  id String @id @default(uuid()) @db.Uuid
+  employeeId String @map("employee_id") @db.Uuid
+  rate Decimal @db.Decimal(10,4)
+  effectiveFrom DateTime @map("effective_from") @db.Date
+  effectiveTo DateTime? @map("effective_to") @db.Date
+  employee Employee @relation(fields:[employeeId],references:[id])
+  @@index([employeeId,effectiveFrom])
+  @@map("employee_minute_rates")
+}
+
+model StatutoryScheme {
+  id String @id @default(uuid()) @db.Uuid
+  code String
+  name String
+  effectiveFrom DateTime @map("effective_from") @db.Date
+  effectiveTo DateTime? @map("effective_to") @db.Date
+  employeeRate Decimal @map("employee_rate") @db.Decimal(7,4)
+  employerRate Decimal @default(0) @map("employer_rate") @db.Decimal(7,4)
+  wageCeiling Decimal? @map("wage_ceiling") @db.Decimal(12,2)
+  calculationBasis String @map("calculation_basis")
+  active Boolean @default(true)
+  slabs StatutorySlab[]
+  @@index([code,effectiveFrom])
+  @@map("statutory_schemes")
+}
+
+model StatutorySlab {
+  id String @id @default(uuid()) @db.Uuid
+  schemeId String @map("scheme_id") @db.Uuid
+  minAmount Decimal @map("min_amount") @db.Decimal(12,2)
+  maxAmount Decimal? @map("max_amount") @db.Decimal(12,2)
+  deduction Decimal @db.Decimal(12,2)
+  scheme StatutoryScheme @relation(fields:[schemeId],references:[id])
+  @@map("statutory_slabs")
+}
+
+// ─────────────────────── FRONT DESK ───────────────────────
+
+// A security deposit is money the centre holds, not income: it sits as a
+// liability until it is returned or forfeited, and both endings need a reason.
+model SecurityDeposit {
+  id          String    @id @default(uuid()) @db.Uuid
+  unitId      String    @map("unit_id") @db.Uuid
+  employeeId  String?   @map("employee_id") @db.Uuid
+  studentId   String?   @map("student_id") @db.Uuid
+  amount      Decimal   @db.Decimal(10, 2)
+  status      String    @default("HELD") // HELD | RETURNED | FORFEITED
+  collectedAt DateTime  @default(now()) @map("collected_at")
+  closedAt    DateTime? @map("closed_at")
+  reason      String? // why it was returned or forfeited
+  notes       String?
+  createdById String?   @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  unit     Unit      @relation(fields: [unitId], references: [id])
+  employee Employee? @relation(fields: [employeeId], references: [id])
+  student  Student?  @relation(fields: [studentId], references: [id])
+
+  @@index([unitId, status])
+  @@index([employeeId])
+  @@index([studentId])
+  @@map("security_deposits")
+}
+
+// Reception's visitor book. The gate log is a safety record: who is in the
+// building, on whose authority, and when they left.
+model GuestLog {
+  id           String    @id @default(uuid()) @db.Uuid
+  unitId       String    @map("unit_id") @db.Uuid
+  guestName    String    @map("guest_name")
+  phone        String?
+  organisation String?
+  purpose      String // PARENT_VISIT | ADMISSION_ENQUIRY | VENDOR | INTERVIEW | OFFICIAL | OTHER
+  hostName     String?   @map("host_name")
+  badgeNo      String?   @map("badge_no")
+  studentId    String?   @map("student_id") @db.Uuid
+  inAt         DateTime  @default(now()) @map("in_at")
+  outAt        DateTime? @map("out_at")
+  notes        String?
+  createdById  String?   @map("created_by_id") @db.Uuid
+
+  unit Unit @relation(fields: [unitId], references: [id])
+
+  @@index([unitId, inAt])
+  @@map("guest_logs")
+}
+
+// ─────────────────────── DOCUMENT STORE ───────────────────────
+
+// Per-student files (birth certificate, medical note, signed PTM form…).
+// Deletion is manual and audited — the retention job never touches these.
+model StudentDocument {
+  id          String    @id @default(uuid()) @db.Uuid
+  studentId   String    @map("student_id") @db.Uuid
+  unitId      String    @map("unit_id") @db.Uuid
+  kind        String    @default("OTHER") // BIRTH_CERT | AADHAAR | PHOTO | MEDICAL | REPORT_CARD | PTM_FORM | OTHER
+  fileName    String    @map("file_name")
+  mimeType    String    @map("mime_type")
+  sizeBytes   Int       @map("size_bytes")
+  storageKey  String    @unique @map("storage_key")
+  driver      String    @default("LOCAL") // LOCAL | S3
+  notes       String?
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedById String?   @map("deleted_by_id") @db.Uuid
+
+  student Student @relation(fields: [studentId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@index([studentId, kind])
+  @@index([unitId, createdAt])
+  @@map("student_documents")
+}
+
+// ─────────────────────── INVENTORY ───────────────────────
+
+// One row per item that dropped to (or below) its reorder level. Raised by the
+// daily tick and by every stock movement, so the alert exists the moment the
+// shelf is low rather than whenever someone opens a report.
+model ReorderAlert {
+  id           String    @id @default(uuid()) @db.Uuid
+  itemId       String    @map("item_id") @db.Uuid
+  unitId       String?   @map("unit_id") @db.Uuid
+  quantity     Int
+  reorderLevel Int       @map("reorder_level")
+  status       String    @default("OPEN") // OPEN | ACKNOWLEDGED | RESOLVED
+  note         String?
+  raisedAt     DateTime  @default(now()) @map("raised_at")
+  resolvedAt   DateTime? @map("resolved_at")
+  resolvedById String?   @map("resolved_by_id") @db.Uuid
+
+  item InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([status, raisedAt])
+  @@index([itemId, status])
+  @@map("reorder_alerts")
+}
+
+model AppSetting {
+  key String @id
+  value Json
+  updatedById String? @map("updated_by_id") @db.Uuid
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("app_settings")
+}
+

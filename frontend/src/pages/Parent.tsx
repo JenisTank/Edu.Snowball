@@ -4,10 +4,26 @@
 // registered phone + child's admission number. Installable PWA.
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useMemo, useState } from 'react';
+import { LanguageSwitch, useI18n } from '../lib/i18n';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  BellRing, CalendarDays, ChevronLeft, ChevronRight, GraduationCap,
-  IndianRupee, LogOut, Printer, Smile, Sun, UserRound, FolderOpen, MessageCircle, Send, Download, BellOff,
+  BellRing,
+  CalendarClock,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  GraduationCap,
+  IndianRupee,
+  LogOut,
+  Printer,
+  Smile,
+  Sun,
+  UserRound,
+  FolderOpen,
+  MessageCircle,
+  Send,
+  Download,
+  BellOff,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { APP_THEMES, selectTheme } from '../lib/appTheme';
@@ -15,17 +31,41 @@ import { loadTheme, themesEqual, type Theme } from '@snowball/ui/theme';
 
 // ── tiny parent-scoped API client (separate from staff session) ──
 const pstore = {
-  get: () => { try { return localStorage.getItem('bb_parent_token'); } catch { return null; } },
-  set: (t: string) => {
-    try { localStorage.setItem('bb_parent_token', t); } catch { /* ignore */ }
-    try { document.cookie = `bb_token=${encodeURIComponent(t)}; path=/; max-age=604800; SameSite=None; Secure`; } catch { /* for receipt print tabs */ }
+  get: () => {
+    try {
+      return localStorage.getItem('bb_parent_token');
+    } catch {
+      return null;
+    }
   },
-  del: () => { try { localStorage.removeItem('bb_parent_token'); } catch { /* ignore */ } },
+  set: (t: string) => {
+    try {
+      localStorage.setItem('bb_parent_token', t);
+    } catch {
+      /* ignore */
+    }
+    try {
+      document.cookie = `bb_token=${encodeURIComponent(t)}; path=/; max-age=604800; SameSite=None; Secure`;
+    } catch {
+      /* for receipt print tabs */
+    }
+  },
+  del: () => {
+    try {
+      localStorage.removeItem('bb_parent_token');
+    } catch {
+      /* ignore */
+    }
+  },
 };
 async function papi(path: string, opts: RequestInit = {}) {
   const res = await fetch(`/api${path}`, {
     ...opts,
-    headers: { 'Content-Type': 'application/json', ...(pstore.get() ? { 'x-bb-token': pstore.get()! } : {}), ...(opts.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(pstore.get() ? { 'x-bb-token': pstore.get()! } : {}),
+      ...(opts.headers ?? {}),
+    },
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.message ?? 'Something went wrong');
@@ -37,18 +77,28 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 // ─────────────────────────── Login ───────────────────────────
 function ParentLogin({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   const [phone, setPhone] = useState('');
   const [admissionNo, setAdmissionNo] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
-    e.preventDefault(); setBusy(true); setErr('');
+    e.preventDefault();
+    setBusy(true);
+    setErr('');
     try {
-      const r = await papi('/parent/login', { method: 'POST', body: JSON.stringify({ phone, admissionNo }) });
+      const r = await papi('/parent/login', {
+        method: 'POST',
+        body: JSON.stringify({ phone, admissionNo }),
+      });
       pstore.set(r.accessToken);
       onDone();
-    } catch (ex: any) { setErr(ex.message); } finally { setBusy(false); }
+    } catch (ex: any) {
+      setErr(ex.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -57,20 +107,49 @@ function ParentLogin({ onDone }: { onDone: () => void }) {
         <div className="mb-6 text-center">
           <div className="text-5xl">🐝</div>
           <h1 className="mt-2 font-heading text-2xl font-extrabold text-honey-700">BumbleB Kidz</h1>
-          <p className="text-[13px] font-semibold text-stone-500">Parent Portal · see your little bee bloom</p>
+          <p className="text-[13px] font-semibold text-stone-500">
+            {t('parent.title')} · see your little bee bloom
+          </p>
+          <div className="mt-3 flex justify-center">
+            <LanguageSwitch className="neo" />
+          </div>
         </div>
         <form onSubmit={submit} className="card space-y-4 p-6">
-          {err && <div className="rounded-xl bg-rose-50 px-3 py-2 text-[12.5px] font-bold text-rose-600">{err}</div>}
+          {err && (
+            <div className="rounded-xl bg-rose-50 px-3 py-2 text-[12.5px] font-bold text-rose-600">
+              {err}
+            </div>
+          )}
           <div>
-            <label className="mb-1 block text-[11px] font-extrabold uppercase tracking-wide text-stone-500">Registered mobile</label>
-            <input className="input" placeholder="+91 9XXXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} required />
+            <label className="mb-1 block text-[11px] font-extrabold uppercase tracking-wide text-stone-500">
+              {t('parent.phone')}
+            </label>
+            <input
+              className="input"
+              placeholder="+91 9XXXXXXXXX"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+            />
           </div>
           <div>
-            <label className="mb-1 block text-[11px] font-extrabold uppercase tracking-wide text-stone-500">Child's admission no.</label>
-            <input className="input" placeholder="BB-U1-2627-0001" value={admissionNo} onChange={e => setAdmissionNo(e.target.value)} required />
+            <label className="mb-1 block text-[11px] font-extrabold uppercase tracking-wide text-stone-500">
+              {t('parent.admissionNo')}
+            </label>
+            <input
+              className="input"
+              placeholder="BB-U1-2627-0001"
+              value={admissionNo}
+              onChange={(e) => setAdmissionNo(e.target.value)}
+              required
+            />
           </div>
-          <button className="btn-primary w-full py-3" disabled={busy}>{busy ? 'Checking…' : 'Enter the hive 🍯'}</button>
-          <p className="text-center text-[10.5px] font-semibold text-stone-400">Both are printed on your fee receipt. Trouble logging in? Call your centre.</p>
+          <button className="btn-primary w-full py-3" disabled={busy}>
+            {busy ? t('parent.checking') : t('parent.enter') + ' 🍯'}
+          </button>
+          <p className="text-center text-[10.5px] font-semibold text-stone-400">
+            Both are printed on your fee receipt. Trouble logging in? Call your centre.
+          </p>
         </form>
       </div>
     </div>
@@ -80,8 +159,13 @@ function ParentLogin({ onDone }: { onDone: () => void }) {
 // ───────────────────── Attendance calendar ─────────────────────
 function AttendanceCard({ childId }: { childId: string }) {
   const now = new Date();
-  const [ym, setYm] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
-  const { data } = useQuery({ queryKey: ['p-att', childId, ym], queryFn: () => papi(`/parent/child/${childId}/attendance?month=${ym}`) });
+  const [ym, setYm] = useState(
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+  );
+  const { data } = useQuery({
+    queryKey: ['p-att', childId, ym],
+    queryFn: () => papi(`/parent/child/${childId}/attendance?month=${ym}`),
+  });
   const [y, m] = ym.split('-').map(Number);
   const first = new Date(y, m - 1, 1);
   const days = new Date(y, m, 0).getDate();
@@ -91,31 +175,64 @@ function AttendanceCard({ childId }: { childId: string }) {
     const n = new Date(y, m - 1 + d, 1);
     setYm(`${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`);
   };
-  const tone: Record<string, string> = { PRESENT: 'bg-emerald-400 text-white', ABSENT: 'bg-rose-400 text-white', LEAVE: 'bg-sky-400 text-white' };
+  const tone: Record<string, string> = {
+    PRESENT: 'bg-emerald-400 text-white',
+    ABSENT: 'bg-rose-400 text-white',
+    LEAVE: 'bg-sky-400 text-white',
+  };
   return (
     <div className="card p-5">
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2 font-heading text-[15px] font-extrabold"><CalendarDays className="h-4 w-4 text-honey-700" /> Attendance</div>
+        <div className="flex items-center gap-2 font-heading text-[15px] font-extrabold">
+          <CalendarDays className="h-4 w-4 text-honey-700" /> Attendance
+        </div>
         <div className="flex items-center gap-1">
-          <button className="btn-neo-icon !h-7 !w-7" onClick={() => shift(-1)}><ChevronLeft className="h-3.5 w-3.5" /></button>
-          <span className="w-20 text-center text-[12.5px] font-extrabold">{MONTHS[m - 1]} {y}</span>
-          <button className="btn-neo-icon !h-7 !w-7" onClick={() => shift(1)}><ChevronRight className="h-3.5 w-3.5" /></button>
+          <button className="btn-neo-icon !h-7 !w-7" onClick={() => shift(-1)}>
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          <span className="w-20 text-center text-[12.5px] font-extrabold">
+            {MONTHS[m - 1]} {y}
+          </span>
+          <button className="btn-neo-icon !h-7 !w-7" onClick={() => shift(1)}>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
       <div className="grid grid-cols-7 gap-1.5">
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <div key={i} className="text-center text-[10px] font-extrabold text-stone-400">{d}</div>)}
-        {Array.from({ length: first.getDay() }).map((_, i) => <div key={`e${i}`} />)}
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+          <div key={i} className="text-center text-[10px] font-extrabold text-stone-400">
+            {d}
+          </div>
+        ))}
+        {Array.from({ length: first.getDay() }).map((_, i) => (
+          <div key={`e${i}`} />
+        ))}
         {Array.from({ length: days }).map((_, i) => {
           const st = map.get(i + 1);
-          return <div key={i} className={cn('grid h-8 place-items-center rounded-lg text-[11.5px] font-bold',
-            st ? tone[st] : 'bg-stone-100 text-stone-400')}>{i + 1}</div>;
+          return (
+            <div
+              key={i}
+              className={cn(
+                'grid h-8 place-items-center rounded-lg text-[11.5px] font-bold',
+                st ? tone[st] : 'bg-stone-100 text-stone-400',
+              )}
+            >
+              {i + 1}
+            </div>
+          );
         })}
       </div>
       {data && (
         <div className="mt-3 flex gap-2">
-          <span className="chip"><span className="chip-dot bg-emerald-400" /> {data.counts.PRESENT} present</span>
-          <span className="chip"><span className="chip-dot bg-rose-400" /> {data.counts.ABSENT} absent</span>
-          <span className="chip"><span className="chip-dot bg-sky-400" /> {data.counts.LEAVE} leave</span>
+          <span className="chip">
+            <span className="chip-dot bg-emerald-400" /> {data.counts.PRESENT} present
+          </span>
+          <span className="chip">
+            <span className="chip-dot bg-rose-400" /> {data.counts.ABSENT} absent
+          </span>
+          <span className="chip">
+            <span className="chip-dot bg-sky-400" /> {data.counts.LEAVE} leave
+          </span>
         </div>
       )}
     </div>
@@ -124,77 +241,139 @@ function AttendanceCard({ childId }: { childId: string }) {
 
 // ───────────────────── Fees card ─────────────────────
 function FeesCard({ childId }: { childId: string }) {
-  const { data: f } = useQuery({ queryKey: ['p-fees', childId], queryFn: () => papi(`/parent/child/${childId}/fees`) });
-  if (!f) return <div className="card p-5 text-[13px] font-semibold text-stone-500">Loading fees…</div>;
-  const pct = f.net > 0 ? Math.min(100, Math.round(f.paid / f.net * 100)) : 100;
+  const { data: f } = useQuery({
+    queryKey: ['p-fees', childId],
+    queryFn: () => papi(`/parent/child/${childId}/fees`),
+  });
+  if (!f)
+    return <div className="card p-5 text-[13px] font-semibold text-stone-500">Loading fees…</div>;
+  const pct = f.net > 0 ? Math.min(100, Math.round((f.paid / f.net) * 100)) : 100;
   return (
     <div className="card p-5">
-      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold"><IndianRupee className="h-4 w-4 text-honey-700" /> Fees · AY 2026-27</div>
+      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold">
+        <IndianRupee className="h-4 w-4 text-honey-700" /> Fees · AY 2026-27
+      </div>
       <div className="mb-1.5 flex items-end justify-between text-[12.5px] font-bold">
         <span className="text-emerald-700">{inr(f.paid)} paid</span>
-        <span className={f.balance > 0 ? 'text-rose-600' : 'text-emerald-700'}>{f.balance > 0 ? `${inr(f.balance)} due` : 'All clear 🎉'}</span>
+        <span className={f.balance > 0 ? 'text-rose-600' : 'text-emerald-700'}>
+          {f.balance > 0 ? `${inr(f.balance)} due` : 'All clear 🎉'}
+        </span>
       </div>
       <div className="h-3 overflow-hidden rounded-full bg-stone-100">
-        <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-emerald-400" style={{ width: `${pct}%` }} />
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-amber-400 to-emerald-400"
+          style={{ width: `${pct}%` }}
+        />
       </div>
-      {f.discount > 0 && <div className="mt-2 text-[11.5px] font-bold text-pink-600">Sibling concession applied: −{inr(f.discount)} 💛</div>}
+      {f.discount > 0 && (
+        <div className="mt-2 text-[11.5px] font-bold text-pink-600">
+          Sibling concession applied: −{inr(f.discount)} 💛
+        </div>
+      )}
       <div className="mt-3 space-y-1.5">
         {f.instalments.map((i: any) => (
-          <div key={i.no} className="flex items-center justify-between rounded-xl bg-cream-50 px-3 py-2 text-[12.5px]">
+          <div
+            key={i.no}
+            className="flex items-center justify-between rounded-xl bg-cream-50 px-3 py-2 text-[12.5px]"
+          >
             <span className="font-bold">Instalment {i.no}</span>
-            <span className="font-semibold text-stone-500">due {new Date(i.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
+            <span className="font-semibold text-stone-500">
+              due{' '}
+              {new Date(i.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+            </span>
             <span className="font-extrabold">{inr(i.amount)}</span>
-            <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-extrabold',
-              i.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : i.status === 'OVERDUE' ? 'bg-rose-100 text-rose-600' : 'bg-sky-100 text-sky-700')}>{i.status}</span>
+            <span
+              className={cn(
+                'rounded-full px-2 py-0.5 text-[10px] font-extrabold',
+                i.status === 'PAID'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : i.status === 'OVERDUE'
+                    ? 'bg-rose-100 text-rose-600'
+                    : 'bg-sky-100 text-sky-700',
+              )}
+            >
+              {i.status}
+            </span>
           </div>
         ))}
       </div>
       {f.receipts.length > 0 && (
         <div className="mt-3">
-          <div className="mb-1 text-[10.5px] font-extrabold uppercase tracking-wide text-stone-400">Receipts</div>
+          <div className="mb-1 text-[10.5px] font-extrabold uppercase tracking-wide text-stone-400">
+            Receipts
+          </div>
           {f.receipts.slice(0, 4).map((r: any) => (
             <div key={r.id} className="flex items-center justify-between py-1 text-[12px]">
               <span className="font-bold">{r.receiptNo}</span>
               <span className="font-semibold text-stone-500">{inr(r.amount)}</span>
-              <button className="btn-neo-icon !h-7 !w-7" onClick={() => window.open(`/api/fees/receipt/${r.id}/print`, '_blank')}><Printer className="h-3.5 w-3.5" /></button>
+              <button
+                className="btn-neo-icon !h-7 !w-7"
+                onClick={() => window.open(`/api/fees/receipt/${r.id}/print`, '_blank')}
+              >
+                <Printer className="h-3.5 w-3.5" />
+              </button>
             </div>
           ))}
         </div>
       )}
-      <p className="mt-3 text-center text-[10px] font-semibold text-stone-400">Online payment (UPI / Razorpay) activates at go-live — pay at your centre for now.</p>
+      <PayUpi childId={childId} balance={Number(f.balance || 0)} />
     </div>
   );
 }
 
 // ───────────────────── Messages feed ─────────────────────
 function MessagesCard() {
-  const { data: msgs = [] } = useQuery({ queryKey: ['p-msgs'], queryFn: () => papi('/parent/messages') });
+  const { data: msgs = [] } = useQuery({
+    queryKey: ['p-msgs'],
+    queryFn: () => papi('/parent/messages'),
+  });
   const LABEL: Record<string, [string, string]> = {
-    ANNOUNCEMENT: ['📣', 'bg-amber-50'], ABSENCE_ALERT: ['🏠', 'bg-rose-50'],
-    FEE_REMINDER: ['💰', 'bg-sky-50'], RECEIPT: ['🧾', 'bg-emerald-50'],
+    ANNOUNCEMENT: ['📣', 'bg-amber-50'],
+    ABSENCE_ALERT: ['🏠', 'bg-rose-50'],
+    FEE_REMINDER: ['💰', 'bg-sky-50'],
+    RECEIPT: ['🧾', 'bg-emerald-50'],
   };
   return (
     <div className="card p-5">
-      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold"><BellRing className="h-4 w-4 text-honey-700" /> Updates</div>
+      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold">
+        <BellRing className="h-4 w-4 text-honey-700" /> Updates
+      </div>
       <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-        {msgs.length === 0 && <div className="py-4 text-center text-[12px] font-semibold text-stone-400">No updates yet.</div>}
+        {msgs.length === 0 && (
+          <div className="py-4 text-center text-[12px] font-semibold text-stone-400">
+            No updates yet.
+          </div>
+        )}
         {msgs.map((m: any) => {
           const [icon, bg] = LABEL[m.type] ?? ['🔔', 'bg-stone-50'];
           return (
             <div key={m.id} className={cn('rounded-xl px-3 py-2.5', bg)}>
               <div className="flex items-center gap-2 text-[12.5px] font-extrabold">
                 <span>{icon}</span>
-                <span>{m.type === 'ANNOUNCEMENT' ? m.payload?.title
-                  : m.type === 'ABSENCE_ALERT' ? `${m.payload?.child ?? m.student?.firstName} was absent`
-                  : m.type === 'FEE_REMINDER' ? `Fee reminder · instalment ${m.payload?.instalmentNo}`
-                  : `Receipt ${m.payload?.receiptNo}`}</span>
-                <span className="ml-auto text-[10px] font-semibold text-stone-400">{new Date(m.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
+                <span>
+                  {m.type === 'ANNOUNCEMENT'
+                    ? m.payload?.title
+                    : m.type === 'ABSENCE_ALERT'
+                      ? `${m.payload?.child ?? m.student?.firstName} was absent`
+                      : m.type === 'FEE_REMINDER'
+                        ? `Fee reminder · instalment ${m.payload?.instalmentNo}`
+                        : `Receipt ${m.payload?.receiptNo}`}
+                </span>
+                <span className="ml-auto text-[10px] font-semibold text-stone-400">
+                  {new Date(m.createdAt).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                  })}
+                </span>
               </div>
               <div className="mt-0.5 text-[11.5px] font-semibold text-stone-600">
-                {m.type === 'ANNOUNCEMENT' ? m.payload?.body
-                  : m.type === 'FEE_REMINDER' ? `${inr(m.payload?.amountDue)} due by ${new Date(m.payload?.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`
-                  : m.type === 'RECEIPT' ? `${inr(m.payload?.amount)} received — thank you!`
-                  : `on ${m.payload?.date} · if this is unexpected, call your centre`}
+                {m.type === 'ANNOUNCEMENT'
+                  ? m.payload?.body
+                  : m.type === 'FEE_REMINDER'
+                    ? `${inr(m.payload?.amountDue)} due by ${new Date(m.payload?.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`
+                    : m.type === 'RECEIPT'
+                      ? `${inr(m.payload?.amount)} received — thank you!`
+                      : `on ${m.payload?.date} · if this is unexpected, call your centre`}
               </div>
             </div>
           );
@@ -204,20 +383,30 @@ function MessagesCard() {
   );
 }
 
-
 function urlBase64ToUint8Array(value: string) {
-  const padding = '='.repeat((4 - value.length % 4) % 4);
+  const padding = '='.repeat((4 - (value.length % 4)) % 4);
   const raw = atob((value + padding).replace(/-/g, '+').replace(/_/g, '/'));
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
 function PushToggle() {
-  const [state, setState] = useState<'loading'|'on'|'off'|'unsupported'>('loading');
+  const [state, setState] = useState<'loading' | 'on' | 'off' | 'unsupported'>('loading');
   const [error, setError] = useState('');
-  const { data: config } = useQuery({ queryKey: ['p-push-config'], queryFn: () => papi('/parent/push/config') });
+  const { data: config } = useQuery({
+    queryKey: ['p-push-config'],
+    queryFn: () => papi('/parent/push/config'),
+  });
   useEffect(() => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || Notification.permission === 'denied') return setState('unsupported');
-    navigator.serviceWorker.ready.then(r => r.pushManager.getSubscription()).then(s => setState(s ? 'on' : 'off')).catch(() => setState('off'));
+    if (
+      !('serviceWorker' in navigator) ||
+      !('PushManager' in window) ||
+      Notification.permission === 'denied'
+    )
+      return setState('unsupported');
+    navigator.serviceWorker.ready
+      .then((r) => r.pushManager.getSubscription())
+      .then((s) => setState(s ? 'on' : 'off'))
+      .catch(() => setState('off'));
   }, []);
   async function toggle() {
     setError('');
@@ -225,37 +414,515 @@ function PushToggle() {
       const reg = await navigator.serviceWorker.ready;
       const current = await reg.pushManager.getSubscription();
       if (current) {
-        await papi('/parent/push/subscribe', { method: 'DELETE', body: JSON.stringify({ endpoint: current.endpoint }) });
-        await current.unsubscribe(); setState('off'); return;
+        await papi('/parent/push/subscribe', {
+          method: 'DELETE',
+          body: JSON.stringify({ endpoint: current.endpoint }),
+        });
+        await current.unsubscribe();
+        setState('off');
+        return;
       }
-      if (!config?.publicKey) throw new Error('Notifications are not configured by the school yet.');
+      if (!config?.publicKey)
+        throw new Error('Notifications are not configured by the school yet.');
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') throw new Error('Notification permission was not granted.');
-      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(config.publicKey) });
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(config.publicKey),
+      });
       await papi('/parent/push/subscribe', { method: 'POST', body: JSON.stringify(sub.toJSON()) });
       setState('on');
-    } catch (e: any) { setError(e.message); }
+    } catch (e: any) {
+      setError(e.message);
+    }
   }
-  return <div className="card p-4"><div className="flex items-center gap-3"><BellRing className="h-5 w-5 text-honey-700"/><div className="flex-1"><div className="text-[13px] font-extrabold">Phone notifications</div><div className="text-[11px] font-semibold text-stone-500">Absence alerts, fee reminders and announcements</div></div><button disabled={state==='loading'||state==='unsupported'} onClick={toggle} className="btn-neo !px-3 !py-1.5 text-[11px]">{state==='on' ? <><BellOff className="mr-1 inline h-3 w-3"/>Turn off</> : 'Turn on'}</button></div>{state==='unsupported' && <p className="mt-2 text-[11px] font-semibold text-stone-500">Push is unavailable or blocked in this browser.</p>}{error && <p className="mt-2 text-[11px] font-bold text-rose-600">{error}</p>}</div>;
+  return (
+    <div className="card p-4">
+      <div className="flex items-center gap-3">
+        <BellRing className="h-5 w-5 text-honey-700" />
+        <div className="flex-1">
+          <div className="text-[13px] font-extrabold">Phone notifications</div>
+          <div className="text-[11px] font-semibold text-stone-500">
+            Absence alerts, fee reminders and announcements
+          </div>
+        </div>
+        <button
+          disabled={state === 'loading' || state === 'unsupported'}
+          onClick={toggle}
+          className="btn-neo !px-3 !py-1.5 text-[11px]"
+        >
+          {state === 'on' ? (
+            <>
+              <BellOff className="mr-1 inline h-3 w-3" />
+              Turn off
+            </>
+          ) : (
+            'Turn on'
+          )}
+        </button>
+      </div>
+      {state === 'unsupported' && (
+        <p className="mt-2 text-[11px] font-semibold text-stone-500">
+          Push is unavailable or blocked in this browser.
+        </p>
+      )}
+      {error && <p className="mt-2 text-[11px] font-bold text-rose-600">{error}</p>}
+    </div>
+  );
 }
 
 function ProfileCard({ childId }: { childId: string }) {
-  const { data: p } = useQuery({ queryKey: ['p-profile', childId], queryFn: () => papi(`/parent/child/${childId}/profile`) });
+  const { data: p } = useQuery({
+    queryKey: ['p-profile', childId],
+    queryFn: () => papi(`/parent/child/${childId}/profile`),
+  });
   if (!p) return <div className="card p-5">Loading profile…</div>;
-  const rows = [['Admission no.', p.admissionNo], ['Date of birth', new Date(p.dob).toLocaleDateString('en-IN')], ['Academic year', p.academicYear], ['Programme', `${p.programme?.name} · ${p.programme?.tierName}`], ['Batch', `${p.batch?.name} (${p.batch?.startTime}–${p.batch?.endTime})`], ['Centre', p.unit?.name], ['Area', p.addressArea || '—']];
-  return <div className="card p-5"><div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold"><UserRound className="h-4 w-4 text-honey-700"/>My Child</div><div className="grid gap-2 sm:grid-cols-2">{rows.map(([k,v]) => <div key={k} className="rounded-xl bg-white/60 px-3 py-2"><div className="text-[10px] font-extrabold uppercase text-stone-400">{k}</div><div className="text-[12.5px] font-bold">{v}</div></div>)}</div><p className="mt-3 text-[10.5px] font-semibold text-stone-400">This parent view intentionally excludes confidential health, infirmary, IEP and child-support records.</p></div>;
+  const rows = [
+    ['Admission no.', p.admissionNo],
+    ['Date of birth', new Date(p.dob).toLocaleDateString('en-IN')],
+    ['Academic year', p.academicYear],
+    ['Programme', `${p.programme?.name} · ${p.programme?.tierName}`],
+    ['Batch', `${p.batch?.name} (${p.batch?.startTime}–${p.batch?.endTime})`],
+    ['Centre', p.unit?.name],
+    ['Area', p.addressArea || '—'],
+  ];
+  return (
+    <div className="card p-5">
+      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold">
+        <UserRound className="h-4 w-4 text-honey-700" />
+        My Child
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {rows.map(([k, v]) => (
+          <div key={k} className="rounded-xl bg-white/60 px-3 py-2">
+            <div className="text-[10px] font-extrabold uppercase text-stone-400">{k}</div>
+            <div className="text-[12.5px] font-bold">{v}</div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-[10.5px] font-semibold text-stone-400">
+        This parent view intentionally excludes confidential health, infirmary, IEP and
+        child-support records.
+      </p>
+    </div>
+  );
 }
 
 function DocumentsCard({ childId }: { childId: string }) {
-  const { data: docs = [] } = useQuery({ queryKey: ['p-docs', childId], queryFn: () => papi(`/parent/child/${childId}/documents`) });
-  return <div className="card p-5"><div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold"><FolderOpen className="h-4 w-4 text-honey-700"/>Documents vault</div>{!docs.length && <div className="py-5 text-center text-[12px] font-semibold text-stone-400">Issued certificates and receipts will appear here.</div>}<div className="space-y-2">{docs.map((d:any)=><div key={`${d.kind}-${d.id}`} className="flex items-center gap-3 rounded-xl bg-white/60 px-3 py-2"><span>{d.kind==='RECEIPT'?'🧾':'📜'}</span><div className="min-w-0 flex-1"><div className="truncate text-[12.5px] font-extrabold">{d.title}</div><div className="text-[10.5px] font-semibold text-stone-500">{d.number} · {new Date(d.date).toLocaleDateString('en-IN')}</div></div><button aria-label={`Open ${d.title}`} className="btn-neo-icon" onClick={()=>window.open(d.url,'_blank')}><Download className="h-3.5 w-3.5"/></button></div>)}</div></div>;
+  const { t } = useI18n();
+  const { data: docs = [] } = useQuery({
+    queryKey: ['p-docs', childId],
+    queryFn: () => papi(`/parent/child/${childId}/documents`),
+  });
+  return (
+    <div className="card p-5">
+      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold">
+        <FolderOpen className="h-4 w-4 text-honey-700" />
+        {t('parent.documents')}
+      </div>
+      {!docs.length && (
+        <div className="py-5 text-center text-[12px] font-semibold text-stone-400">
+          Issued certificates and receipts will appear here.
+        </div>
+      )}
+      <div className="space-y-2">
+        {docs.map((d: any) => (
+          <div
+            key={`${d.kind}-${d.id}`}
+            className="flex items-center gap-3 rounded-xl bg-white/60 px-3 py-2"
+          >
+            <span>{d.kind === 'RECEIPT' ? '🧾' : '📜'}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[12.5px] font-extrabold">{d.title}</div>
+              <div className="text-[10.5px] font-semibold text-stone-500">
+                {d.number} · {new Date(d.date).toLocaleDateString('en-IN')}
+              </div>
+            </div>
+            <button
+              aria-label={`${t('parent.downloadPdf')} — ${d.title}`}
+              title={t('parent.downloadPdf')}
+              className="btn-neo-icon"
+              onClick={() => window.open(d.pdfUrl || d.url, '_blank')}
+            >
+              <Download className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function ConversationCard({ childId }: { childId: string }) {
-  const qc = useQueryClient(); const [body,setBody]=useState(''); const [err,setErr]=useState('');
-  const { data: msgs=[] } = useQuery({ queryKey:['p-conversation',childId], queryFn:()=>papi(`/parent/child/${childId}/conversation`), refetchInterval:30000 });
-  const send=useMutation({ mutationFn:()=>papi(`/parent/child/${childId}/conversation`,{method:'POST',body:JSON.stringify({body})}), onSuccess:()=>{setBody('');setErr('');qc.invalidateQueries({queryKey:['p-conversation',childId]});}, onError:(e:any)=>setErr(e.message) });
-  return <div className="card p-5"><div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold"><MessageCircle className="h-4 w-4 text-honey-700"/>Message Centre Head</div><div className="mb-3 max-h-64 space-y-2 overflow-y-auto">{!msgs.length&&<div className="py-4 text-center text-[12px] font-semibold text-stone-400">Ask your Centre Head a question here.</div>}{msgs.map((m:any)=><div key={m.id} className={cn('max-w-[85%] rounded-2xl px-3 py-2 text-[12px] font-semibold',m.sender==='PARENT'?'ml-auto bg-amber-100':'bg-white')}><div>{m.body}</div><div className="mt-1 text-[9px] text-stone-400">{m.sender==='PARENT'?'You':'Centre Head'} · {new Date(m.createdAt).toLocaleString('en-IN')}</div></div>)}</div><div className="flex gap-2"><textarea aria-label="Message" maxLength={1000} value={body} onChange={e=>setBody(e.target.value)} className="input min-h-10 flex-1" placeholder="Type your message…"/><button aria-label="Send message" disabled={!body.trim()||send.isPending} onClick={()=>send.mutate()} className="btn-primary !px-3"><Send className="h-4 w-4"/></button></div>{err&&<p className="mt-2 text-[11px] font-bold text-rose-600">{err}</p>}</div>;
+  const qc = useQueryClient();
+  const [body, setBody] = useState('');
+  const [err, setErr] = useState('');
+  const { data: msgs = [] } = useQuery({
+    queryKey: ['p-conversation', childId],
+    queryFn: () => papi(`/parent/child/${childId}/conversation`),
+    refetchInterval: 30000,
+  });
+  const send = useMutation({
+    mutationFn: () =>
+      papi(`/parent/child/${childId}/conversation`, {
+        method: 'POST',
+        body: JSON.stringify({ body }),
+      }),
+    onSuccess: () => {
+      setBody('');
+      setErr('');
+      qc.invalidateQueries({ queryKey: ['p-conversation', childId] });
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+  return (
+    <div className="card p-5">
+      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold">
+        <MessageCircle className="h-4 w-4 text-honey-700" />
+        Message Centre Head
+      </div>
+      <div className="mb-3 max-h-64 space-y-2 overflow-y-auto">
+        {!msgs.length && (
+          <div className="py-4 text-center text-[12px] font-semibold text-stone-400">
+            Ask your Centre Head a question here.
+          </div>
+        )}
+        {msgs.map((m: any) => (
+          <div
+            key={m.id}
+            className={cn(
+              'max-w-[85%] rounded-2xl px-3 py-2 text-[12px] font-semibold',
+              m.sender === 'PARENT' ? 'ml-auto bg-amber-100' : 'bg-white',
+            )}
+          >
+            <div>{m.body}</div>
+            <div className="mt-1 text-[9px] text-stone-400">
+              {m.sender === 'PARENT' ? 'You' : 'Centre Head'} ·{' '}
+              {new Date(m.createdAt).toLocaleString('en-IN')}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <textarea
+          aria-label="Message"
+          maxLength={1000}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          className="input min-h-10 flex-1"
+          placeholder="Type your message…"
+        />
+        <button
+          aria-label="Send message"
+          disabled={!body.trim() || send.isPending}
+          onClick={() => send.mutate()}
+          className="btn-primary !px-3"
+        >
+          <Send className="h-4 w-4" />
+        </button>
+      </div>
+      {err && <p className="mt-2 text-[11px] font-bold text-rose-600">{err}</p>}
+    </div>
+  );
+}
+
+/**
+ * UPI fee payment — no payment gateway.
+ *
+ * The centre publishes its own UPI id; the API turns the amount owed into a
+ * `upi://` intent and a QR image. The parent scans it in any UPI app, then taps
+ * "I have paid" with the reference from their app. The centre matches that
+ * against its bank statement and the receipt appears here — which is why the
+ * card can say, honestly, that the money has not been confirmed yet.
+ */
+function PayUpi({ childId, balance }: { childId: string; balance: number }) {
+  const qc = useQueryClient();
+  const { t } = useI18n();
+  const [amount, setAmount] = useState<string>('');
+  const [payFull, setPayFull] = useState(true);
+  const [ref, setRef] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
+
+  const { data: cfg } = useQuery({
+    queryKey: ['p-upi-config'],
+    queryFn: () => papi('/fees/upi/config'),
+    staleTime: 5 * 60_000,
+  });
+
+  const { data: open } = useQuery({
+    queryKey: ['p-upi-open', childId],
+    queryFn: () => papi(`/fees/upi/open/${childId}`).catch(() => null),
+    staleTime: 0,
+  });
+
+  const intent = useMutation({
+    mutationFn: (rupees: number | null) =>
+      papi('/fees/upi/intent', {
+        method: 'POST',
+        body: JSON.stringify({ studentId: childId, ...(rupees ? { amount: rupees } : {}) }),
+      }),
+    onSuccess: () => {
+      setErr('');
+      setMsg('');
+      qc.invalidateQueries({ queryKey: ['p-upi-open', childId] });
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const claim = useMutation({
+    mutationFn: (payerRef: string) =>
+      papi(`/fees/upi/${intent.data.intentId}/claim`, {
+        method: 'POST',
+        body: JSON.stringify({ payerRef }),
+      }),
+    onSuccess: (res: any) => {
+      setMsg(res.message ?? t('parent.upiClaimed'));
+      setErr('');
+      setRef('');
+      qc.invalidateQueries({ queryKey: ['p-upi-open', childId] });
+      qc.invalidateQueries({ queryKey: ['p-fees', childId] });
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+
+  if (!cfg) return null;
+  if (!cfg.enabled) {
+    return (
+      <p className="mt-3 text-center text-[10px] font-semibold text-stone-400">
+        {t('parent.paySoon')}
+      </p>
+    );
+  }
+  if (balance <= 0 && !open) return null;
+
+  const active = open ?? intent.data;
+  const claimed = active?.status === 'CLAIMED';
+
+  return (
+    <div className="mt-3 rounded-2xl border border-[color:var(--line)] bg-white p-3">
+      {!active ? (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold text-[color:var(--txt2)]">
+              {t('parent.upiAmount')}
+            </span>
+            <button
+              type="button"
+              className="text-[10px] font-bold text-[color:var(--accent)] underline"
+              onClick={() => setPayFull((v) => !v)}
+            >
+              {payFull ? t('parent.upiOtherAmount') : t('parent.upiPayFull')}
+            </button>
+          </div>
+          {payFull ? (
+            <div className="mt-1 font-heading text-2xl font-black">{inr(balance)}</div>
+          ) : (
+            <input
+              className="input mt-1"
+              inputMode="decimal"
+              placeholder={String(balance)}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+            />
+          )}
+          <button
+            className="btn-primary mt-2.5 w-full"
+            disabled={busy || intent.isPending || (!payFull && !(Number(amount) > 0))}
+            onClick={() => {
+              setBusy(true);
+              intent.mutate(payFull ? null : Number(amount), { onSettled: () => setBusy(false) });
+            }}
+          >
+            {busy || intent.isPending ? t('parent.paying') : t('parent.payNow')}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                {t('parent.upiScan')}
+              </div>
+              <div className="font-heading text-xl font-black">{inr(Number(active.amount))}</div>
+              <div className="text-[10px] font-semibold text-stone-500">
+                {active.reference ?? active.orderId}
+              </div>
+            </div>
+            <span className="rounded-full bg-stone-100 px-2 py-1 text-[9px] font-bold uppercase text-stone-600">
+              {active.label ?? active.status}
+            </span>
+          </div>
+
+          {active.qr && (
+            <img
+              src={active.qr}
+              alt="UPI QR"
+              className="mx-auto mt-2 h-40 w-40 rounded-xl border border-[color:var(--line)]"
+            />
+          )}
+
+          {active.upiLink && (
+            <a
+              href={active.upiLink}
+              className="btn-secondary mt-2 block w-full text-center text-sm"
+            >
+              {t('parent.upiOpen')}
+            </a>
+          )}
+
+          {claimed ? (
+            <p className="mt-2 rounded-xl bg-amber-50 px-2 py-2 text-center text-[11px] font-bold text-amber-800">
+              {t('parent.upiWaiting')}
+            </p>
+          ) : (
+            <div className="mt-2">
+              <label className="text-[10px] font-bold text-[color:var(--txt2)]">
+                {t('parent.upiReference')}
+              </label>
+              <input
+                className="input mt-1"
+                value={ref}
+                onChange={(e) => setRef(e.target.value)}
+                placeholder="412345678901"
+              />
+              <button
+                className="btn-primary mt-2 w-full"
+                disabled={claim.isPending || ref.trim().length < 8}
+                onClick={() => claim.mutate(ref.trim())}
+              >
+                {t('parent.upiClaim')}
+              </button>
+            </div>
+          )}
+
+          <p className="mt-2 text-center text-[9px] font-semibold leading-snug text-stone-400">
+            {t('parent.upiQrNote')}
+          </p>
+        </>
+      )}
+      {msg && <p className="mt-2 text-[11px] font-bold text-emerald-700">{msg}</p>}
+      {err && <p className="mt-2 text-[11px] font-bold text-rose-600">{err}</p>}
+    </div>
+  );
+}
+
+function PtmCard({ childId }: { childId: string }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const [err, setErr] = useState('');
+  const { data: rows = [] } = useQuery({
+    queryKey: ['p-ptm', childId],
+    queryFn: () => papi(`/parent/child/${childId}/ptm`),
+  });
+  const refresh = () => qc.invalidateQueries({ queryKey: ['p-ptm', childId] });
+  const book = useMutation({
+    mutationFn: (slotId: string) =>
+      papi(`/ptm/slots/${slotId}/book`, {
+        method: 'POST',
+        body: JSON.stringify({ studentId: childId }),
+      }),
+    onSuccess: () => {
+      setErr('');
+      refresh();
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+  const release = useMutation({
+    mutationFn: (slotId: string) =>
+      papi(`/ptm/slots/${slotId}/release`, { method: 'POST', body: JSON.stringify({}) }),
+    onSuccess: () => {
+      setErr('');
+      refresh();
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const upcoming = rows.filter(
+    (r: any) => new Date(r.session.scheduledAt).getTime() > Date.now() - 86400000,
+  );
+  const shown = (upcoming.length ? upcoming : rows).slice(0, 3);
+
+  return (
+    <div className="card p-5">
+      <div className="mb-3 flex items-center gap-2 font-heading text-[15px] font-extrabold">
+        <CalendarClock className="h-4 w-4 text-honey-700" />
+        {t('parent.ptm')}
+      </div>
+      {!shown.length && (
+        <div className="py-5 text-center text-[12px] font-semibold text-stone-400">
+          {t('parent.noPtm')}
+        </div>
+      )}
+      <div className="space-y-3">
+        {shown.map((r: any) => (
+          <div key={r.session.id} className="rounded-2xl bg-white/60 p-3">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <b className="text-[13px]">{r.session.title}</b>
+              <span className="text-[11px] font-bold text-stone-500">
+                {new Date(r.session.scheduledAt).toLocaleString('en-IN', {
+                  day: '2-digit',
+                  month: 'short',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+              {r.record.attended && (
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">
+                  ✓
+                </span>
+              )}
+            </div>
+            {r.mySlot ? (
+              <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-100 px-3 py-2">
+                <span className="text-[12px] font-extrabold text-amber-900">
+                  {t('parent.mySlot')} ·{' '}
+                  {new Date(r.mySlot.startTime).toLocaleTimeString('en-IN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+                <button
+                  className="ml-auto text-[11px] font-extrabold text-stone-500 underline"
+                  disabled={release.isPending}
+                  onClick={() => release.mutate(r.mySlot.id)}
+                >
+                  {t('parent.release')}
+                </button>
+              </div>
+            ) : r.openSlots.length ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {r.openSlots.slice(0, 8).map((s: any) => (
+                  <button
+                    key={s.id}
+                    className="btn-neo !px-2.5 !py-1 text-[11px]"
+                    disabled={book.isPending}
+                    onClick={() => book.mutate(s.id)}
+                  >
+                    {new Date(s.startTime).toLocaleTimeString('en-IN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-[11px] font-semibold text-stone-400">
+                Slots open closer to the date.
+              </p>
+            )}
+            {r.record.teacherNotes && (
+              <p className="mt-2 rounded-xl bg-white/80 px-3 py-2 text-[11.5px] font-semibold text-stone-600">
+                {t('parent.teacherNotes')}: {r.record.teacherNotes}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+      {err && <p className="mt-2 text-[11px] font-bold text-rose-600">{err}</p>}
+    </div>
+  );
 }
 
 // ───────────────────── Portal shell ─────────────────────
@@ -266,10 +933,18 @@ export default function ParentPortal() {
   const { data: kids = [], isError } = useQuery({
     queryKey: ['p-kids', authed],
     queryFn: () => papi('/parent/children'),
-    enabled: authed, retry: false,
+    enabled: authed,
+    retry: false,
   });
-  useEffect(() => { if (isError) { pstore.del(); setAuthed(false); } }, [isError]);
-  useEffect(() => { if (!childId && kids.length) setChildId(kids[0].id); }, [kids, childId]);
+  useEffect(() => {
+    if (isError) {
+      pstore.del();
+      setAuthed(false);
+    }
+  }, [isError]);
+  useEffect(() => {
+    if (!childId && kids.length) setChildId(kids[0].id);
+  }, [kids, childId]);
 
   if (!authed) return <ParentLogin onDone={() => setAuthed(true)} />;
   const kid = kids.find((k: any) => k.id === childId);
@@ -280,12 +955,40 @@ export default function ParentPortal() {
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
           <span className="text-2xl">🐝</span>
           <div className="min-w-0">
-            <div className="font-heading text-[15px] font-extrabold text-honey-700">BumbleB Kidz</div>
-            <div className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400">Parent Portal</div>
+            <div className="font-heading text-[15px] font-extrabold text-honey-700">
+              BumbleB Kidz
+            </div>
+            <div className="text-[10.5px] font-bold uppercase tracking-wider text-stone-400">
+              Parent Portal
+            </div>
           </div>
-          <div className="ml-auto hidden gap-1 sm:flex">{APP_THEMES.map(t=><button key={t.id} title={t.name} aria-label={`Use ${t.name} theme`} onClick={()=>{selectTheme(t);setTheme(t)}} className={cn('h-6 w-6 rounded-full border-2',themesEqual(theme,t)?'border-[color:var(--accent)]':'border-transparent')} style={{background:t.bg}} />)}</div>
-          <button className="btn-neo !px-3 !py-1.5 text-[11.5px]" onClick={() => { pstore.del(); setAuthed(false); }}>
-            <LogOut className="mr-1 inline h-3 w-3" />Sign out
+          <div className="ml-auto hidden gap-1 sm:flex">
+            {APP_THEMES.map((t) => (
+              <button
+                key={t.id}
+                title={t.name}
+                aria-label={`Use ${t.name} theme`}
+                onClick={() => {
+                  selectTheme(t);
+                  setTheme(t);
+                }}
+                className={cn(
+                  'h-6 w-6 rounded-full border-2',
+                  themesEqual(theme, t) ? 'border-[color:var(--accent)]' : 'border-transparent',
+                )}
+                style={{ background: t.bg }}
+              />
+            ))}
+          </div>
+          <button
+            className="btn-neo !px-3 !py-1.5 text-[11.5px]"
+            onClick={() => {
+              pstore.del();
+              setAuthed(false);
+            }}
+          >
+            <LogOut className="mr-1 inline h-3 w-3" />
+            Sign out
           </button>
         </div>
       </header>
@@ -295,9 +998,16 @@ export default function ParentPortal() {
         {kids.length > 1 && (
           <div className="flex gap-2 overflow-x-auto">
             {kids.map((k: any) => (
-              <button key={k.id} onClick={() => setChildId(k.id)}
-                className={cn('whitespace-nowrap rounded-full px-4 py-2 text-[12.5px] font-extrabold transition-all',
-                  k.id === childId ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow' : 'bg-white text-stone-500 ring-1 ring-stone-200')}>
+              <button
+                key={k.id}
+                onClick={() => setChildId(k.id)}
+                className={cn(
+                  'whitespace-nowrap rounded-full px-4 py-2 text-[12.5px] font-extrabold transition-all',
+                  k.id === childId
+                    ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow'
+                    : 'bg-white text-stone-500 ring-1 ring-stone-200',
+                )}
+              >
                 {k.firstName}
               </button>
             ))}
@@ -312,17 +1022,39 @@ export default function ParentPortal() {
                 {kid.today === 'PRESENT' ? '😊' : kid.today === 'ABSENT' ? '🏠' : '🐝'}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-heading text-[18px] font-extrabold">{kid.firstName} {kid.lastName}</div>
-                <div className="text-[12px] font-semibold text-stone-500">{kid.admissionNo} · {kid.programme?.name} ({kid.programme?.tierName})</div>
+                <div className="font-heading text-[18px] font-extrabold">
+                  {kid.firstName} {kid.lastName}
+                </div>
+                <div className="text-[12px] font-semibold text-stone-500">
+                  {kid.admissionNo} · {kid.programme?.name} ({kid.programme?.tierName})
+                </div>
                 <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px] font-bold">
                   {kid.today && (
-                    <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold',
-                      kid.today === 'PRESENT' ? 'bg-emerald-100 text-emerald-700' : kid.today === 'LEAVE' ? 'bg-sky-100 text-sky-700' : 'bg-rose-100 text-rose-600')}>
-                      <Smile className="h-3 w-3" />{kid.today === 'PRESENT' ? 'In school today' : kid.today === 'LEAVE' ? 'On leave today' : 'At home today'}
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold',
+                        kid.today === 'PRESENT'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : kid.today === 'LEAVE'
+                            ? 'bg-sky-100 text-sky-700'
+                            : 'bg-rose-100 text-rose-600',
+                      )}
+                    >
+                      <Smile className="h-3 w-3" />
+                      {kid.today === 'PRESENT'
+                        ? 'In school today'
+                        : kid.today === 'LEAVE'
+                          ? 'On leave today'
+                          : 'At home today'}
                     </span>
                   )}
-                  <span className="chip"><GraduationCap className="h-3 w-3 text-honey-700" /> {kid.batch?.name ?? '—'}</span>
-                  <span className="chip"><Sun className="h-3 w-3 text-honey-700" /> {kid.batch ? `${kid.batch.startTime}–${kid.batch.endTime}` : ''}</span>
+                  <span className="chip">
+                    <GraduationCap className="h-3 w-3 text-honey-700" /> {kid.batch?.name ?? '—'}
+                  </span>
+                  <span className="chip">
+                    <Sun className="h-3 w-3 text-honey-700" />{' '}
+                    {kid.batch ? `${kid.batch.startTime}–${kid.batch.endTime}` : ''}
+                  </span>
                   <span className="chip">{kid.unit?.name}</span>
                 </div>
               </div>
@@ -333,12 +1065,18 @@ export default function ParentPortal() {
               <FeesCard childId={kid.id} />
             </div>
             <ProfileCard childId={kid.id} />
-            <div className="grid gap-4 md:grid-cols-2"><DocumentsCard childId={kid.id} /><ConversationCard childId={kid.id} /></div>
+            <PtmCard childId={kid.id} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <DocumentsCard childId={kid.id} />
+              <ConversationCard childId={kid.id} />
+            </div>
             <PushToggle />
             <MessagesCard />
           </>
         )}
-        <p className="pt-2 text-center text-[10px] font-semibold text-stone-400">BumbleB Kidz ERP · add this page to your home screen for the app experience 📲</p>
+        <p className="pt-2 text-center text-[10px] font-semibold text-stone-400">
+          BumbleB Kidz ERP · add this page to your home screen for the app experience 📲
+        </p>
       </main>
     </div>
   );

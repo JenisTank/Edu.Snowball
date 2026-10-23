@@ -2,8 +2,7 @@
 # ─────────────────────────────────────────────────────────────
 # BumbleB ERP — one-shot dev environment restore
 # Run after any sandbox/VM reset:  bash scripts/dev-restore.sh
-# Installs Postgres + Redis, restores DB (from backup if present,
-# else schema+seed), reinstalls node deps.
+# Installs Postgres + Redis, migrates + seeds the dev DB, reinstalls node deps.
 # ─────────────────────────────────────────────────────────────
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -27,14 +26,15 @@ sudo -u postgres psql -c "CREATE DATABASE bumblebkidz_erp OWNER bumbleb;" 2>/dev
 echo "── 4/5 node deps + prisma"
 cd "$ROOT/api" && npm install --no-audit --no-fund
 npx prisma generate
-if [ -f "$ROOT/backups/latest.sql" ]; then
-  echo "   restoring from backups/latest.sql"
-  PGPASSWORD=bumbleb_dev psql -h localhost -U bumbleb -d bumblebkidz_erp -q -f "$ROOT/backups/latest.sql"
-else
-  echo "   no backup found → schema push + demo seed"
-  npx prisma db push
-  npx ts-node --transpile-only prisma/seed.ts
-fi
+# local env file (never committed)
+[ -f "$ROOT/api/.env" ] || cp "$ROOT/.env.example" "$ROOT/api/.env"
+# Always build from the committed migration + demo seed. Restoring an old dump
+# would leave the database on an older schema than the code, which shows up as
+# missing-table errors in every new module. A dump can still be restored by hand
+# with scripts/restore.sh.
+echo "   migrations + demo seed"
+npx prisma migrate deploy
+npx ts-node --transpile-only prisma/seed.ts
 cd "$ROOT/frontend" && npm install --no-audit --no-fund
 
 echo "── 5/5 done. Start servers with:"

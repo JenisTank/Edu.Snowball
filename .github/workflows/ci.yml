@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API — typecheck + tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - run: npm ci --no-audit --no-fund
+
+      # Prisma generates the typed client from schema.prisma — required before tsc.
+      - run: npx prisma generate
+
+      - run: npm run typecheck
+
+      - run: npm test -- --ci
+
+      - run: npx prettier --check "src/**/*.ts" "prisma/**/*.ts" "test/**/*.ts"
+
+  database:
+    name: Database — migrations apply cleanly
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: bumbleb
+          POSTGRES_PASSWORD: bumbleb
+          POSTGRES_DB: bumblebkidz_erp
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports: ['5432:5432']
+    defaults:
+      run:
+        working-directory: api
+    env:
+      DATABASE_URL: postgresql://bumbleb:bumbleb@localhost:5432/bumblebkidz_erp
+      SHADOW_DATABASE_URL: postgresql://bumbleb:bumbleb@localhost:5432/bumbleb_shadow
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - run: npm ci --no-audit --no-fund
+      - run: npx prisma generate
+
+      # 1. the baseline must apply to an empty database
+      - run: npx prisma migrate deploy
+
+      # 2. migrations must still describe schema.prisma exactly (drift check)
+      - run: |
+          PGPASSWORD=bumbleb psql -h localhost -U bumbleb -d postgres -c 'CREATE DATABASE bumbleb_shadow;'
+        env:
+          DATABASE_URL: postgresql://bumbleb:bumbleb@localhost:5432/bumblebkidz_erp
+
+      # 2a. the committed SQL must be exactly what the generator produces from
+      #     schema.prisma — editing one without the other is a silent drift.
+      - name: Migration is generated from the schema
+        run: |
+          python3 prisma/generate-init-migration.py
+          git diff --exit-code -- prisma/migrations
+
+      # 2. migrations must still describe schema.prisma exactly.
+      #    `migrate diff --script` writes "-- This is an empty migration." when
+      #    there is nothing to do; anything else is drift. The diff is echoed as
+      #    an annotation so it is visible without downloading logs.
+      - name: Schema drift check
+        run: |
+          set +e
+          DIFF=$(npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url "$SHADOW_DATABASE_URL" \
+            --script 2>&1)
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            echo "::error title=migrate diff failed::$DIFF"
+            exit 1
+          fi
+          if [ -z "$DIFF" ] || printf '%s' "$DIFF" | grep -q 'This is an empty migration'; then
+            echo "✔ no schema drift"
+            exit 0
+          fi
+          ESCAPED=$(printf '%s' "$DIFF" | head -c 6000 | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
+          echo "::error title=Schema drift::$ESCAPED"
+          printf '%s\n' "$DIFF"
+          exit 1
+
+  web:
+    name: Frontend — build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci --no-audit --no-fund
+
+      # A typo in t('…') renders as the key itself, so catch it before the build.
+      - run: node scripts/check-i18n.mjs
+
+      - run: npm run build
+
+  format:
+    name: Repo — prettier
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npx --yes prettier@3 --check .

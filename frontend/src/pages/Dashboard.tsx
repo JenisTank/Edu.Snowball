@@ -5,32 +5,84 @@ import { api, fmtINR, fmtDate } from '../lib/api';
 import { useAuth, ROLE_LABELS } from '../lib/auth';
 import { PageHeader } from '../components/layout/AppLayout';
 import { Badge } from '../components/ui/DataTable';
+import { useI18n } from '../lib/i18n';
 
 const STAGE_LABELS: Record<string, string> = {
-  NEW_INQUIRY: 'New Inquiry', FIRST_BUZZ: 'First Buzz', ROUTING: 'Routing',
-  EXPERIENCE_SESSION: 'Experience', DISCOVERY_FLIGHT: 'Discovery Flight',
-  OFFER: 'Offer', CONFIRMATION: 'Confirmation', ENROLLED: 'Enrolled', LOST: 'Lost',
+  NEW_INQUIRY: 'New Inquiry',
+  FIRST_BUZZ: 'First Buzz',
+  ROUTING: 'Routing',
+  EXPERIENCE_SESSION: 'Experience',
+  DISCOVERY_FLIGHT: 'Discovery Flight',
+  OFFER: 'Offer',
+  CONFIRMATION: 'Confirmation',
+  ENROLLED: 'Enrolled',
+  LOST: 'Lost',
 };
-const STAGE_ORDER = ['NEW_INQUIRY', 'FIRST_BUZZ', 'ROUTING', 'EXPERIENCE_SESSION', 'DISCOVERY_FLIGHT', 'OFFER', 'CONFIRMATION', 'ENROLLED'];
+const STAGE_ORDER = [
+  'NEW_INQUIRY',
+  'FIRST_BUZZ',
+  'ROUTING',
+  'EXPERIENCE_SESSION',
+  'DISCOVERY_FLIGHT',
+  'OFFER',
+  'CONFIRMATION',
+  'ENROLLED',
+];
 
 export default function Dashboard() {
+  const { t } = useI18n();
   const { user } = useAuth();
-  const { data, isLoading } = useQuery({ queryKey: ['dashboard'], queryFn: () => api('/dashboard/summary') });
+  const { data, isLoading } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: () => api('/dashboard/summary'),
+  });
 
   const attendancePct = data?.attendance.total
-    ? Math.round((data.attendance.present / data.attendance.total) * 100) : 0;
+    ? Math.round((data.attendance.present / data.attendance.total) * 100)
+    : 0;
 
   const stats = [
-    { label: 'Active Students', value: data?.students ?? '—', icon: Users, tint: 'bg-honey-50 text-honey-600', foot: `${data?.batches ?? 0} active batches` },
-    { label: 'Open Leads', value: data?.leadsOpen ?? '—', icon: Megaphone, tint: 'bg-sky-50 text-sky-600', foot: 'First Buzz pipeline' },
-    { label: "Today's Attendance", value: data ? `${attendancePct}%` : '—', icon: CalendarCheck, tint: 'bg-emerald-50 text-emerald-600', foot: data ? `${data.attendance.present} of ${data.attendance.total} present` : '' },
-    { label: 'Fees Collected', value: data ? fmtINR(data.fees.collected) : '—', icon: IndianRupee, tint: 'bg-violet-50 text-violet-600', foot: `${data?.fees.receipts ?? 0} receipts · AY 2026-27` },
+    {
+      label: t('dashboard.activeStudents'),
+      value: data?.students ?? '—',
+      icon: Users,
+      tint: 'bg-honey-50 text-honey-600',
+      foot: `${data?.batches ?? 0} active batches`,
+    },
+    {
+      label: t('dashboard.openLeads'),
+      value: data?.leadsOpen ?? '—',
+      icon: Megaphone,
+      tint: 'bg-sky-50 text-sky-600',
+      foot: 'First Buzz pipeline',
+    },
+    {
+      label: t('dashboard.todayAttendance'),
+      value: data ? `${attendancePct}%` : '—',
+      icon: CalendarCheck,
+      tint: 'bg-emerald-50 text-emerald-600',
+      foot: data ? `${data.attendance.present} of ${data.attendance.total} present` : '',
+    },
+    {
+      label: t('dashboard.feesCollected'),
+      value: data ? fmtINR(data.fees.collected) : '—',
+      icon: IndianRupee,
+      tint: 'bg-violet-50 text-violet-600',
+      foot: `${data?.fees.receipts ?? 0} receipts · AY 2026-27`,
+    },
   ];
 
   const maxFunnel = Math.max(1, ...(data?.funnel?.map((f: any) => f.count) ?? [1]));
-  const funnelByStage: Record<string, number> = Object.fromEntries((data?.funnel ?? []).map((f: any) => [f.stage, f.count]));
+  const funnelByStage: Record<string, number> = Object.fromEntries(
+    (data?.funnel ?? []).map((f: any) => [f.stage, f.count]),
+  );
 
-  const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 17 ? 'Good afternoon' : 'Good evening';
+  const greeting =
+    new Date().getHours() < 12
+      ? t('dashboard.goodMorning')
+      : new Date().getHours() < 17
+        ? t('dashboard.goodAfternoon')
+        : t('dashboard.goodEvening');
 
   return (
     <div>
@@ -41,13 +93,17 @@ export default function Dashboard() {
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map(s => (
+        {stats.map((s) => (
           <div key={s.label} className="card p-5 transition hover:shadow-lift">
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-xs font-medium text-stone-500">{s.label}</div>
                 <div className="mt-1.5 font-heading text-[1.75rem] font-extrabold leading-none tracking-tight">
-                  {isLoading ? <span className="inline-block h-7 w-20 animate-pulse rounded bg-stone-100" /> : s.value}
+                  {isLoading ? (
+                    <span className="inline-block h-7 w-20 animate-pulse rounded bg-stone-100" />
+                  ) : (
+                    s.value
+                  )}
                 </div>
               </div>
               <div className={`rounded-xl p-2.5 shadow-neo-inset-sm ${s.tint}`}>
@@ -63,15 +119,19 @@ export default function Dashboard() {
         {/* ── Admission funnel ── */}
         <div className="card p-5 xl:col-span-2">
           <div className="flex items-center justify-between">
-            <h3 className="font-heading text-[15px] font-extrabold">Admission Funnel — First Buzz Pipeline</h3>
-            <Link to="/leads" className="btn-ghost text-xs">View CRM <ArrowRight className="h-3.5 w-3.5" /></Link>
+            <h3 className="font-heading text-[15px] font-extrabold">{t('dashboard.funnel')}</h3>
+            <Link to="/leads" className="btn-ghost text-xs">
+              {t('dashboard.viewCrm')} <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
           <div className="mt-5 space-y-3">
-            {STAGE_ORDER.map(stage => {
+            {STAGE_ORDER.map((stage) => {
               const count = funnelByStage[stage] ?? 0;
               return (
                 <div key={stage} className="flex items-center gap-3">
-                  <div className="w-32 shrink-0 text-right text-xs font-semibold text-stone-600">{STAGE_LABELS[stage]}</div>
+                  <div className="w-32 shrink-0 text-right text-xs font-semibold text-stone-600">
+                    {STAGE_LABELS[stage]}
+                  </div>
                   <div className="h-7 flex-1 overflow-hidden rounded-lg shadow-neo-inset-sm bg-[color:var(--sunken)]">
                     <div
                       className="flex h-full items-center rounded-lg bg-gradient-to-r from-honey-400 to-honey-500 pl-2.5 text-[11px] font-bold text-white transition-all duration-700"
@@ -88,11 +148,14 @@ export default function Dashboard() {
 
         {/* ── Programme distribution ── */}
         <div className="card p-5">
-          <h3 className="font-heading text-[15px] font-extrabold">Students by Programme</h3>
+          <h3 className="font-heading text-[15px] font-extrabold">{t('dashboard.byProgramme')}</h3>
           <div className="mt-4 space-y-3.5">
             {(data?.programmeDistribution ?? []).map((p: any) => (
               <div key={p.name} className="flex items-center gap-3">
-                <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-black/10" style={{ background: p.colour }} />
+                <span
+                  className="h-3.5 w-3.5 shrink-0 rounded-full border border-black/10"
+                  style={{ background: p.colour }}
+                />
                 <div className="flex-1">
                   <div className="flex items-baseline justify-between">
                     <span className="text-[13px] font-semibold">{p.name}</span>
@@ -113,8 +176,12 @@ export default function Dashboard() {
       {/* ── Recent leads ── */}
       <div className="card mt-5 p-5">
         <div className="flex items-center justify-between">
-          <h3 className="font-heading text-[15px] font-extrabold">Recent Inquiries</h3>
-          <Link to="/leads" className="btn-ghost text-xs">All leads <ArrowRight className="h-3.5 w-3.5" /></Link>
+          <h3 className="font-heading text-[15px] font-extrabold">
+            {t('dashboard.recentInquiries')}
+          </h3>
+          <Link to="/leads" className="btn-ghost text-xs">
+            All leads <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
         <div className="mt-3 divide-y divide-[color:var(--neu-border)]">
           {(data?.recentLeads ?? []).map((l: any) => (
@@ -125,10 +192,16 @@ export default function Dashboard() {
               <div className="min-w-0 flex-1">
                 <div className="text-[13.5px] font-semibold">{l.parentName}</div>
                 <div className="truncate text-xs text-stone-500">
-                  {l.childName ? `Child: ${l.childName} · ` : ''}{l.programmeInterest?.name ?? '—'} · {l.inquiryNo}
+                  {l.childName ? `Child: ${l.childName} · ` : ''}
+                  {l.programmeInterest?.name ?? '—'} · {l.inquiryNo}
                 </div>
               </div>
-              <Badge tone={l.stage === 'ENROLLED' ? 'green' : l.stage === 'NEW_INQUIRY' ? 'sky' : 'honey'} dot>
+              <Badge
+                tone={
+                  l.stage === 'ENROLLED' ? 'green' : l.stage === 'NEW_INQUIRY' ? 'sky' : 'honey'
+                }
+                dot
+              >
                 {STAGE_LABELS[l.stage]}
               </Badge>
               <span className="text-xs text-stone-500">{fmtDate(l.createdAt)}</span>

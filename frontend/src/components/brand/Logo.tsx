@@ -1,13 +1,36 @@
-// Placeholder bee mark — swap with official trademarked BumbleB Kidz logo asset when provided.
-// Per brand spec: logo used as-is, never modified — this placeholder is only until real files arrive.
+/**
+ * Brand mark.
+ *
+ * The official BumbleB Kidz lockup (`/logo.png`) is used **as supplied** — a
+ * trademark must never be redrawn, recoloured or cropped, so this file renders
+ * the asset rather than approximating it. The bee-only SVG below is kept for
+ * the one place a photographic mark would be washed out: it is only ever used
+ * where the real file cannot load.
+ */
 import { cn } from '../../lib/utils';
 
 export function BeeMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" fill="none" className={cn('h-10 w-10', className)}>
       {/* wings */}
-      <ellipse cx="24" cy="18" rx="10" ry="7" fill="#AEDFF7" opacity="0.85" transform="rotate(-25 24 18)" />
-      <ellipse cx="40" cy="18" rx="10" ry="7" fill="#AEDFF7" opacity="0.85" transform="rotate(25 40 18)" />
+      <ellipse
+        cx="24"
+        cy="18"
+        rx="10"
+        ry="7"
+        fill="#AEDFF7"
+        opacity="0.85"
+        transform="rotate(-25 24 18)"
+      />
+      <ellipse
+        cx="40"
+        cy="18"
+        rx="10"
+        ry="7"
+        fill="#AEDFF7"
+        opacity="0.85"
+        transform="rotate(25 40 18)"
+      />
       {/* body */}
       <ellipse cx="32" cy="38" rx="16" ry="18" fill="#F5D547" />
       {/* stripes */}
@@ -17,26 +40,57 @@ export function BeeMark({ className }: { className?: string }) {
       {/* face */}
       <circle cx="27" cy="25" r="1.8" fill="#1F1B13" />
       <circle cx="37" cy="25" r="1.8" fill="#1F1B13" />
-      <path d="M28 28.5 q4 3 8 0" stroke="#1F1B13" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+      <path
+        d="M28 28.5 q4 3 8 0"
+        stroke="#1F1B13"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        fill="none"
+      />
       {/* antennae */}
-      <path d="M27 17 q-2 -5 -5 -6" stroke="#1F1B13" strokeWidth="1.8" strokeLinecap="round" fill="none" />
-      <path d="M37 17 q2 -5 5 -6" stroke="#1F1B13" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+      <path
+        d="M27 17 q-2 -5 -5 -6"
+        stroke="#1F1B13"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M37 17 q2 -5 5 -6"
+        stroke="#1F1B13"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        fill="none"
+      />
       <circle cx="21.5" cy="10.5" r="2" fill="#C8922A" />
       <circle cx="42.5" cy="10.5" r="2" fill="#C8922A" />
     </svg>
   );
 }
 
+/** The official lockup, untouched. */
+export function BrandLogo({ className }: { className?: string }) {
+  return (
+    <img
+      src="/logo.png"
+      alt="BumbleB Kidz"
+      className={cn('h-10 w-auto object-contain', className)}
+      draggable={false}
+    />
+  );
+}
+
 export function Logo({ compact = false }: { compact?: boolean }) {
+  // The lockup already contains the wordmark, so the app only adds the product
+  // line underneath — repeating "BumbleB Kidz" next to the logo reads as a bug.
   return (
     <div className="flex items-center gap-2.5">
-      <BeeMark className={compact ? 'h-8 w-8' : 'h-10 w-10'} />
+      <BrandLogo className={compact ? 'h-8' : 'h-11'} />
       {!compact && (
         <div className="leading-tight">
-          <div className="font-heading font-900 text-lg font-extrabold tracking-tight">
-            BumbleB <span className="text-honey-500">Kidz</span>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-stone-500 font-body">
+            ERP · Hive Control
           </div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-stone-500 font-body">ERP · Hive Control</div>
         </div>
       )}
     </div>

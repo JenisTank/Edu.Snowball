@@ -5,30 +5,53 @@ const BASE = '/api';
 // even when the preview iframe restricts one of the mechanisms.
 const mem: Record<string, string> = {};
 function setCookie(k: string, v: string) {
-  try { document.cookie = `${k}=${encodeURIComponent(v)}; path=/; max-age=604800; SameSite=None; Secure`; } catch { /* ignore */ }
+  try {
+    document.cookie = `${k}=${encodeURIComponent(v)}; path=/; max-age=604800; SameSite=None; Secure`;
+  } catch {
+    /* ignore */
+  }
 }
 function getCookie(k: string): string | null {
   try {
     const m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 function delCookie(k: string) {
-  try { document.cookie = `${k}=; path=/; max-age=0; SameSite=None; Secure`; } catch { /* ignore */ }
+  try {
+    document.cookie = `${k}=; path=/; max-age=0; SameSite=None; Secure`;
+  } catch {
+    /* ignore */
+  }
 }
 export const store = {
   get(k: string): string | null {
-    try { const v = localStorage.getItem(k); if (v) return v; } catch { /* blocked */ }
+    try {
+      const v = localStorage.getItem(k);
+      if (v) return v;
+    } catch {
+      /* blocked */
+    }
     return mem[k] ?? getCookie(k);
   },
   set(k: string, v: string) {
     mem[k] = v;
-    try { localStorage.setItem(k, v); } catch { /* in-memory + cookie only */ }
+    try {
+      localStorage.setItem(k, v);
+    } catch {
+      /* in-memory + cookie only */
+    }
     setCookie(k, v);
   },
   del(k: string) {
     delete mem[k];
-    try { localStorage.removeItem(k); } catch { /* ignore */ }
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      /* ignore */
+    }
     delCookie(k);
   },
 };
@@ -57,7 +80,9 @@ async function tryRefresh(): Promise<boolean> {
       } catch {
         return false;
       } finally {
-        setTimeout(() => { refreshing = null; }, 0);
+        setTimeout(() => {
+          refreshing = null;
+        }, 0);
       }
     })();
   }
@@ -70,7 +95,11 @@ function clearSession() {
   store.del('bb_user');
 }
 
-export async function api<T = any>(path: string, options: RequestInit = {}, _retried = false): Promise<T> {
+export async function api<T = any>(
+  path: string,
+  options: RequestInit = {},
+  _retried = false,
+): Promise<T> {
   const token = getToken();
   const res = await fetch(`${BASE}${path}`, {
     ...options,
@@ -97,6 +126,38 @@ export async function api<T = any>(path: string, options: RequestInit = {}, _ret
     throw new Error(body.message || `Request failed (${res.status})`);
   }
   return res.json();
+}
+
+/**
+ * Download an authenticated file (CSV report, PDF) through the API client.
+ *
+ * A plain `<a href>` cannot carry the bearer token, and the token also rides in
+ * a cookie — but the blob route works in every browser and inside the preview
+ * iframe, so reports download the same way everywhere.
+ */
+export async function downloadFile(path: string, fallbackName = 'download.csv') {
+  const token = getToken();
+  const res = await fetch(`${BASE}${path}`, {
+    credentials: 'include',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}`, 'x-bb-token': token } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message || `Download failed (${res.status})`);
+  }
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const match = /filename="?([^";]+)"?/.exec(disposition);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = match?.[1] ?? fallbackName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 export const fmtINR = (n: number | string) =>

@@ -10,18 +10,36 @@
 // ═══════════════════════════════════════════════════════════════════
 import { useState } from 'react';
 import {
-  ColumnDef, ColumnFiltersState, flexRender, getCoreRowModel,
-  getFilteredRowModel, getPaginationRowModel, getSortedRowModel,
-  SortingState, useReactTable, VisibilityState,
+  ColumnDef,
+  ColumnFiltersState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  SortingState,
+  useReactTable,
+  VisibilityState,
 } from '@tanstack/react-table';
 import {
-  ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight,
-  Columns3, Download, Search, ListFilter, X,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Columns3,
+  Download,
+  Search,
+  ListFilter,
+  X,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { EmptyState, Skeleton } from '@snowball/ui/components';
 
-interface FilterDef { id: string; label: string }
+interface FilterDef {
+  id: string;
+  label: string;
+}
 
 interface DataTableProps<T> {
   columns: ColumnDef<T, any>[];
@@ -35,8 +53,14 @@ interface DataTableProps<T> {
 }
 
 export function DataTable<T>({
-  columns, data, title, isLoading, searchPlaceholder = 'Search…',
-  onRowClick, exportName, filterable = [],
+  columns,
+  data,
+  title,
+  isLoading,
+  searchPlaceholder = 'Search…',
+  onRowClick,
+  exportName,
+  filterable = [],
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -45,7 +69,8 @@ export function DataTable<T>({
   const [openPanel, setOpenPanel] = useState<'columns' | 'filters' | null>(null);
 
   const table = useReactTable({
-    data, columns,
+    data,
+    columns,
     state: { sorting, globalFilter, columnFilters, columnVisibility },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
@@ -66,7 +91,7 @@ export function DataTable<T>({
 
   function uniqueValues(colId: string): string[] {
     const set = new Set<string>();
-    table.getPreFilteredRowModel().flatRows.forEach(r => {
+    table.getPreFilteredRowModel().flatRows.forEach((r) => {
       const v = r.getValue(colId);
       if (v !== null && v !== undefined && v !== '') set.add(String(v));
     });
@@ -75,14 +100,18 @@ export function DataTable<T>({
 
   function exportCSV() {
     const visibleCols = table.getVisibleFlatColumns();
-    const header = visibleCols.map(c => (typeof c.columnDef.header === 'string' ? c.columnDef.header : c.id));
-    const rows = table.getFilteredRowModel().rows.map(r =>
-      visibleCols.map(c => {
+    const header = visibleCols.map((c) =>
+      typeof c.columnDef.header === 'string' ? c.columnDef.header : c.id,
+    );
+    const rows = table.getFilteredRowModel().rows.map((r) =>
+      visibleCols.map((c) => {
         const v = r.getValue(c.id);
         return typeof v === 'object' ? JSON.stringify(v) : String(v ?? '');
       }),
     );
-    const csv = [header, ...rows].map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csv = [header, ...rows]
+      .map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -104,7 +133,7 @@ export function DataTable<T>({
           {filterable.length > 0 && (
             <div className="relative">
               <button
-                onClick={() => setOpenPanel(p => (p === 'filters' ? null : 'filters'))}
+                onClick={() => setOpenPanel((p) => (p === 'filters' ? null : 'filters'))}
                 className={cn('btn-neo', activeFilters > 0 && 'text-honey-700 shadow-neo-inset-sm')}
               >
                 <ListFilter className="h-4 w-4" /> Filters
@@ -117,28 +146,39 @@ export function DataTable<T>({
               {openPanel === 'filters' && (
                 <div className="pop absolute right-0 top-full z-30 mt-2 w-60 p-3">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="font-heading text-xs font-extrabold uppercase tracking-wider text-stone-500">Filters</span>
+                    <span className="font-heading text-xs font-extrabold uppercase tracking-wider text-stone-500">
+                      Filters
+                    </span>
                     {activeFilters > 0 && (
-                      <button onClick={() => setColumnFilters([])} className="text-[11px] font-semibold text-honey-600 hover:underline">
+                      <button
+                        onClick={() => setColumnFilters([])}
+                        className="text-[11px] font-semibold text-honey-600 hover:underline"
+                      >
                         Clear all
                       </button>
                     )}
                   </div>
                   <div className="space-y-2.5">
-                    {filterable.map(f => {
+                    {filterable.map((f) => {
                       const col = table.getColumn(f.id);
                       if (!col) return null;
                       const current = (col.getFilterValue() as string) ?? '';
                       return (
                         <div key={f.id}>
-                          <label className="mb-1 block text-[11px] font-semibold text-stone-600">{f.label}</label>
+                          <label className="mb-1 block text-[11px] font-semibold text-stone-600">
+                            {f.label}
+                          </label>
                           <select
                             className="input py-1.5 text-xs"
                             value={current}
-                            onChange={e => col.setFilterValue(e.target.value || undefined)}
+                            onChange={(e) => col.setFilterValue(e.target.value || undefined)}
                           >
                             <option value="">All</option>
-                            {uniqueValues(f.id).map(v => <option key={v} value={v}>{v}</option>)}
+                            {uniqueValues(f.id).map((v) => (
+                              <option key={v} value={v}>
+                                {v}
+                              </option>
+                            ))}
                           </select>
                         </div>
                       );
@@ -150,13 +190,19 @@ export function DataTable<T>({
           )}
 
           <div className="relative">
-            <button onClick={() => setOpenPanel(p => (p === 'columns' ? null : 'columns'))} className="btn-neo">
+            <button
+              onClick={() => setOpenPanel((p) => (p === 'columns' ? null : 'columns'))}
+              className="btn-neo"
+            >
               <Columns3 className="h-4 w-4" /> Columns
             </button>
             {openPanel === 'columns' && (
               <div className="pop absolute right-0 top-full z-30 mt-2 w-52">
-                {table.getAllLeafColumns().map(col => (
-                  <label key={col.id} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-white/50 cursor-pointer">
+                {table.getAllLeafColumns().map((col) => (
+                  <label
+                    key={col.id}
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-white/50 cursor-pointer"
+                  >
                     <input
                       type="checkbox"
                       checked={col.getIsVisible()}
@@ -182,10 +228,13 @@ export function DataTable<T>({
               className="input pl-9 py-2 text-[12.5px]"
               placeholder={searchPlaceholder}
               value={globalFilter}
-              onChange={e => setGlobalFilter(e.target.value)}
+              onChange={(e) => setGlobalFilter(e.target.value)}
             />
             {globalFilter && (
-              <button onClick={() => setGlobalFilter('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-700">
+              <button
+                onClick={() => setGlobalFilter('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-700"
+              >
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
@@ -197,9 +246,9 @@ export function DataTable<T>({
       <div className="overflow-x-auto px-2">
         <table className="tbl">
           <thead>
-            {table.getHeaderGroups().map(hg => (
+            {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id} className="border-b border-[color:var(--neu-border)]">
-                {hg.headers.map(h => (
+                {hg.headers.map((h) => (
                   <th
                     key={h.id}
                     className={cn(
@@ -210,11 +259,14 @@ export function DataTable<T>({
                   >
                     <span className="inline-flex items-center gap-1.5">
                       {flexRender(h.column.columnDef.header, h.getContext())}
-                      {h.column.getCanSort() && (
-                        h.column.getIsSorted() === 'asc' ? <ArrowUp className="h-3 w-3 text-honey-500" />
-                        : h.column.getIsSorted() === 'desc' ? <ArrowDown className="h-3 w-3 text-honey-500" />
-                        : <ArrowUpDown className="h-3 w-3 opacity-30" />
-                      )}
+                      {h.column.getCanSort() &&
+                        (h.column.getIsSorted() === 'asc' ? (
+                          <ArrowUp className="h-3 w-3 text-honey-500" />
+                        ) : h.column.getIsSorted() === 'desc' ? (
+                          <ArrowDown className="h-3 w-3 text-honey-500" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-30" />
+                        ))}
                     </span>
                   </th>
                 ))}
@@ -235,20 +287,26 @@ export function DataTable<T>({
             ) : table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="py-16 text-center">
-                  <EmptyState icon="inbox" headline="No records found" description="Try clearing search or filters." />
+                  <EmptyState
+                    icon="inbox"
+                    headline="No records found"
+                    description="Try clearing search or filters."
+                  />
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map(row => (
+              table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
                   onClick={() => onRowClick?.(row.original)}
                   className={cn(
                     'transition-colors',
-                    onRowClick ? 'cursor-pointer hover:bg-[color:var(--row-hover)]' : 'hover:bg-[color:var(--row-hover)]',
+                    onRowClick
+                      ? 'cursor-pointer hover:bg-[color:var(--row-hover)]'
+                      : 'hover:bg-[color:var(--row-hover)]',
                   )}
                 >
-                  {row.getVisibleCells().map(cell => (
+                  {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-3 whitespace-nowrap">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
@@ -267,9 +325,13 @@ export function DataTable<T>({
           <select
             className="rounded-lg bg-cream shadow-neo-inset-sm px-2 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-honey-300"
             value={pageSize}
-            onChange={e => table.setPageSize(Number(e.target.value))}
+            onChange={(e) => table.setPageSize(Number(e.target.value))}
           >
-            {[10, 25, 50].map(n => <option key={n} value={n}>{n}</option>)}
+            {[10, 25, 50].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -279,7 +341,8 @@ export function DataTable<T>({
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
             className="btn-neo py-1.5 disabled:opacity-40 disabled:pointer-events-none"
           >
             <ChevronLeft className="h-3.5 w-3.5" /> Previous
@@ -288,7 +351,8 @@ export function DataTable<T>({
             {pageIndex + 1} / {Math.max(1, table.getPageCount())}
           </span>
           <button
-            onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
             className="btn-neo py-1.5 disabled:opacity-40 disabled:pointer-events-none"
           >
             Next <ChevronRight className="h-3.5 w-3.5" />
@@ -300,12 +364,32 @@ export function DataTable<T>({
 }
 
 // ── Standard badge used inside tables across the ERP ──
-export function Badge({ children, tone = 'stone', dot }: {
+export function Badge({
+  children,
+  tone = 'stone',
+  dot,
+}: {
   children: React.ReactNode;
   tone?: 'honey' | 'sky' | 'green' | 'red' | 'violet' | 'stone' | 'pink';
   dot?: boolean;
 }) {
-  const colours: Record<string,string>={honey:'var(--accent)',sky:'var(--info)',green:'var(--ok)',red:'var(--danger)',violet:'var(--violet)',pink:'var(--danger)',stone:'var(--txt2)'};
-  const colour=colours[tone]||'var(--txt2)';
-  return <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-neu-pill" style={{color:colour,background:`color-mix(in srgb, ${colour} 13%, var(--bg2))`}}>{dot&&<span className="h-1.5 w-1.5 rounded-full bg-current"/>}{children}</span>;
+  const colours: Record<string, string> = {
+    honey: 'var(--accent)',
+    sky: 'var(--info)',
+    green: 'var(--ok)',
+    red: 'var(--danger)',
+    violet: 'var(--violet)',
+    pink: 'var(--danger)',
+    stone: 'var(--txt2)',
+  };
+  const colour = colours[tone] || 'var(--txt2)';
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-neu-pill"
+      style={{ color: colour, background: `color-mix(in srgb, ${colour} 13%, var(--bg2))` }}
+    >
+      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+      {children}
+    </span>
+  );
 }

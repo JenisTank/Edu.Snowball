@@ -1,0 +1,24 @@
+{
+  "name": "bumbleb-kidz-erp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BumbleB Kidz ERP \u2014 multi-unit preschool ERP (NestJS API + React portal/PWA)",
+  "engines": {
+    "node": ">=20 <23"
+  },
+  "scripts": {
+    "setup": "npm --prefix api install && npm --prefix frontend install",
+    "api": "npm --prefix api run dev",
+    "web": "npm --prefix frontend run dev",
+    "build": "npm --prefix api run build && npm --prefix frontend run build",
+    "typecheck": "npm --prefix api run typecheck",
+    "db:seed": "npm --prefix api run prisma:seed",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm --prefix api test",
+    "db:migrate": "npm --prefix api run prisma:deploy"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}
