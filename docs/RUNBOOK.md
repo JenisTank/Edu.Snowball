@@ -4,7 +4,9 @@ Operational guide for running the platform in production. Written for whoever
 holds the pager, not only for the original author.
 
 Companion documents: [`PENDING_ITEMS.md`](./PENDING_ITEMS.md) (what is built vs
-blocked) and [`CODE_STRUCTURE.md`](./CODE_STRUCTURE.md) (how the code is laid out).
+blocked), [`CODE_STRUCTURE.md`](./CODE_STRUCTURE.md) (how the code is laid out)
+and [`VPS_DEPLOY.md`](./VPS_DEPLOY.md) (deploying on the shared production VPS,
+which runs host Caddy in front of loopback ports).
 
 ---
 
@@ -64,18 +66,18 @@ cp .env.example .env
 
 Fill in `.env` before starting anything:
 
-| Variable                                   | Required | Effect when missing                              |
-| ------------------------------------------ | -------- | ------------------------------------------------ |
-| `DB_PASSWORD`                              | yes      | Compose refuses to start                         |
-| `JWT_SECRET`                               | yes      | Compose refuses to start (32+ random chars)      |
-| `EVOLUTION_API_URL` / `_KEY` / `_INSTANCE` | no       | Comms outbox stays in sandbox mode               |
-| `UPI_VPA` / `UPI_PAYEE_NAME`               | no       | Units without their own UPI id cannot take UPI   |
-| `STORAGE_DRIVER` / `STORAGE_DIR`           | no       | Documents default to a local volume              |
-| `STORAGE_S3_*`                             | no       | Only read when `STORAGE_DRIVER=s3`               |
-| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`   | no       | Push disabled; portal keeps working              |
-| `PII_KEY`                                  | no       | PAN/UAN/bank encryption skipped (logged at boot) |
-| `SENTRY_DSN`                               | no       | Error reporting off                              |
-| `APP_RELEASE`                              | no       | Release tag defaults to the package version      |
+| Variable                                   | Required        | Effect when missing                                    |
+| ------------------------------------------ | --------------- | ------------------------------------------------------ |
+| `DB_PASSWORD`                              | yes             | Compose refuses to start                               |
+| `JWT_SECRET`                               | yes             | Compose refuses to start (32+ random chars)            |
+| `EVOLUTION_API_URL` / `_KEY` / `_INSTANCE` | no              | Comms outbox stays in sandbox mode                     |
+| `UPI_VPA` / `UPI_PAYEE_NAME`               | no              | Units without their own UPI id cannot take UPI         |
+| `STORAGE_DRIVER` / `STORAGE_DIR`           | no              | Documents default to a local volume                    |
+| `STORAGE_S3_*`                             | no              | Only read when `STORAGE_DRIVER=s3`                     |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`   | no              | Push disabled; portal keeps working                    |
+| `PII_KEY`                                  | **yes in prod** | PAN/UAN/bank stored in plaintext (only a boot warning) |
+| `SENTRY_DSN`                               | no              | Error reporting off                                    |
+| `APP_RELEASE`                              | no              | Release tag defaults to the package version            |
 
 ```bash
 docker compose up -d --build

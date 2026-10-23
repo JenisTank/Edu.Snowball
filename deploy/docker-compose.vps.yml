@@ -1,0 +1,20 @@
+# ─────────────────────────────────────────────────────────────
+# BumbleB ERP — VPS override (shared host)
+#
+#   docker compose -p bumbleb \
+#     -f docker-compose.yml -f deploy/docker-compose.vps.yml up -d --build
+#
+# The base file publishes the SPA on :80 and the API on :3000. On this VPS both
+# are already taken: host Caddy owns :80/:443 and another compose project owns
+# 127.0.0.1:8080. So publish exactly one loopback port and let Caddy terminate
+# TLS in front of it — the same pattern the existing project already uses.
+# `!override` replaces the base list instead of appending to it (Compose 2.24+).
+# ─────────────────────────────────────────────────────────────
+services:
+  api:
+    # Never reachable from the internet; the SPA talks to it over /api.
+    ports: !override []
+
+  frontend:
+    ports: !override
+      - '127.0.0.1:8082:80'

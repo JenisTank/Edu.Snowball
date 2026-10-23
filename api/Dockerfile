@@ -26,6 +26,10 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY package.json ./
 COPY prisma ./prisma
+# Documents live on a named volume mounted here. Create the directory (and hand
+# it to the unprivileged user) inside the image, or Docker initialises a fresh
+# volume as root:root and every document upload fails with EACCES.
+RUN mkdir -p /app/var/documents && chown -R app:app /app/var
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
