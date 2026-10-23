@@ -427,3 +427,11 @@ export class CancelOrderDto {
   @MaxLength(500)
   reason!: string;
 }
+
+/** A note attached when the desk acknowledges or dismisses a reorder alert. */
+export class ReorderNoteDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  note?: string;
+}

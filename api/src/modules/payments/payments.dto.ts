@@ -1,28 +1,41 @@
-import { IsIn, IsNumber, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
 
 const LEDGERS = ['PRESCHOOL', 'EVENING'] as const;
 
-export class CreateOnlineOrderDto {
+/**
+ * A UPI intent. `amount` is optional: omitting it means "the whole outstanding
+ * balance", which is what a parent taps in a hurry. When supplied it is checked
+ * against the balance, so a hand-typed amount cannot overpay.
+ */
+export class CreateUpiIntentDto {
   @IsUUID('4', { message: 'studentId must be a UUID' })
   studentId!: string;
 
+  @IsOptional()
   @IsNumber(
     { maxDecimalPlaces: 2 },
     { message: 'amount must be a rupee figure with at most 2 decimals' },
   )
   @Min(1, { message: 'amount must be at least ₹1' })
-  @Max(200000, { message: 'amount exceeds the online payment limit' })
-  amount!: number;
+  @Max(100000, { message: 'a single UPI payment is limited to ₹1,00,000' })
+  amount?: number;
 
   @IsOptional()
   @IsIn(LEDGERS)
   ledgerType?: (typeof LEDGERS)[number];
 }
 
-export class VerifyOnlinePaymentDto {
+/** The parent's claim: the UTR / UPI reference from their payment app. */
+export class ClaimUpiPaymentDto {
   @IsString()
-  razorpayPaymentId!: string;
+  @MaxLength(32)
+  payerRef!: string;
+}
 
+/** The desk confirming or rejecting a claim. */
+export class ConfirmUpiPaymentDto {
+  @IsOptional()
   @IsString()
-  razorpaySignature!: string;
+  @MaxLength(32)
+  payerRef?: string;
 }

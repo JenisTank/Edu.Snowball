@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 
-import { OnlinePaymentsController } from './online-payments.controller';
+import { UpiPaymentsController } from './upi-payments.controller';
 import { OnlineSettlementService } from './online-settlement.service';
-import { WebhooksController } from './webhooks.controller';
 
-/** Razorpay integration: order creation, settlement, webhook. */
+/**
+ * UPI collection: intent + QR per amount, parent claim, desk confirmation.
+ * No payment gateway is involved, so there is no webhook and no merchant KYC.
+ */
 @Module({
-  controllers: [OnlinePaymentsController, WebhooksController],
+  controllers: [UpiPaymentsController],
   providers: [OnlineSettlementService],
   exports: [OnlineSettlementService],
 })

@@ -32,6 +32,7 @@ import { unitScope } from '../../common/auth/unit-scope';
 import { PrismaService } from '../../common/database/prisma.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { toCsv } from '../fees/reports.rules';
+import { ReorderService } from './reorder.service';
 import {
   IO_CATEGORIES,
   IO_DIRECTIONS,
@@ -68,6 +69,7 @@ export class ProcurementController {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
+    private reorder: ReorderService,
   ) {}
 
   private unitFor(req: any, unitId?: string): string {
@@ -525,6 +527,12 @@ export class ProcurementController {
 
       return grn;
     });
+
+    // A receipt is the usual way an item comes back above its reorder level.
+    for (const i of inputs) {
+      const itemId = i.itemId ?? order.lines.find((l: any) => l.id === i.orderLineId)?.itemId;
+      if (itemId) await this.reorder.evaluate(itemId).catch(() => 'UNCHANGED');
+    }
 
     await this.audit.log(req, 'goods_receipts', receipt.id, 'INSERT', null, {
       grnNo,

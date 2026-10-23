@@ -35,16 +35,25 @@ export class OvertimeController {
     });
   }
 
+  /**
+   * OT1 (the premium multiplier) is not decided yet, so `multiplier` is allowed
+   * to be 0 — and is the default. Hours are still authorised and recorded; they
+   * simply carry no premium until the client sets the number. When it lands,
+   * only this default changes.
+   */
   @Post('overtime') async requestOt(@Body() b: OvertimeRequestDto) {
-    if (!b.employeeId || !b.date || !b.expectedMinutes || !b.reason || Number(b.multiplier) <= 0)
+    if (!b.employeeId || !b.date || !b.expectedMinutes || !b.reason)
       throw new BadRequestException('Complete OT request required');
+    const multiplier = Number(b.multiplier ?? 0);
+    if (!Number.isFinite(multiplier) || multiplier < 0 || multiplier > 3)
+      throw new BadRequestException('OT multiplier must be between 0 and 3');
     return this.prisma.overtimeAuthorisation.create({
       data: {
         employeeId: b.employeeId,
         date: new Date(b.date),
         expectedMinutes: Number(b.expectedMinutes),
         reason: b.reason,
-        multiplier: Number(b.multiplier),
+        multiplier,
       },
     });
   }

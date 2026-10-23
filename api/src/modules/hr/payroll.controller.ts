@@ -256,12 +256,20 @@ export class PayrollController {
         },
         include: { slabs: true },
       });
+    // Professional Tax is switchable per unit: some centres are exempt, and a
+    // wrong PT deduction is a statutory filing error, not a rounding difference.
+    const settings = run.unitId
+      ? await this.prisma.unitSettings.findUnique({ where: { unitId: run.unitId } })
+      : null;
+    const ptAllowed = settings ? settings.ptEnabled : true;
+
     for (const l of run.lines) {
       let employeeDed = 0,
         employer = 0;
       const applied: any = {};
       for (const s of schemes) {
         if (!(l.employee as any)[`${s.code.toLowerCase()}Enabled`]) continue;
+        if (s.code === 'PT' && !ptAllowed) continue;
         const basis = Math.min(
           Number(l.gross),
           s.wageCeiling ? Number(s.wageCeiling) : Number(l.gross),

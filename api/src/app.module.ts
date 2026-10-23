@@ -19,6 +19,8 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { EveningModule } from './modules/evening/evening.module';
 import { FeesModule } from './modules/fees/fees.module';
 import { HealthModule } from './modules/health/health.module';
+import { StorageModule } from './modules/storage/storage.module';
+import { FrontDeskModule } from './modules/frontdesk/frontdesk.module';
 import { HrModule } from './modules/hr/hr.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { LeavesModule } from './modules/leaves/leaves.module';
@@ -69,6 +71,8 @@ import { UsersModule } from './modules/users/users.module';
     PrivacyModule,
     EveningModule,
     HrModule,
+    FrontDeskModule,
+    StorageModule,
     HealthModule,
     AnalyticsModule,
     AuditLogModule,

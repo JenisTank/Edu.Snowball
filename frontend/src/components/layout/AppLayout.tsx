@@ -26,6 +26,7 @@ import {
   SunMoon,
   HelpCircle,
   IdCard,
+  DoorOpen,
 } from 'lucide-react';
 import { Logo } from '../brand/Logo';
 import { useAuth, ROLE_LABELS, HO_ROLES } from '../../lib/auth';
@@ -56,6 +57,7 @@ const TOP: NavItem[] = [
   { to: '/attendance', key: 'nav.attendance', icon: CalendarCheck },
   { to: '/fees', key: 'nav.fees', icon: IndianRupee },
   { to: '/comms', key: 'nav.comms', icon: MessageCircle },
+  { to: '/frontdesk', key: 'nav.frontdesk', icon: DoorOpen },
 ];
 const RAIL: NavItem[] = [
   { to: '/', key: 'nav.dashboard', icon: LayoutDashboard },
@@ -67,6 +69,7 @@ const RAIL: NavItem[] = [
   { to: '/me', key: 'nav.me', icon: IdCard },
   { to: '/evening', key: 'nav.evening', icon: SunMoon },
   { to: '/hr', key: 'nav.hr', icon: Briefcase },
+  { to: '/frontdesk', key: 'nav.frontdesk', icon: DoorOpen },
   { to: '/analytics', key: 'nav.analytics', icon: BarChart3 },
   { to: '/units', key: 'nav.units', icon: Building2 },
   { to: '/settings', key: 'nav.settings', icon: Settings },

@@ -470,10 +470,16 @@ export class OvertimeRequestDto {
   @MaxLength(500)
   reason!: string;
 
+  /**
+   * OT1 is undecided, so 0 is a valid value: the hours are authorised, no
+   * premium is paid. Omitted means 0.
+   */
+  @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0.01)
-  multiplier!: number;
+  @Min(0)
+  @Max(3)
+  multiplier?: number;
 }
 
 export class ApproveOvertimeDto {

@@ -27,28 +27,17 @@ export const env = {
   get jwtExpiresIn() {
     return process.env.JWT_EXPIRES ?? '15m';
   },
-  // ── Razorpay (online fee collection) ──────────────────────────────────────
-  /** Public key id handed to the browser checkout. Empty → sandbox mode. */
-  get razorpayKeyId() {
-    return process.env.RAZORPAY_KEY_ID ?? '';
+  // ── UPI (online fee collection, no gateway) ──────────────────────────────
+  /**
+   * Head Office fallback UPI id for units that have not published their own.
+   * Empty leaves those units without online collection — which is a truthful
+   * state, not a failure.
+   */
+  get upiVpa() {
+    return process.env.UPI_VPA ?? '';
   },
-  get razorpayKeySecret() {
-    return process.env.RAZORPAY_KEY_SECRET ?? '';
-  },
-  /** Webhook signing secret configured in the Razorpay dashboard. */
-  get razorpayWebhookSecret() {
-    return process.env.RAZORPAY_WEBHOOK_SECRET ?? '';
-  },
-  get razorpayBaseUrl() {
-    return process.env.RAZORPAY_BASE_URL ?? 'https://api.razorpay.com/v1';
-  },
-  /** Single largest online payment accepted, in rupees. */
-  get onlinePaymentCap() {
-    return Number(process.env.ONLINE_PAYMENT_CAP ?? 200000);
-  },
-  /** No merchant keys → the sandbox adapter; nothing hits the live API. */
-  get razorpayMock() {
-    return !this.razorpayKeyId || !this.razorpayKeySecret;
+  get upiPayeeName() {
+    return process.env.UPI_PAYEE_NAME ?? 'BumbleB Kidz';
   },
   // ── Observability ─────────────────────────────────────────────────────────
   /** Sentry DSN for API error tracking; empty keeps reporting off. */
@@ -62,6 +51,19 @@ export const env = {
   /** 0 disables tracing; 0.1 samples a tenth of transactions. */
   get sentryTracesSampleRate() {
     return Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? 0.1);
+  },
+  // ── WhatsApp: Evolution API (default) or Meta Cloud API ─────────────────
+  /** Base URL of a self-hosted Evolution API, e.g. http://evolution:8080. */
+  get evolutionApiUrl() {
+    return process.env.EVOLUTION_API_URL ?? '';
+  },
+  /** The instance's own API key (Evolution → Manager → Instance → apikey). */
+  get evolutionApiKey() {
+    return process.env.EVOLUTION_API_KEY ?? '';
+  },
+  /** Instance name created in Evolution, e.g. `bumbleb-u1`. */
+  get evolutionInstance() {
+    return process.env.EVOLUTION_INSTANCE ?? '';
   },
   get waBspKey() {
     return process.env.WA_BSP_KEY ?? '';

@@ -21,8 +21,10 @@ import {
   CreateInventoryItemDto,
   IssueToStudentDto,
   OpeningStockDto,
+  ReorderNoteDto,
   StockMovementDto,
 } from './inventory.dto';
+import { ReorderService } from './reorder.service';
 
 const CATS = [
   'ACADEMIC',
@@ -41,6 +43,7 @@ export class InventoryController {
   constructor(
     private prisma: PrismaService,
     private audit: AuditService,
+    private reorder: ReorderService,
   ) {}
   @Get('categories') cats() {
     return CATS;
@@ -179,7 +182,9 @@ export class InventoryController {
       });
     });
     await this.audit.log(r, 'inventory_movements', out.id, 'INSERT', null, out);
-    return out;
+    // Every movement is an opportunity to cross the reorder line.
+    const alert = await this.reorder.evaluate(id).catch(() => 'UNCHANGED');
+    return { ...out, reorder: alert };
   }
 
   /**
@@ -235,5 +240,78 @@ export class InventoryController {
           : null;
       return { movement, addon, billed: addon ? Number(addon.amount) : 0 };
     });
+  }
+
+  // ───────────────────────── reorder alerts ─────────────────────────
+
+  /**
+   * What is below its reorder level right now.
+   *
+   * Open alerts first (oldest at the top — that is the one somebody has been
+   * ignoring), then the items that are low but have no row yet, so the list is
+   * complete even between sweeps.
+   */
+  @Get('reorder-alerts')
+  async reorderAlerts(@Req() r: any, @Query('unitId') u?: string) {
+    const unitId = HO_ROLES.includes(r.user.role) ? u : r.user.unitId;
+    const alerts = await this.prisma.reorderAlert.findMany({
+      where: { status: { in: ['OPEN', 'ACKNOWLEDGED'] }, ...(unitId ? { unitId } : {}) },
+      include: { item: { select: { sku: true, name: true, category: true, unitCost: true } } },
+      orderBy: { raisedAt: 'asc' },
+    });
+    return alerts.map((a: any) => ({
+      id: a.id,
+      itemId: a.itemId,
+      sku: a.item.sku,
+      name: a.item.name,
+      category: a.item.category,
+      quantity: a.quantity,
+      reorderLevel: a.reorderLevel,
+      status: a.status,
+      severity: a.quantity <= Math.floor(a.reorderLevel / 2) ? 'CRITICAL' : 'LOW',
+      estimatedCost: Number(a.item.unitCost) * Math.max(0, a.reorderLevel * 2 - a.quantity),
+      note: a.note,
+      raisedAt: a.raisedAt,
+    }));
+  }
+
+  @Post('reorder-alerts/sweep')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR')
+  async sweepAlerts(@Req() r: any) {
+    const result = await this.reorder.sweep();
+    await this.audit.log(r, 'reorder_alerts', 'sweep', 'UPDATE', null, result);
+    return result;
+  }
+
+  @Post('reorder-alerts/:id/acknowledge')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR', 'RECEPTIONIST')
+  async acknowledgeAlert(@Req() r: any, @Param('id') id: string, @Body() b: ReorderNoteDto) {
+    const alert = await this.prisma.reorderAlert.findUnique({ where: { id } });
+    if (!alert) throw new NotFoundException('Alert not found');
+    const updated = await this.prisma.reorderAlert.update({
+      where: { id },
+      data: { status: 'ACKNOWLEDGED', note: b.note?.trim() || alert.note },
+    });
+    await this.audit.log(r, 'reorder_alerts', id, 'UPDATE', alert, updated);
+    return updated;
+  }
+
+  /** Dismiss without ordering — used when the item is being discontinued. */
+  @Post('reorder-alerts/:id/resolve')
+  @Roles('FOUNDER', 'ACADEMIC_DIR', 'CENTRE_HEAD', 'COORDINATOR')
+  async resolveAlert(@Req() r: any, @Param('id') id: string, @Body() b: ReorderNoteDto) {
+    const alert = await this.prisma.reorderAlert.findUnique({ where: { id } });
+    if (!alert) throw new NotFoundException('Alert not found');
+    const updated = await this.prisma.reorderAlert.update({
+      where: { id },
+      data: {
+        status: 'RESOLVED',
+        resolvedAt: new Date(),
+        resolvedById: r.user.sub,
+        note: b.note?.trim() || alert.note,
+      },
+    });
+    await this.audit.log(r, 'reorder_alerts', id, 'UPDATE', alert, updated);
+    return updated;
   }
 }

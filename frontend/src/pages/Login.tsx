@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, LoaderCircle, Sparkles } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { LanguageSwitch, useI18n } from '../lib/i18n';
-import { BeeMark, Honeycomb } from '../components/brand/Logo';
+import { BrandLogo, Honeycomb } from '../components/brand/Logo';
 
 const DEMO_ACCOUNTS = [
   { label: 'Founder', sub: 'All units · full access', email: 'founder@bumblebkidz.com' },
@@ -43,13 +43,8 @@ export default function Login() {
         <Honeycomb className="absolute -left-10 -top-10 h-[420px] w-[420px] text-white/60" />
         <Honeycomb className="absolute -bottom-16 -right-16 h-[380px] w-[380px] text-white/40 rotate-12" />
         <div className="relative flex h-full flex-col justify-between p-12">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-white/90 p-2.5 shadow-lift">
-              <BeeMark className="h-9 w-9" />
-            </div>
-            <div className="font-heading text-xl font-extrabold text-white drop-shadow-sm">
-              BumbleB Kidz
-            </div>
+          <div className="inline-flex rounded-2xl bg-white/95 p-2.5 shadow-lift">
+            <BrandLogo className="h-14" />
           </div>
 
           <div>
@@ -86,11 +81,8 @@ export default function Login() {
       {/* ── Form panel ── */}
       <div className="flex flex-1 items-center justify-center bg-cream px-6 py-10">
         <div className="w-full max-w-[400px]">
-          <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <BeeMark className="h-10 w-10" />
-            <span className="font-heading text-xl font-extrabold">
-              BumbleB <span className="text-honey-500">Kidz</span>
-            </span>
+          <div className="mb-8 lg:hidden">
+            <BrandLogo className="h-12" />
           </div>
 
           <h2 className="font-heading text-[1.7rem] font-extrabold tracking-tight">

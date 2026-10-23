@@ -73,7 +73,14 @@ export class UnitsAdminController {
       throw new ForbiddenException('Petty cash float is Founder-locked');
     }
     const data: any = {};
-    for (const k of ['pettyCashFloat', 'admissionNumber', 'calendlyLink'] as const) {
+    for (const k of [
+      'pettyCashFloat',
+      'admissionNumber',
+      'phone',
+      'upiVpa',
+      'upiPayeeName',
+      'ptEnabled',
+    ] as const) {
       if (body[k] !== undefined) data[k] = body[k];
     }
     const updated = await this.prisma.unitSettings.upsert({

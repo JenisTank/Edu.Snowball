@@ -29,8 +29,29 @@ export interface OutgoingMessage {
   subject?: string;
 }
 
+/**
+ * Which WhatsApp transport this deployment speaks.
+ *
+ * `EVOLUTION` is the self-hosted Evolution API (a Baileys bridge): one WhatsApp
+ * number, scanned once as a QR, then plain HTTP sends. No BSP, no per-message
+ * fee, no template pre-approval — which is exactly why it sends free-form text
+ * and we do not pretend otherwise.
+ *
+ * `CLOUD` is Meta's own Cloud API, kept because a BSP may be signed later; it
+ * needs approved templates for business-initiated messages.
+ *
+ * `NONE` logs the message and reports sandbox, so the pipeline still runs.
+ */
+export type WhatsappTransport = 'EVOLUTION' | 'CLOUD' | 'NONE';
+
+export function whatsappTransport(): WhatsappTransport {
+  if (env.evolutionApiUrl && env.evolutionApiKey && env.evolutionInstance) return 'EVOLUTION';
+  if (env.waBspKey && env.waPhoneId) return 'CLOUD';
+  return 'NONE';
+}
+
 export function whatsappConfigured(): boolean {
-  return !!(env.waBspKey && env.waPhoneId);
+  return whatsappTransport() !== 'NONE';
 }
 
 export function emailConfigured(): boolean {
@@ -38,21 +59,76 @@ export function emailConfigured(): boolean {
 }
 
 /**
- * WhatsApp Cloud API (or a BSP that speaks the same shape).
+ * WhatsApp, through whichever bridge is configured.
  *
- * Templates are mandatory for business-initiated messages, so the template name
- * and ordered variables are sent when known; otherwise this degrades to a text
- * message, which only works inside a 24-hour customer service window.
+ * Evolution API (v2) takes `{ number, text }` at
+ * `POST {base}/message/sendText/{instance}` with the instance API key in an
+ * `apikey` header. Cloud API takes a template when the template was approved,
+ * and plain text otherwise.
  */
 export async function sendWhatsApp(msg: OutgoingMessage): Promise<SendResult> {
   const to = normalisePhone(msg.phone);
   if (!to) return { ok: false, via: 'WHATSAPP', error: 'No usable phone number' };
 
-  if (!whatsappConfigured()) {
+  const transport = whatsappTransport();
+  if (transport === 'NONE') {
     log.debug(`sandbox WhatsApp → ${to}: ${msg.text.slice(0, 60)}`);
     return { ok: true, via: 'WHATSAPP_SANDBOX', sandbox: true };
   }
+  if (transport === 'EVOLUTION') return sendViaEvolution(to, msg);
 
+  return sendViaCloudApi(to, msg);
+}
+
+/**
+ * Evolution API.
+ *
+ * Templates are rendered to text before the call: Evolution has no template
+ * registry, so the approved-template concept simply does not apply. The text
+ * the dispatcher already built is the message that goes out.
+ */
+async function sendViaEvolution(to: string, msg: OutgoingMessage): Promise<SendResult> {
+  const base = env.evolutionApiUrl.replace(/\/$/, '');
+  const url = `${base}/message/sendText/${encodeURIComponent(env.evolutionInstance)}`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: env.evolutionApiKey },
+      body: JSON.stringify({
+        number: to,
+        text: msg.text,
+        // Keep the send synchronous-ish: the dispatcher wants a definite result.
+        options: { delay: 0, presence: 'composing' },
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const body: any = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        ok: false,
+        via: 'WHATSAPP_EVOLUTION',
+        error:
+          body?.message ??
+          (Array.isArray(body) ? body[0]?.message : undefined) ??
+          `Evolution API responded ${res.status}`,
+      };
+    }
+    return {
+      ok: true,
+      via: 'WHATSAPP_EVOLUTION',
+      providerId: body?.key?.id ?? body?.messageId ?? undefined,
+    };
+  } catch (e: any) {
+    return {
+      ok: false,
+      via: 'WHATSAPP_EVOLUTION',
+      error: e?.message ?? 'Evolution API dispatch failed',
+    };
+  }
+}
+
+/** Meta Cloud API — kept for the day a BSP is signed. */
+async function sendViaCloudApi(to: string, msg: OutgoingMessage): Promise<SendResult> {
   const payload = msg.template
     ? {
         messaging_product: 'whatsapp',
@@ -126,8 +202,14 @@ export async function sendEmail(msg: OutgoingMessage): Promise<SendResult> {
 
 /** Which channels this deployment can actually deliver on. */
 export function providerStatus() {
+  const transport = whatsappTransport();
   return {
-    whatsapp: { configured: whatsappConfigured(), mode: whatsappConfigured() ? 'LIVE' : 'SANDBOX' },
+    whatsapp: {
+      configured: transport !== 'NONE',
+      mode: transport === 'NONE' ? 'SANDBOX' : 'LIVE',
+      transport,
+      instance: transport === 'EVOLUTION' ? env.evolutionInstance : undefined,
+    },
     email: { configured: emailConfigured(), mode: emailConfigured() ? 'LIVE' : 'DISABLED' },
     push: { configured: !!(env.vapidPublicKey && env.vapidPrivateKey) },
   };

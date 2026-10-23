@@ -15,7 +15,7 @@ import { useI18n, useLabels } from '../lib/i18n';
 const inr = (n: any) => '₹' + Number(n || 0).toLocaleString('en-IN');
 const day = (d: any) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 
-const TABS = ['stock', 'procurement', 'petty-cash', 'reports'] as const;
+const TABS = ['stock', 'reorder', 'procurement', 'petty-cash', 'reports'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function Inventory() {
@@ -72,7 +72,7 @@ export default function Inventory() {
                   className={cn('seg-item', tab === t && 'seg-item-active')}
                   onClick={() => setTab(t)}
                 >
-                  {t.replace('-', ' ')}
+                  {t === 'reorder' ? L('Reorder') : t.replace('-', ' ')}
                 </button>
               ))}
             </div>
@@ -152,6 +152,7 @@ export default function Inventory() {
         </>
       )}
 
+      {tab === 'reorder' && <ReorderTab />}
       {tab === 'procurement' && <Procurement items={rows} />}
       {tab === 'petty-cash' && <PettyCash />}
       {tab === 'reports' && <Reports />}
@@ -930,6 +931,130 @@ function Reports() {
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+/**
+ * Reorder alerts.
+ *
+ * Every stock movement re-checks its item, so an alert exists the moment the
+ * shelf hits the level the unit set — not when somebody next opens a report.
+ * The sweep button exists for stock that moved outside the app.
+ */
+function ReorderTab() {
+  const { t: tr } = useI18n();
+  const L = useLabels();
+  const qc = useQueryClient();
+  const [err, setErr] = useState('');
+  const [note, setNote] = useState<Record<string, string>>({});
+
+  const { data: alerts = [], isLoading } = useQuery({
+    queryKey: ['reorder-alerts'],
+    queryFn: () => api('/inventory/reorder-alerts'),
+  });
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['reorder-alerts'] });
+    qc.invalidateQueries({ queryKey: ['inventory'] });
+  };
+
+  const sweep = useMutation({
+    mutationFn: () => api('/inventory/reorder-alerts/sweep', { method: 'POST', body: '{}' }),
+    onSuccess: refresh,
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const act = useMutation({
+    mutationFn: ({ id, kind }: { id: string; kind: 'acknowledge' | 'resolve' }) =>
+      api(`/inventory/reorder-alerts/${id}/${kind}`, {
+        method: 'POST',
+        body: JSON.stringify({ note: note[id] || undefined }),
+      }),
+    onSuccess: refresh,
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const total = (alerts as any[]).reduce((n, a) => n + Number(a.estimatedCost || 0), 0);
+
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="chip">
+          {(alerts as any[]).length} {tr('reorder.title').toLowerCase()}
+        </span>
+        <span className="chip">
+          {tr('reorder.estimated')} {inr(total)}
+        </span>
+        <button
+          className="btn-secondary ml-auto"
+          onClick={() => sweep.mutate()}
+          disabled={sweep.isPending}
+        >
+          <PackageCheck className="mr-1 inline h-4 w-4" />
+          {tr('reorder.sweep')}
+        </button>
+      </div>
+      <ErrorNote msg={err} />
+      {!(alerts as any[]).length && !isLoading ? (
+        <p className="card p-6 text-center text-sm text-[color:var(--txt3)]">
+          {tr('reorder.none')}
+        </p>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {(alerts as any[]).map((a) => (
+            <div className="card p-4" key={a.id}>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-heading font-extrabold">{a.name}</div>
+                  <div className="text-[11px] font-semibold text-stone-500">
+                    {a.sku} · {a.category}
+                  </div>
+                </div>
+                <Badge tone={a.severity === 'CRITICAL' ? 'red' : 'honey'} dot>
+                  {a.severity === 'CRITICAL' ? tr('reorder.critical') : tr('reorder.low')}
+                </Badge>
+              </div>
+              <div className="mt-3 flex items-end gap-4">
+                <div>
+                  <div className="text-2xl font-black">{a.quantity}</div>
+                  <div className="text-[10px] font-bold uppercase text-stone-400">in stock</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-black text-stone-400">{a.reorderLevel}</div>
+                  <div className="text-[10px] font-bold uppercase text-stone-400">reorder at</div>
+                </div>
+                <div className="ml-auto text-right">
+                  <div className="font-heading font-black">{inr(a.estimatedCost)}</div>
+                  <div className="text-[10px] font-bold uppercase text-stone-400">
+                    {tr('reorder.estimated')}
+                  </div>
+                </div>
+              </div>
+              <input
+                className="input mt-3"
+                placeholder="Note (optional)"
+                value={note[a.id] ?? ''}
+                onChange={(e) => setNote({ ...note, [a.id]: e.target.value })}
+              />
+              <div className="mt-2 flex gap-2">
+                <button
+                  className="btn-secondary flex-1 text-xs"
+                  onClick={() => act.mutate({ id: a.id, kind: 'acknowledge' })}
+                >
+                  {tr('reorder.ack')}
+                </button>
+                <button
+                  className="btn-secondary flex-1 text-xs"
+                  onClick={() => act.mutate({ id: a.id, kind: 'resolve' })}
+                >
+                  {tr('reorder.resolve')}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

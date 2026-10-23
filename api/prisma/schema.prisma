@@ -88,8 +88,8 @@ enum PaymentMode {
   CASH
   CHEQUE
   UPI
+  UPI_QR // online UPI collected through the parent app
   POS
-  RAZORPAY
   NEFT
 }
 
@@ -127,6 +127,9 @@ model Unit {
   areaMappings      AreaMaster[]
   waitlistEntries   WaitlistEntry[]
   onlinePayments    OnlinePayment[]
+  securityDeposits  SecurityDeposit[]
+  guestLogs         GuestLog[]
+  studentDocuments  StudentDocument[]
 
   @@map("units")
 }
@@ -135,7 +138,12 @@ model UnitSettings {
   unitId          String  @id @map("unit_id") @db.Uuid
   pettyCashFloat  Decimal @default(5000.00) @map("petty_cash_float") @db.Decimal(10, 2) // HO-edit only
   admissionNumber String? @map("admission_number") // published central hub number only
-  calendlyLink    String? @map("calendly_link")
+  phone           String? // front-desk number, shown on letters and the parent app
+  // UPI collection: the centre's own VPA. No gateway, no KYC — a QR is built
+  // per amount and the front desk confirms the credit.
+  upiVpa          String? @map("upi_vpa")
+  upiPayeeName    String? @map("upi_payee_name")
+  ptEnabled       Boolean @default(true) @map("pt_enabled") // Professional Tax default for this unit
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   unit Unit @relation(fields: [unitId], references: [id])
@@ -322,6 +330,8 @@ model Student {
   eveningAttendance  EveningAttendance[]
   waitlistEntries    WaitlistEntry[]
   onlinePayments     OnlinePayment[]
+  securityDeposits   SecurityDeposit[]
+  documents          StudentDocument[]
 
   @@map("students")
 }
@@ -687,6 +697,7 @@ model InventoryItem {
   unitCost Decimal @default(0) @map("unit_cost") @db.Decimal(10,2)
   active Boolean @default(true)
   movements InventoryMovement[]
+  reorderAlerts ReorderAlert[]
   @@map("inventory_items")
 }
 
@@ -796,14 +807,17 @@ model OnlinePayment {
   unitId            String     @map("unit_id") @db.Uuid
   amount            Decimal    @db.Decimal(10, 2)
   ledgerType        LedgerType @default(PRESCHOOL) @map("ledger_type")
-  provider          String     @default("RAZORPAY")
-  mode              String     @default("MOCK") // LIVE | MOCK
-  orderId           String     @unique @map("order_id")
+  provider          String     @default("UPI") // UPI | CASHIER
+  mode              String     @default("QR") // QR (self-service) | COUNTER
+  orderId           String     @unique @map("order_id") // our reference, quoted in the note
+  upiLink           String?    @map("upi_link") // upi://pay?… — also the QR payload
+  payerRef          String?    @map("payer_ref") // UTR / UPI reference the parent reports
   providerPaymentId String?    @map("provider_payment_id")
-  status            String     @default("CREATED") // CREATED | PAID | FAILED | EXPIRED
+  status            String     @default("CREATED") // CREATED | CLAIMED | PAID | FAILED | EXPIRED
   failureReason     String?    @map("failure_reason")
   transactionId     String?    @unique @map("transaction_id") @db.Uuid
   createdAt         DateTime   @default(now()) @map("created_at")
+  claimedAt         DateTime?  @map("claimed_at")
   paidAt            DateTime?  @map("paid_at")
 
   student Student @relation(fields: [studentId], references: [id])
@@ -1092,6 +1106,7 @@ model Employee {
   payrollLines PayrollLine[]
   payrollAdjustments PayrollAdjustment[]
   minuteRates EmployeeMinuteRate[]
+  securityDeposits SecurityDeposit[]
 
   @@index([unitId, status])
   @@index([reportingManagerId])
@@ -1363,6 +1378,109 @@ model StatutorySlab {
   deduction Decimal @db.Decimal(12,2)
   scheme StatutoryScheme @relation(fields:[schemeId],references:[id])
   @@map("statutory_slabs")
+}
+
+// ─────────────────────── FRONT DESK ───────────────────────
+
+// A security deposit is money the centre holds, not income: it sits as a
+// liability until it is returned or forfeited, and both endings need a reason.
+model SecurityDeposit {
+  id          String    @id @default(uuid()) @db.Uuid
+  unitId      String    @map("unit_id") @db.Uuid
+  employeeId  String?   @map("employee_id") @db.Uuid
+  studentId   String?   @map("student_id") @db.Uuid
+  amount      Decimal   @db.Decimal(10, 2)
+  status      String    @default("HELD") // HELD | RETURNED | FORFEITED
+  collectedAt DateTime  @default(now()) @map("collected_at")
+  closedAt    DateTime? @map("closed_at")
+  reason      String? // why it was returned or forfeited
+  notes       String?
+  createdById String?   @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  unit     Unit      @relation(fields: [unitId], references: [id])
+  employee Employee? @relation(fields: [employeeId], references: [id])
+  student  Student?  @relation(fields: [studentId], references: [id])
+
+  @@index([unitId, status])
+  @@index([employeeId])
+  @@index([studentId])
+  @@map("security_deposits")
+}
+
+// Reception's visitor book. The gate log is a safety record: who is in the
+// building, on whose authority, and when they left.
+model GuestLog {
+  id           String    @id @default(uuid()) @db.Uuid
+  unitId       String    @map("unit_id") @db.Uuid
+  guestName    String    @map("guest_name")
+  phone        String?
+  organisation String?
+  purpose      String // PARENT_VISIT | ADMISSION_ENQUIRY | VENDOR | INTERVIEW | OFFICIAL | OTHER
+  hostName     String?   @map("host_name")
+  badgeNo      String?   @map("badge_no")
+  studentId    String?   @map("student_id") @db.Uuid
+  inAt         DateTime  @default(now()) @map("in_at")
+  outAt        DateTime? @map("out_at")
+  notes        String?
+  createdById  String?   @map("created_by_id") @db.Uuid
+
+  unit Unit @relation(fields: [unitId], references: [id])
+
+  @@index([unitId, inAt])
+  @@map("guest_logs")
+}
+
+// ─────────────────────── DOCUMENT STORE ───────────────────────
+
+// Per-student files (birth certificate, medical note, signed PTM form…).
+// Deletion is manual and audited — the retention job never touches these.
+model StudentDocument {
+  id          String    @id @default(uuid()) @db.Uuid
+  studentId   String    @map("student_id") @db.Uuid
+  unitId      String    @map("unit_id") @db.Uuid
+  kind        String    @default("OTHER") // BIRTH_CERT | AADHAAR | PHOTO | MEDICAL | REPORT_CARD | PTM_FORM | OTHER
+  fileName    String    @map("file_name")
+  mimeType    String    @map("mime_type")
+  sizeBytes   Int       @map("size_bytes")
+  storageKey  String    @unique @map("storage_key")
+  driver      String    @default("LOCAL") // LOCAL | S3
+  notes       String?
+  uploadedById String?  @map("uploaded_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedById String?   @map("deleted_by_id") @db.Uuid
+
+  student Student @relation(fields: [studentId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@index([studentId, kind])
+  @@index([unitId, createdAt])
+  @@map("student_documents")
+}
+
+// ─────────────────────── INVENTORY ───────────────────────
+
+// One row per item that dropped to (or below) its reorder level. Raised by the
+// daily tick and by every stock movement, so the alert exists the moment the
+// shelf is low rather than whenever someone opens a report.
+model ReorderAlert {
+  id           String    @id @default(uuid()) @db.Uuid
+  itemId       String    @map("item_id") @db.Uuid
+  unitId       String?   @map("unit_id") @db.Uuid
+  quantity     Int
+  reorderLevel Int       @map("reorder_level")
+  status       String    @default("OPEN") // OPEN | ACKNOWLEDGED | RESOLVED
+  note         String?
+  raisedAt     DateTime  @default(now()) @map("raised_at")
+  resolvedAt   DateTime? @map("resolved_at")
+  resolvedById String?   @map("resolved_by_id") @db.Uuid
+
+  item InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([status, raisedAt])
+  @@index([itemId, status])
+  @@map("reorder_alerts")
 }
 
 model AppSetting {

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import { api, fmtDate } from '../lib/api';
@@ -5,6 +6,8 @@ import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable, Badge } from '../components/ui/DataTable';
 import { useAuth, HO_ROLES } from '../lib/auth';
 import { useI18n, useLabels } from '../lib/i18n';
+import { Modal } from '../components/ui/Modal';
+import { StudentDocuments } from '../components/StudentDocuments';
 
 interface StudentRow {
   id: string;
@@ -35,6 +38,7 @@ export default function Students() {
   const L = useLabels();
   const { t } = useI18n();
   const { user } = useAuth();
+  const [docsFor, setDocsFor] = useState<StudentRow | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ['students'],
     queryFn: () => api<StudentRow[]>('/students'),
@@ -194,10 +198,17 @@ export default function Students() {
           { id: 'plan', label: L('Fee Plan') },
           ...(isHO ? [{ id: 'unit', label: L('Unit') }] : []),
         ]}
-        onRowClick={() => {
-          /* 18-tab profile — Slice 3 */
-        }}
+        onRowClick={(row: any) => setDocsFor(row)}
       />
+
+      {docsFor && (
+        <Modal
+          title={`${docsFor.firstName} ${docsFor.lastName} · ${docsFor.admissionNo}`}
+          onClose={() => setDocsFor(null)}
+        >
+          <StudentDocuments studentId={docsFor.id} />
+        </Modal>
+      )}
     </div>
   );
 }

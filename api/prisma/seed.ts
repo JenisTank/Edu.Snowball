@@ -71,7 +71,11 @@ async function main() {
       data: {
         unitId: u.id,
         pettyCashFloat: 5000,
-        calendlyLink: u.code === 'U2' ? 'calendly.com/bumblebkidz/new-meeting' : null,
+        // Demo UPI id — a real centre replaces this in Settings. The handle is
+        // deliberately a placeholder, not a live account.
+        upiVpa: `bumbleb.${u.code.toLowerCase()}@okhdfcbank`,
+        upiPayeeName: `BumbleB Kidz ${u.code}`,
+        ptEnabled: true,
       },
     });
   }
@@ -421,7 +425,7 @@ async function main() {
           unitId: s.unitId,
           amount: Math.round(fee.total * 0.4),
           paymentMode: (
-            [PaymentMode.CASH, PaymentMode.UPI, PaymentMode.RAZORPAY, PaymentMode.CHEQUE] as const
+            [PaymentMode.CASH, PaymentMode.UPI, PaymentMode.UPI_QR, PaymentMode.CHEQUE] as const
           )[receiptSerial % 4],
           paymentDate: new Date(2026, 5, 1 + (receiptSerial % 28)),
           instalmentNo: 1,

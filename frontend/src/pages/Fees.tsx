@@ -27,7 +27,7 @@ const PLAN_LABEL: Record<string, string> = {
   PLAN_B: 'Plan B · 2 inst.',
   PLAN_C: 'Plan C · Full',
 };
-const MODES = ['CASH', 'UPI', 'CHEQUE', 'POS', 'NEFT', 'RAZORPAY'];
+const MODES = ['CASH', 'UPI', 'UPI_QR', 'CHEQUE', 'POS', 'NEFT'];
 const STATUS_TONE: Record<string, any> = {
   PAID: 'green',
   PARTIAL: 'sky',
@@ -828,7 +828,9 @@ export default function Fees() {
   const L = useLabels();
   const { t: tr } = useI18n();
   const { user } = useAuth();
-  const [tab, setTab] = useState<'ledger' | 'structures' | 'reminders' | 'reports'>('ledger');
+  const [tab, setTab] = useState<'ledger' | 'upi' | 'structures' | 'reminders' | 'reports'>(
+    'ledger',
+  );
   const [selected, setSelected] = useState<any>(null);
 
   const { data: rows = [], isLoading } = useQuery({
@@ -918,7 +920,7 @@ export default function Fees() {
         subtitle={tr('fees.subtitle')}
         action={
           <div className="seg">
-            {(['ledger', 'structures', 'reminders', 'reports'] as const).map((t) => (
+            {(['ledger', 'upi', 'structures', 'reminders', 'reports'] as const).map((t) => (
               <button
                 key={t}
                 className={cn('seg-item capitalize', tab === t && 'seg-item-active')}
@@ -971,6 +973,7 @@ export default function Fees() {
           onRowClick={(r: any) => setSelected(r)}
         />
       )}
+      {tab === 'upi' && <UpiTab />}
       {tab === 'structures' && <StructuresTab />}
       {tab === 'reminders' && <RemindersTab />}
       {tab === 'reports' && <ReportsTab />}
@@ -982,5 +985,290 @@ export default function Fees() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * UPI collections.
+ *
+ * Money arrives in the centre's bank account, not here — so this screen is a
+ * reconciliation queue, not a checkout. The desk opens the QR, then confirms
+ * each claim after matching the reference against the statement; confirming is
+ * the only action that issues a receipt.
+ */
+function UpiTab() {
+  const { t: tr } = useI18n();
+  const L = useLabels();
+  const qc = useQueryClient();
+  const [show, setShow] = useState<any>(null);
+  const [err, setErr] = useState('');
+  const [cfgOpen, setCfgOpen] = useState(false);
+
+  const { data: cfg } = useQuery({
+    queryKey: ['upi-config'],
+    queryFn: () => api('/fees/upi/config'),
+  });
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ['upi-pending'],
+    queryFn: () => api('/fees/upi/pending/list'),
+    refetchInterval: 60_000,
+  });
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ['upi-pending'] });
+
+  const generate = useMutation({
+    mutationFn: (r: any) =>
+      api('/fees/upi/intent', {
+        method: 'POST',
+        body: JSON.stringify({ studentId: r.studentId, amount: r.amount }),
+      }),
+    onSuccess: (res: any) => {
+      setShow(res);
+      setErr('');
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const openQr = useMutation({
+    mutationFn: (id: string) => api(`/fees/upi/${id}`),
+    onSuccess: (res: any) => {
+      setShow({ ...res, qr: res.qr ?? null });
+      setErr('');
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const confirm = useMutation({
+    mutationFn: (id: string) => api(`/fees/upi/${id}/confirm`, { method: 'POST', body: '{}' }),
+    onSuccess: () => {
+      refresh();
+      setShow(null);
+      setErr('');
+      qc.invalidateQueries({ queryKey: ['fees'] });
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const reject = useMutation({
+    mutationFn: (id: string) => api(`/fees/upi/${id}/reject`, { method: 'POST', body: '{}' }),
+    onSuccess: refresh,
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const cols = useMemo<ColumnDef<any, any>[]>(
+    () => [
+      {
+        id: 'student',
+        header: L('Student'),
+        accessorFn: (r: any) => r.student?.name,
+        cell: ({ row }) => (
+          <div>
+            <div className="font-semibold">{row.original.student?.name}</div>
+            <div className="text-[11px] text-stone-500">{row.original.student?.admissionNo}</div>
+          </div>
+        ),
+      },
+      {
+        id: 'amount',
+        header: L('Amount'),
+        accessorKey: 'amount',
+        cell: ({ row }) => <b>{inr(row.original.amount)}</b>,
+      },
+      { id: 'reference', header: L('Reference'), accessorKey: 'reference' },
+      {
+        id: 'payerRef',
+        header: L('UPI ref'),
+        accessorKey: 'payerRef',
+        cell: ({ row }) => row.original.payerRef ?? '—',
+      },
+      {
+        id: 'status',
+        header: L('Status'),
+        accessorKey: 'label',
+        cell: ({ row }) => (
+          <Badge tone={row.original.status === 'CLAIMED' ? 'honey' : 'stone'} dot>
+            {row.original.label}
+          </Badge>
+        ),
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => (
+          <div className="flex gap-3">
+            <button
+              className="text-[11px] font-bold text-[color:var(--accent)]"
+              onClick={() =>
+                row.original.status === 'CREATED'
+                  ? openQr.mutate(row.original.id)
+                  : confirm.mutate(row.original.id)
+              }
+            >
+              {row.original.status === 'CREATED' ? tr('upi.openQr') : tr('upi.confirm')}
+            </button>
+            {row.original.status === 'CLAIMED' && (
+              <button
+                className="text-[11px] font-bold text-rose-600"
+                onClick={() => reject.mutate(row.original.id)}
+              >
+                {tr('upi.reject')}
+              </button>
+            )}
+          </div>
+        ),
+      },
+    ],
+    [],
+  );
+
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className={cn('chip', cfg?.enabled ? 'text-emerald-700' : 'text-rose-600')}>
+          UPI {cfg?.enabled ? `· ${cfg.vpa}` : '· not configured'}
+        </span>
+        <span className="chip">
+          {cfg?.provider ?? 'UPI'} · {cfg?.mode ?? 'QR'}
+        </span>
+        <button className="btn-secondary ml-auto" onClick={() => setCfgOpen(true)}>
+          {tr('upi.generate')}
+        </button>
+      </div>
+      <ErrorNote msg={err} />
+      {!rows.length && !isLoading ? (
+        <p className="card p-6 text-center text-sm text-[color:var(--txt3)]">{tr('upi.none')}</p>
+      ) : (
+        <DataTable
+          columns={cols}
+          data={rows}
+          isLoading={isLoading}
+          title={L('UPI collections')}
+          exportName="upi-collections"
+        />
+      )}
+
+      {cfgOpen && (
+        <UpiGenerateModal
+          onClose={() => setCfgOpen(false)}
+          onCreated={(r) => {
+            setCfgOpen(false);
+            setShow(r);
+            refresh();
+          }}
+        />
+      )}
+
+      {show && (
+        <Modal title={L('UPI collections')} onClose={() => setShow(null)}>
+          <div className="grid gap-3 text-center">
+            <div>
+              <div className="text-xs font-bold text-[color:var(--txt2)]">{tr('upi.amount')}</div>
+              <div className="font-heading text-3xl font-black">{inr(Number(show.amount))}</div>
+              <div className="text-[11px] font-semibold text-stone-500">
+                {show.reference ?? show.orderId}
+              </div>
+            </div>
+            {show.qr ? (
+              <img src={show.qr} alt="UPI QR" className="mx-auto h-56 w-56 rounded-xl border" />
+            ) : (
+              <p className="text-xs text-stone-500">
+                Generate the QR from the parent app or the button above.
+              </p>
+            )}
+            {show.upiLink && (
+              <a href={show.upiLink} className="btn-secondary">
+                {tr('upi.openQr')}
+              </a>
+            )}
+            <p className="text-[11px] text-stone-500">{tr('upi.claimHint')}</p>
+            {show.intentId && (
+              <button className="btn-primary" onClick={() => confirm.mutate(show.intentId)}>
+                {tr('upi.confirm')}
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/** Ask the desk which child and how much, then mint a QR for the counter. */
+function UpiGenerateModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (r: any) => void;
+}) {
+  const { t: tr } = useI18n();
+  const [q, setQ] = useState('');
+  const [studentId, setStudentId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [err, setErr] = useState('');
+  const { data: list = [] } = useQuery({
+    queryKey: ['students-lite', q],
+    queryFn: () => api(`/students?search=${encodeURIComponent(q)}&take=20`),
+  });
+  const create = useMutation({
+    mutationFn: () =>
+      api('/fees/upi/intent', {
+        method: 'POST',
+        body: JSON.stringify({
+          studentId,
+          ...(amount ? { amount: Number(amount) } : {}),
+        }),
+      }),
+    onSuccess: onCreated,
+    onError: (e: any) => setErr(e.message),
+  });
+
+  return (
+    <Modal title={tr('upi.generate')} onClose={onClose}>
+      <div className="grid gap-3">
+        <Field label="Search">
+          <input
+            className="input"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Name or admission no."
+          />
+        </Field>
+        <Field label={tr('upi.amount')} hint={tr('upi.fullBalance')}>
+          <input
+            className="input"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+            placeholder="leave blank for the full balance"
+          />
+        </Field>
+        <div className="max-h-56 overflow-y-auto rounded-xl border border-[color:var(--line)]">
+          {(list as any[]).slice(0, 20).map((s: any) => (
+            <button
+              key={s.id}
+              className={cn(
+                'flex w-full items-center justify-between border-b border-[color:var(--line)] px-3 py-2 text-left text-xs last:border-0',
+                studentId === s.id && 'bg-amber-50',
+              )}
+              onClick={() => setStudentId(s.id)}
+            >
+              <span className="font-semibold">
+                {s.firstName} {s.lastName}
+              </span>
+              <span className="text-stone-500">{s.admissionNo}</span>
+            </button>
+          ))}
+        </div>
+        <ErrorNote msg={err} />
+        <button
+          className="btn-primary"
+          disabled={!studentId || create.isPending}
+          onClick={() => create.mutate()}
+        >
+          {tr('upi.generate')}
+        </button>
+      </div>
+    </Modal>
   );
 }

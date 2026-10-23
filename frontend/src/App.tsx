@@ -27,6 +27,7 @@ const Me = lazy(() => import('./pages/Me'));
 const Evening = lazy(() => import('./pages/Evening'));
 const HR = lazy(() => import('./pages/HR'));
 const Analytics = lazy(() => import('./pages/Analytics'));
+const FrontDesk = lazy(() => import('./pages/FrontDesk'));
 
 /** Shown while a route chunk is loading. */
 function RouteFallback() {
@@ -139,6 +140,14 @@ function Shell() {
           element={
             <Protected>
               <Analytics />
+            </Protected>
+          }
+        />
+        <Route
+          path="/frontdesk"
+          element={
+            <Protected>
+              <FrontDesk />
             </Protected>
           }
         />

@@ -17,8 +17,8 @@ async function bootstrap() {
   // Error reporting first: a crash during bootstrap should still be reported.
   if (initSentry()) new Logger('Bootstrap').log('🔭 Sentry error reporting enabled');
 
-  // rawBody: the Razorpay webhook is verified against the exact bytes received.
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  // Larger body cap: a student document can be a 10 MB base64 upload.
+  const app = await NestFactory.create(AppModule, { rawBody: true, bodyParser: true });
   app.enableCors({ origin: true, credentials: true });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(createValidationPipe());

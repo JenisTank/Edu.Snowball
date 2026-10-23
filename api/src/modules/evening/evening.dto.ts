@@ -17,7 +17,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-export const EVENING_MODES = ['CASH', 'CHEQUE', 'UPI', 'POS', 'RAZORPAY', 'NEFT'] as const;
+export const EVENING_MODES = ['CASH', 'CHEQUE', 'UPI', 'UPI_QR', 'POS', 'NEFT'] as const;
 
 /** `HH:MM` (24h) — the evening centre works in clock times, not timestamps. */
 const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;

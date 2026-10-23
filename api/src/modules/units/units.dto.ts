@@ -66,10 +66,34 @@ export class UpdateUnitSettingsDto {
   @MaxLength(60)
   admissionNumber?: string;
 
+  /** Front-desk number printed on letters and shown in the parent app. */
   @IsOptional()
   @IsString()
-  @MaxLength(300)
-  calendlyLink?: string;
+  @MaxLength(20)
+  @Matches(/^[+0-9][0-9\s-]{5,19}$/, { message: 'phone must be a dialable number' })
+  phone?: string;
+
+  /**
+   * UPI collection id (name@bank). Validated here, not only in the QR builder,
+   * so a typo cannot be saved and then silently pay nobody.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  @Matches(/^([a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64})?$/, {
+    message: 'upiVpa must look like name@bank (or be empty to disable UPI)',
+  })
+  upiVpa?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  upiPayeeName?: string;
+
+  /** Professional Tax default for staff in this unit. */
+  @IsOptional()
+  @IsBoolean()
+  ptEnabled?: boolean;
 }
 
 export class CreateBatchDto {

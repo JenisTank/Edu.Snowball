@@ -35,6 +35,7 @@ const LAST_COMMS_KEY = 'scheduler.last_comms_sweep';
 const LAST_RETENTION_KEY = 'scheduler.last_retention';
 const LAST_LEAVE_CUTOFF_KEY = 'scheduler.last_leave_cutoff';
 const LAST_DIGEST_KEY = 'scheduler.last_weekly_digest';
+const LAST_REORDER_KEY = 'scheduler.last_reorder_sweep';
 const TICK_MS = 60_000;
 /** Parent-reply SLA + delivery retries run every 15 minutes. */
 const COMMS_SWEEP_MS = 15 * 60_000;
@@ -247,6 +248,36 @@ export async function runDigestTick(prisma: any, now: Date = new Date()) {
   return { week: gate.week, skipped: false, queued, sent };
 }
 
+/**
+ * Daily reorder sweep.
+ *
+ * Every stock-changing route raises its alert inline, so this exists to catch
+ * the changes that happen outside the app (a `psql` correction, a migration, an
+ * import) and to keep the open rows' quantities honest. Guarded per IST day so
+ * the minute tick runs it once.
+ */
+export async function runReorderTick(prisma: any, now: Date = new Date()) {
+  const dateISO = istDateKey(now);
+  const setting = await prisma.appSetting.findUnique({ where: { key: LAST_REORDER_KEY } });
+  if ((setting?.value as any)?.dateISO === dateISO)
+    return { dateISO, skipped: true, reason: 'already swept today' };
+
+  const { ReorderService } = await import('../modules/inventory/reorder.service');
+  const result = await new ReorderService(prisma).sweep();
+
+  await prisma.appSetting
+    .upsert({
+      where: { key: LAST_REORDER_KEY },
+      update: { value: { dateISO, at: now.toISOString(), ...result } },
+      create: { key: LAST_REORDER_KEY, value: { dateISO, at: now.toISOString(), ...result } },
+    })
+    .catch(() => null);
+
+  if (result.raised || result.cleared)
+    log.log(`📦 reorder sweep: raised=${result.raised} cleared=${result.cleared}`);
+  return { dateISO, skipped: false, ...result };
+}
+
 export function startScheduler(prisma: any): () => void {
   let busy = false;
 
@@ -271,6 +302,9 @@ export function startScheduler(prisma: any): () => void {
       );
       await runDigestTick(prisma).catch((err: any) =>
         log.warn(`Weekly digest failed: ${err?.message ?? err}`),
+      );
+      await runReorderTick(prisma).catch((err: any) =>
+        log.warn(`Reorder sweep failed: ${err?.message ?? err}`),
       );
     } catch (err: any) {
       log.warn(`Daily attendance plan not derived: ${err?.message ?? err}`);

@@ -647,13 +647,17 @@ function UnitsTab() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const { name, address, phone, email, status, pettyCashFloat, admissionNumber, calendlyLink } =
-        form;
+      const { name, address, phone, email, status, pettyCashFloat, admissionNumber } = form;
       await api(`/units/${editing.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ name, address, phone, email, status }),
       });
-      const settings: any = { admissionNumber, calendlyLink };
+      const settings: any = {
+        admissionNumber,
+        upiVpa: form.upiVpa ?? '',
+        upiPayeeName: form.upiPayeeName ?? '',
+        ptEnabled: !!form.ptEnabled,
+      };
       if (isFounder) settings.pettyCashFloat = pettyCashFloat;
       await api(`/units/${editing.id}/settings`, {
         method: 'PATCH',
@@ -709,7 +713,9 @@ function UnitsTab() {
                     status: u.status,
                     pettyCashFloat: u.settings?.pettyCashFloat ?? 5000,
                     admissionNumber: u.settings?.admissionNumber ?? '',
-                    calendlyLink: u.settings?.calendlyLink ?? '',
+                    upiVpa: u.settings?.upiVpa ?? '',
+                    upiPayeeName: u.settings?.upiPayeeName ?? '',
+                    ptEnabled: u.settings?.ptEnabled ?? true,
                   });
                 }}
               >
@@ -727,10 +733,16 @@ function UnitsTab() {
                 <dt className="text-stone-500 font-semibold">Ops phone (internal)</dt>
                 <dd className="font-semibold text-stone-700">{u.phone ?? '—'}</dd>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-stone-500 font-semibold">Calendly</dt>
+              <div className="flex justify-between gap-2">
+                <dt className="text-stone-500 font-semibold">UPI id</dt>
                 <dd className="font-semibold text-stone-700 truncate max-w-[60%]">
-                  {u.settings?.calendlyLink ?? '—'}
+                  {u.settings?.upiVpa || '—'}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-stone-500 font-semibold">Professional Tax</dt>
+                <dd className="font-semibold text-stone-700">
+                  {u.settings?.ptEnabled ? 'Applied' : 'Disabled'}
                 </dd>
               </div>
               <div className="flex justify-between items-center">
@@ -804,14 +816,46 @@ function UnitsTab() {
                 />
               </Field>
             </div>
-            <Field label="Calendly link (Discovery Flight bookings)">
+            <Field
+              label={L('Front desk phone')}
+              hint={L('Shown to parents and printed on letters')}
+            >
               <input
                 className="input"
-                placeholder={L('https://calendly.com/…')}
-                value={form.calendlyLink}
-                onChange={(e) => setForm({ ...form, calendlyLink: e.target.value })}
+                placeholder="+91 98000 00000"
+                value={form.phone ?? ''}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
             </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label={L('UPI id (name@bank)')}
+                hint={L('Leave blank to switch online UPI off for this unit')}
+              >
+                <input
+                  className="input"
+                  placeholder="bumbleb.u1@okhdfcbank"
+                  value={form.upiVpa ?? ''}
+                  onChange={(e) => setForm({ ...form, upiVpa: e.target.value.trim() })}
+                />
+              </Field>
+              <Field label={L('UPI payee name')}>
+                <input
+                  className="input"
+                  placeholder="BumbleB Kidz U1"
+                  value={form.upiPayeeName ?? ''}
+                  onChange={(e) => setForm({ ...form, upiPayeeName: e.target.value })}
+                />
+              </Field>
+            </div>
+            <label className="flex items-center gap-2 text-xs font-semibold text-[color:var(--txt2)]">
+              <input
+                type="checkbox"
+                checked={!!form.ptEnabled}
+                onChange={(e) => setForm({ ...form, ptEnabled: e.target.checked })}
+              />
+              {L('Deduct Professional Tax for staff in this unit')}
+            </label>
             {err && (
               <p className="rounded-xl bg-rose-100/70 px-3 py-2 text-xs font-semibold text-rose-600">
                 {err}

@@ -4,10 +4,12 @@ import { PrismaService } from '../../common/database/prisma.service';
 import { ACADEMIC_YEAR_SHORT, nextSerial, receiptNo } from '../fees/fees.rules';
 
 /**
- * Turns a captured online payment into the same artefacts a counter receipt
+ * Turns a confirmed UPI credit into the same artefacts a counter receipt
  * produces: one FeeTransaction row (which every report and ledger reads) plus a
- * RECEIPT message for the parent. Kept out of the controllers so the webhook and
- * the browser-side signature check cannot drift apart.
+ * RECEIPT message for the parent.
+ *
+ * Only the front desk calls this, and only after they have seen the money on
+ * the bank statement. A parent's claim is never enough.
  */
 @Injectable()
 export class OnlineSettlementService {
@@ -23,6 +25,7 @@ export class OnlineSettlementService {
       amount: any;
       ledgerType: string;
       orderId: string;
+      payerRef?: string | null;
     },
     paymentId: string | null,
   ) {
@@ -48,12 +51,12 @@ export class OnlineSettlementService {
         amount,
         discount: 0,
         fine: 0,
-        paymentMode: 'RAZORPAY' as any,
+        paymentMode: 'UPI_QR' as any,
         reference: paymentId ?? intent.orderId,
         paymentDate: new Date(),
         instalmentNo: null,
         receiptNo: next,
-        remarks: 'Online payment (Razorpay)',
+        remarks: 'Online UPI payment (QR)',
         collectedById: null,
       },
     });
@@ -81,7 +84,7 @@ export class OnlineSettlementService {
               receiptNo: next,
               amount,
               child: `${student.firstName} ${student.lastName}`,
-              channel: 'RAZORPAY',
+              channel: 'UPI',
             },
           },
         })

@@ -87,8 +87,8 @@ CREATE TYPE "PaymentMode" AS ENUM (
   'CASH',
   'CHEQUE',
   'UPI',
+  'UPI_QR',
   'POS',
-  'RAZORPAY',
   'NEFT'
 );
 
@@ -120,7 +120,10 @@ CREATE TABLE "unit_settings" (
     "unit_id" UUID NOT NULL,
     "petty_cash_float" DECIMAL(10, 2) DEFAULT 5000.00 NOT NULL,
     "admission_number" TEXT,
-    "calendly_link" TEXT,
+    "phone" TEXT,
+    "upi_vpa" TEXT,
+    "upi_payee_name" TEXT,
+    "pt_enabled" BOOLEAN DEFAULT true NOT NULL,
     "updated_at" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "unit_settings_pkey" PRIMARY KEY ("unit_id")
 );
@@ -687,14 +690,17 @@ CREATE TABLE "online_payments" (
     "unit_id" UUID NOT NULL,
     "amount" DECIMAL(10, 2) NOT NULL,
     "ledger_type" "LedgerType" DEFAULT 'PRESCHOOL' NOT NULL,
-    "provider" TEXT DEFAULT 'RAZORPAY' NOT NULL,
-    "mode" TEXT DEFAULT 'MOCK' NOT NULL,
+    "provider" TEXT DEFAULT 'UPI' NOT NULL,
+    "mode" TEXT DEFAULT 'QR' NOT NULL,
     "order_id" TEXT NOT NULL,
+    "upi_link" TEXT,
+    "payer_ref" TEXT,
     "provider_payment_id" TEXT,
     "status" TEXT DEFAULT 'CREATED' NOT NULL,
     "failure_reason" TEXT,
     "transaction_id" UUID,
     "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "claimed_at" TIMESTAMP(3),
     "paid_at" TIMESTAMP(3),
     CONSTRAINT "online_payments_pkey" PRIMARY KEY ("id")
 );
@@ -1238,6 +1244,88 @@ CREATE TABLE "statutory_slabs" (
 
 
 -- CreateTable
+CREATE TABLE "security_deposits" (
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "employee_id" UUID,
+    "student_id" UUID,
+    "amount" DECIMAL(10, 2) NOT NULL,
+    "status" TEXT DEFAULT 'HELD' NOT NULL,
+    "collected_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "closed_at" TIMESTAMP(3),
+    "reason" TEXT,
+    "notes" TEXT,
+    "created_by_id" UUID,
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT "security_deposits_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "security_deposits_unit_id_status_idx" ON "security_deposits"("unit_id", "status");
+CREATE INDEX "security_deposits_employee_id_idx" ON "security_deposits"("employee_id");
+CREATE INDEX "security_deposits_student_id_idx" ON "security_deposits"("student_id");
+
+-- CreateTable
+CREATE TABLE "guest_logs" (
+    "id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "guest_name" TEXT NOT NULL,
+    "phone" TEXT,
+    "organisation" TEXT,
+    "purpose" TEXT NOT NULL,
+    "host_name" TEXT,
+    "badge_no" TEXT,
+    "student_id" UUID,
+    "in_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "out_at" TIMESTAMP(3),
+    "notes" TEXT,
+    "created_by_id" UUID,
+    CONSTRAINT "guest_logs_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "guest_logs_unit_id_in_at_idx" ON "guest_logs"("unit_id", "in_at");
+
+-- CreateTable
+CREATE TABLE "student_documents" (
+    "id" UUID NOT NULL,
+    "student_id" UUID NOT NULL,
+    "unit_id" UUID NOT NULL,
+    "kind" TEXT DEFAULT 'OTHER' NOT NULL,
+    "file_name" TEXT NOT NULL,
+    "mime_type" TEXT NOT NULL,
+    "size_bytes" INTEGER NOT NULL,
+    "storage_key" TEXT NOT NULL,
+    "driver" TEXT DEFAULT 'LOCAL' NOT NULL,
+    "notes" TEXT,
+    "uploaded_by_id" UUID,
+    "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "deleted_at" TIMESTAMP(3),
+    "deleted_by_id" UUID,
+    CONSTRAINT "student_documents_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "student_documents_storage_key_key" ON "student_documents"("storage_key");
+CREATE INDEX "student_documents_student_id_kind_idx" ON "student_documents"("student_id", "kind");
+CREATE INDEX "student_documents_unit_id_created_at_idx" ON "student_documents"("unit_id", "created_at");
+
+-- CreateTable
+CREATE TABLE "reorder_alerts" (
+    "id" UUID NOT NULL,
+    "item_id" UUID NOT NULL,
+    "unit_id" UUID,
+    "quantity" INTEGER NOT NULL,
+    "reorder_level" INTEGER NOT NULL,
+    "status" TEXT DEFAULT 'OPEN' NOT NULL,
+    "note" TEXT,
+    "raised_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "resolved_at" TIMESTAMP(3),
+    "resolved_by_id" UUID,
+    CONSTRAINT "reorder_alerts_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "reorder_alerts_status_raised_at_idx" ON "reorder_alerts"("status", "raised_at");
+CREATE INDEX "reorder_alerts_item_id_status_idx" ON "reorder_alerts"("item_id", "status");
+
+-- CreateTable
 CREATE TABLE "app_settings" (
     "key" TEXT NOT NULL,
     "value" JSONB NOT NULL,
@@ -1322,3 +1410,10 @@ ALTER TABLE "payroll_lines" ADD CONSTRAINT "payroll_lines_employee_id_fkey" FORE
 ALTER TABLE "payroll_adjustments" ADD CONSTRAINT "payroll_adjustments_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "employee_minute_rates" ADD CONSTRAINT "employee_minute_rates_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "statutory_slabs" ADD CONSTRAINT "statutory_slabs_scheme_id_fkey" FOREIGN KEY ("scheme_id") REFERENCES "statutory_schemes"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "security_deposits" ADD CONSTRAINT "security_deposits_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "security_deposits" ADD CONSTRAINT "security_deposits_employee_id_fkey" FOREIGN KEY ("employee_id") REFERENCES "employees"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "security_deposits" ADD CONSTRAINT "security_deposits_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "guest_logs" ADD CONSTRAINT "guest_logs_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "student_documents" ADD CONSTRAINT "student_documents_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "students"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "student_documents" ADD CONSTRAINT "student_documents_unit_id_fkey" FOREIGN KEY ("unit_id") REFERENCES "units"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "reorder_alerts" ADD CONSTRAINT "reorder_alerts_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "inventory_items"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

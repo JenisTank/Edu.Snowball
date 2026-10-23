@@ -316,7 +316,7 @@ function FeesCard({ childId }: { childId: string }) {
           ))}
         </div>
       )}
-      <PayOnline childId={childId} balance={Number(f.balance || 0)} />
+      <PayUpi childId={childId} balance={Number(f.balance || 0)} />
     </div>
   );
 }
@@ -626,82 +626,66 @@ function ConversationCard({ childId }: { childId: string }) {
   );
 }
 
-function loadRazorpay(): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const w = window as any;
-    if (w.Razorpay) return resolve(w.Razorpay);
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve((window as any).Razorpay);
-    script.onerror = () => reject(new Error('Could not reach the payment gateway'));
-    document.body.appendChild(script);
-  });
-}
-
 /**
- * Online fee payment.
+ * UPI fee payment — no payment gateway.
  *
- * The gateway is only offered when the centre's merchant account is live
- * (`/fees/online/config`). Until KYC completes the card explains that instead
- * of showing a button that cannot work.
+ * The centre publishes its own UPI id; the API turns the amount owed into a
+ * `upi://` intent and a QR image. The parent scans it in any UPI app, then taps
+ * "I have paid" with the reference from their app. The centre matches that
+ * against its bank statement and the receipt appears here — which is why the
+ * card can say, honestly, that the money has not been confirmed yet.
  */
-function PayOnline({ childId, balance }: { childId: string; balance: number }) {
+function PayUpi({ childId, balance }: { childId: string; balance: number }) {
   const qc = useQueryClient();
   const { t } = useI18n();
+  const [amount, setAmount] = useState<string>('');
+  const [payFull, setPayFull] = useState(true);
+  const [ref, setRef] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
+
   const { data: cfg } = useQuery({
-    queryKey: ['p-pay-config'],
-    queryFn: () => papi('/fees/online/config'),
+    queryKey: ['p-upi-config'],
+    queryFn: () => papi('/fees/upi/config'),
     staleTime: 5 * 60_000,
   });
 
-  async function pay() {
-    setBusy(true);
-    setErr('');
-    setMsg('');
-    try {
-      const order = await papi('/fees/online/order', {
+  const { data: open } = useQuery({
+    queryKey: ['p-upi-open', childId],
+    queryFn: () => papi(`/fees/upi/open/${childId}`).catch(() => null),
+    staleTime: 0,
+  });
+
+  const intent = useMutation({
+    mutationFn: (rupees: number | null) =>
+      papi('/fees/upi/intent', {
         method: 'POST',
-        body: JSON.stringify({ studentId: childId, amount: balance }),
-      });
-      const Razorpay = await loadRazorpay();
-      const checkout = new Razorpay({
-        key: order.keyId,
-        order_id: order.orderId,
-        amount: order.amount,
-        currency: order.currency,
-        name: 'BumbleB Kidz',
-        description: `Fees for ${order.studentName}`,
-        prefill: { contact: order.prefillPhone },
-        theme: { color: '#F2A93B' },
-        handler: async (response: any) => {
-          try {
-            const done = await papi(`/fees/online/${order.intentId}/verify`, {
-              method: 'POST',
-              body: JSON.stringify({
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              }),
-            });
-            setMsg(`Paid ✅ Receipt ${done.receiptNo ?? ''}`.trim());
-            qc.invalidateQueries({ queryKey: ['p-fees', childId] });
-            qc.invalidateQueries({ queryKey: ['p-docs', childId] });
-          } catch (e: any) {
-            setErr(e.message);
-          } finally {
-            setBusy(false);
-          }
-        },
-        modal: { ondismiss: () => setBusy(false) },
-      });
-      checkout.open();
-    } catch (e: any) {
-      setErr(e.message);
-      setBusy(false);
-    }
-  }
+        body: JSON.stringify({ studentId: childId, ...(rupees ? { amount: rupees } : {}) }),
+      }),
+    onSuccess: () => {
+      setErr('');
+      setMsg('');
+      qc.invalidateQueries({ queryKey: ['p-upi-open', childId] });
+    },
+    onError: (e: any) => setErr(e.message),
+  });
+
+  const claim = useMutation({
+    mutationFn: (payerRef: string) =>
+      papi(`/fees/upi/${intent.data.intentId}/claim`, {
+        method: 'POST',
+        body: JSON.stringify({ payerRef }),
+      }),
+    onSuccess: (res: any) => {
+      setMsg(res.message ?? t('parent.upiClaimed'));
+      setErr('');
+      setRef('');
+      qc.invalidateQueries({ queryKey: ['p-upi-open', childId] });
+      qc.invalidateQueries({ queryKey: ['p-fees', childId] });
+    },
+    onError: (e: any) => setErr(e.message),
+  });
 
   if (!cfg) return null;
   if (!cfg.enabled) {
@@ -711,16 +695,115 @@ function PayOnline({ childId, balance }: { childId: string; balance: number }) {
       </p>
     );
   }
+  if (balance <= 0 && !open) return null;
+
+  const active = open ?? intent.data;
+  const claimed = active?.status === 'CLAIMED';
+
   return (
-    <div className="mt-3">
-      <button className="btn-primary w-full" disabled={busy || balance <= 0} onClick={pay}>
-        {busy ? t('parent.paying') : `${t('parent.payNow')} · ${inr(balance)}`}
-      </button>
+    <div className="mt-3 rounded-2xl border border-[color:var(--line)] bg-white p-3">
+      {!active ? (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold text-[color:var(--txt2)]">
+              {t('parent.upiAmount')}
+            </span>
+            <button
+              type="button"
+              className="text-[10px] font-bold text-[color:var(--accent)] underline"
+              onClick={() => setPayFull((v) => !v)}
+            >
+              {payFull ? t('parent.upiOtherAmount') : t('parent.upiPayFull')}
+            </button>
+          </div>
+          {payFull ? (
+            <div className="mt-1 font-heading text-2xl font-black">{inr(balance)}</div>
+          ) : (
+            <input
+              className="input mt-1"
+              inputMode="decimal"
+              placeholder={String(balance)}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+            />
+          )}
+          <button
+            className="btn-primary mt-2.5 w-full"
+            disabled={busy || intent.isPending || (!payFull && !(Number(amount) > 0))}
+            onClick={() => {
+              setBusy(true);
+              intent.mutate(payFull ? null : Number(amount), { onSettled: () => setBusy(false) });
+            }}
+          >
+            {busy || intent.isPending ? t('parent.paying') : t('parent.payNow')}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                {t('parent.upiScan')}
+              </div>
+              <div className="font-heading text-xl font-black">{inr(Number(active.amount))}</div>
+              <div className="text-[10px] font-semibold text-stone-500">
+                {active.reference ?? active.orderId}
+              </div>
+            </div>
+            <span className="rounded-full bg-stone-100 px-2 py-1 text-[9px] font-bold uppercase text-stone-600">
+              {active.label ?? active.status}
+            </span>
+          </div>
+
+          {active.qr && (
+            <img
+              src={active.qr}
+              alt="UPI QR"
+              className="mx-auto mt-2 h-40 w-40 rounded-xl border border-[color:var(--line)]"
+            />
+          )}
+
+          {active.upiLink && (
+            <a
+              href={active.upiLink}
+              className="btn-secondary mt-2 block w-full text-center text-sm"
+            >
+              {t('parent.upiOpen')}
+            </a>
+          )}
+
+          {claimed ? (
+            <p className="mt-2 rounded-xl bg-amber-50 px-2 py-2 text-center text-[11px] font-bold text-amber-800">
+              {t('parent.upiWaiting')}
+            </p>
+          ) : (
+            <div className="mt-2">
+              <label className="text-[10px] font-bold text-[color:var(--txt2)]">
+                {t('parent.upiReference')}
+              </label>
+              <input
+                className="input mt-1"
+                value={ref}
+                onChange={(e) => setRef(e.target.value)}
+                placeholder="412345678901"
+              />
+              <button
+                className="btn-primary mt-2 w-full"
+                disabled={claim.isPending || ref.trim().length < 8}
+                onClick={() => claim.mutate(ref.trim())}
+              >
+                {t('parent.upiClaim')}
+              </button>
+            </div>
+          )}
+
+          <p className="mt-2 text-center text-[9px] font-semibold leading-snug text-stone-400">
+            {t('parent.upiQrNote')}
+          </p>
+        </>
+      )}
       {msg && <p className="mt-2 text-[11px] font-bold text-emerald-700">{msg}</p>}
       {err && <p className="mt-2 text-[11px] font-bold text-rose-600">{err}</p>}
-      <p className="mt-1.5 text-center text-[10px] font-semibold text-stone-400">
-        UPI · cards · netbanking — secured by Razorpay
-      </p>
     </div>
   );
 }

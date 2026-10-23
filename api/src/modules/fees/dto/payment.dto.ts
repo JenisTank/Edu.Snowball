@@ -11,7 +11,7 @@ import {
   Min,
 } from 'class-validator';
 
-export const PAYMENT_MODES = ['CASH', 'CHEQUE', 'UPI', 'POS', 'RAZORPAY', 'NEFT'] as const;
+export const PAYMENT_MODES = ['CASH', 'CHEQUE', 'UPI', 'UPI_QR', 'POS', 'NEFT'] as const;
 export const LEDGER_TYPES = ['PRESCHOOL', 'EVENING'] as const;
 
 export class CreatePaymentDto {
