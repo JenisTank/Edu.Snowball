@@ -91,22 +91,24 @@ without a client answer is built and green on PR #2.
 
 | #   | Bucket                                                                                            | Pending  | Who unblocks it            |
 | --- | ------------------------------------------------------------------------------------------------- | -------- | -------------------------- |
-| A   | Accounts, keys and data still outstanding after the 23 Oct answers                                | 5 items  | **You / your CA**          |
+| A   | Accounts, keys and data still outstanding after the 23 Oct answers                                | 4 items  | **You / your CA**          |
 | B   | Deferred by your instruction (Phase 3 franchisor modules 18–23, Phase 4 AI 24–27, 29-SOP library) | 11 items | A future phase — not a bug |
 | C   | Polish with no open question: Gujarati long-form prose (help text, validation messages)           | 1 item   | Copywriting pass, any time |
 
-### A. Waiting on you (5 items, all data or accounts)
+### A. Waiting on you (4 items, all data or accounts)
 
 | #   | What is needed                           | What it switches on                                         |
 | --- | ---------------------------------------- | ----------------------------------------------------------- |
 | 1   | Each unit's UPI id (and payee name)      | Live UPI collection — a ₹1 QR proves it end to end          |
 | 2   | Evolution API URL, key and instance name | Live WhatsApp: absence, receipts, welcome, announcements    |
-| 3   | Domain + VPS                             | Production deployment (`docs/RUNBOOK.md` is ready)          |
-| 4   | Real fee structures for AY 2026-27       | Go-live fee data (dummy structures run everything today)    |
-| 5   | OT multiplier for payroll                | Currently 0: hours are authorised and paid at the base rate |
+| 3   | Real fee structures for AY 2026-27       | Go-live fee data (dummy structures run everything today)    |
+| 4   | OT multiplier for payroll                | Currently 0: hours are authorised and paid at the base rate |
 
-Everything else the client held back is now explicitly **held**, not blocked:
-domain/VPS, Todd Care evening, grade-wise DF templates, ACA curriculum content.
+Domain + VPS is **held**, not awaited — it is listed under "held by the client"
+in §7, not here. The rest of what the client held back is likewise explicitly
+**held**, not blocked: Todd Care evening, grade-wise DF templates, ACA curriculum
+content.
+
 PTM signed-form scans and student documents no longer need object storage bought
 — they run on the API's volume and switch to S3 by env var.
 
@@ -394,15 +396,17 @@ Analytics) are already done.
 
 The 23 Oct answers closed most of this list. What is left, split by who acts:
 
-**The client supplies (5)**
+**The client supplies (4)**
 
 | #   | Item                                  | Blocks                                       |
 | --- | ------------------------------------- | -------------------------------------------- |
 | 1   | Each unit's UPI id + payee name       | Live UPI collection (a ₹1 QR proves it)      |
 | 2   | Evolution API URL, key, instance name | Every live WhatsApp send                     |
-| 3   | Domain + VPS                          | Production deployment                        |
-| 4   | Real fee structures for AY 2026-27    | Go-live fee data                             |
-| 5   | OT multiplier                         | Premium on authorised overtime (currently 0) |
+| 3   | Real fee structures for AY 2026-27    | Go-live fee data                             |
+| 4   | OT multiplier                         | Premium on authorised overtime (currently 0) |
+
+Domain + VPS sits in the held list below, **not** here: the client answered
+"hold", so it is a decision deferred, not data outstanding.
 
 **Explicitly held by the client (4)** — decided later, not blocked on us
 
@@ -426,20 +430,20 @@ switchable Professional Tax.
 
 Sprints S1–S9 are **done** (see the delivery table at the top for commits and
 scope), and the 23 Oct answers added a second delivery on top. What remains is
-five items of client data, four deliberate holds, and one document:
+four items of client data, four deliberate holds, and one document:
 
-| Item                                  | Status | Note                                                                 |
-| ------------------------------------- | ------ | -------------------------------------------------------------------- |
-| UPI live collection                   | 🟡     | Built; each unit needs its UPI id in Settings → Units                |
-| Evolution API live delivery           | 🟡     | Built; needs the instance URL, key and instance name                 |
-| Domain / VPS / TLS                    | ⏸      | Held by the client; `docs/RUNBOOK.md` is written and waiting         |
-| Brand TTFs                            | 🚫     | Logo files have arrived and are in use; PDFs still use WinAnsi for ₹ |
-| Real fee structures                   | 🟡     | Dummy structures run every flow; real ones are data entry            |
-| OT multiplier                         | 🟡     | Set to 0 on the client's instruction; hours still recorded           |
-| 29 SOPs library                       | 🔲     | Documentation deliverable owned by the founder                       |
-| Scheduled email/PDF digest            | ✅     | Monday 08:00 IST, weekly per-student email + PDF                     |
-| Grade-wise Discovery Flight templates | ⏸      | Held by the client                                                   |
-| Security deposit / guest log          | ✅     | Built in this pass                                                   |
+| Item                                  | Status | Note                                                                                |
+| ------------------------------------- | ------ | ----------------------------------------------------------------------------------- |
+| UPI live collection                   | 🟡     | Built; each unit needs its UPI id in Settings → Units                               |
+| Evolution API live delivery           | 🟡     | Built; needs the instance URL, key and instance name                                |
+| Domain / VPS / TLS                    | ⏸      | Held by the client; `docs/RUNBOOK.md` is written and waiting                        |
+| Brand TTFs                            | 🚫     | Known limitation, not a bug: PDFs show ₹ as "INR" until the brand TTFs are embedded |
+| Real fee structures                   | 🟡     | Dummy structures run every flow; real ones are data entry                           |
+| OT multiplier                         | 🟡     | Set to 0 on the client's instruction; hours still recorded                          |
+| 29 SOPs library                       | 🔲     | Documentation deliverable owned by the founder                                      |
+| Scheduled email/PDF digest            | ✅     | Monday 08:00 IST, weekly per-student email + PDF                                    |
+| Grade-wise Discovery Flight templates | ⏸      | Held by the client                                                                  |
+| Security deposit / guest log          | ✅     | Built in this pass                                                                  |
 
 **Verification for this state:** `npm test` 285/285 across 31 suites,
 `tsc --noEmit` clean, prettier clean, frontend production build clean, and all
