@@ -92,10 +92,10 @@ inside Phase 3 are nonetheless built.
 
 - **Design system and brand rules are frozen.** White background, cream cards
   `linear-gradient(145deg,#F8EDCD,#EBDBAC)`, dark-honey actions, dark readable
-  text (#1F1B13, muted ≥ stone-500). Classes: `.card .btn-primary .btn-neo
-.input .chip .seg .pop .neo-inset`; one shared TanStack `DataTable` for every
-  table. The logo asset is used exactly as supplied — never recoloured, cropped
-  or redrawn.
+  text. Classes live in `frontend/src/index.css`: `.card`, `.btn-primary`,
+  `.btn-neo`, `.input`, `.chip`, `.seg`, `.pop`, `.neo-inset`; one shared TanStack
+  `DataTable` for every table. The logo asset is used exactly as supplied — never
+  recoloured, cropped or redrawn.
 - **Every `@Body()` must be a `*Dto`.** `api/test/body-dto.spec.ts` fails CI
   otherwise. Global `ValidationPipe({ whitelist: true })`.
 - **No personal names anywhere** — docs, seed, UI copy, tests. Use role/profile
