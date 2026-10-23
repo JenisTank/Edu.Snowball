@@ -13,7 +13,7 @@ picks this up next (the code plan explicitly targets handover to a hired develop
 | `frontend/`          | Staff portal **and** the parent PWA (one Vite app, route `/parent`). |
 | `docs/`              | Specification, code plan, architecture, this file.                   |
 | `scripts/`           | `dev-restore.sh` — rebuilds a full dev environment.                  |
-| `backups/`           | `latest.sql`, restored by `dev-restore.sh` when present.             |
+| `backups/`           | Dumps written by `scripts/backup.sh`; git-ignored, restored by hand. |
 | `docker-compose.yml` | postgres + redis + api + nginx-served frontend.                      |
 
 Root `package.json` holds convenience scripts only (`npm run api`, `npm run web`,

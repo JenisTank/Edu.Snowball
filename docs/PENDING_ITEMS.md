@@ -14,8 +14,8 @@ the evidence column says where.
 | 🚫   | Blocked on something outside the codebase (client account, KYC, keys) |
 | ⏸    | Explicitly deferred by the client                                     |
 
-**Current footprint:** 261 HTTP routes · 66 Prisma models · 11 enums ·
-261 tests in 28 suites · 20 pages (staff + parent PWA) · 66-table migration
+**Current footprint:** 279 HTTP route decorators · 70 Prisma models · 11 enums ·
+285 tests in 31 suites · 21 pages (staff + parent PWA) · 70-table migration
 validated in PGlite.
 
 > **Audit date note.** The tables below were built from the 21 Oct 2026 audit.
@@ -441,7 +441,7 @@ five items of client data, four deliberate holds, and one document:
 | Grade-wise Discovery Flight templates | ⏸      | Held by the client                                                   |
 | Security deposit / guest log          | ✅     | Built in this pass                                                   |
 
-**Verification for this state:** `npm test` 261/261 across 28 suites,
+**Verification for this state:** `npm test` 285/285 across 31 suites,
 `tsc --noEmit` clean, prettier clean, frontend production build clean, and all
 four CI jobs green (`API`, `Database`, `Frontend`, `Repo — prettier`).
 
@@ -466,11 +466,11 @@ drift against `schema.prisma`.
 
 ## 9. How this was verified
 
-- **Routes:** 261 enumerated from decorators and compared to the pre-refactor
+- **Routes:** 279 enumerated from decorators and compared to the pre-refactor
   baseline (130 + `/health` + 2 PDF endpoints, zero missing).
-- **Models:** 66 models / 11 enums read from `schema.prisma`; presence of entities
+- **Models:** 70 models / 11 enums read from `schema.prisma`; presence of entities
   such as `OvertimeAuthorisation`, `StatutoryScheme` confirmed directly.
-- **Behaviour:** 261 tests cover the fee, attendance, admission, certificate, scoping,
+- **Behaviour:** 285 tests cover the fee, attendance, admission, certificate, scoping,
   validation and payroll rules; PDFs were rendered and text-extracted.
 - **Gaps:** each 🟡/🔲 above names the file or the missing entity, so it can be
   checked independently.

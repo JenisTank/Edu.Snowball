@@ -152,11 +152,10 @@ For language selection reasoning, see [Ciphereleven.com](https://www.ciphereleve
                                    │  - PDF generation queue  │
                                    └──────────────────────────┘
               ┌────────────────────────────────────────────────┐
-              │              EXTERNAL SERVICES                  │
-              │  UPI (VPA)  │  Evolution API  │  AWS S3 / local  │
-              │  Calendly  │  Firebase FCM  │  Resend (email)  │
+              │               EXTERNAL SERVICES                │
+              │  UPI (VPA)  │  Evolution API │  AWS S3 / local │
+              │  FCM (push) │  Resend (email)│  Google Calendar│
               └────────────────────────────────────────────────┘
-              ┌────────────────────────────────────────────────┐
               │              AI INTEGRATIONS (Phase 4)          │
               │  BuzzPortfolio API  │  BuzzSheet API           │
               │  EduGrowth Matrix   │  Predictive Analytics    │
@@ -265,8 +264,10 @@ CREATE TABLE unit_settings (
   unit_id             UUID PRIMARY KEY REFERENCES units(id),
   petty_cash_float    NUMERIC(10,2) DEFAULT 5000.00,  -- HO edit only
   admission_number    TEXT,                             -- Published central hub number only
-  calendly_link       TEXT,
-  updated_by          UUID REFERENCES users(id),
+  phone               TEXT,                             -- Front desk number on letters and the parent app
+  upi_vpa             TEXT,                             -- Collection VPA — a QR is built per amount, no gateway
+  upi_payee_name      TEXT,
+  pt_enabled          BOOLEAN DEFAULT TRUE,             -- Professional Tax default for the unit
   updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -577,7 +578,7 @@ CREATE TABLE purchase_requisitions (
 | #   | Module                                     | Phase | Key Entities                                                              | Key Logic                                                                                                                         |
 | --- | ------------------------------------------ | ----- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | Centralised Admission Hub                  | 1     | `leads`, `units`                                                          | Routing engine: area → unit; 1 receptionist; central WhatsApp number only                                                         |
-| 2   | Lead & Inquiry Management (First Buzz CRM) | 1     | `leads`, `lead_activities`                                                | 9-stage pipeline; lead scoring; WhatsApp + Calendly auto-trigger; replaces Vercel CRM                                             |
+| 2   | Lead & Inquiry Management (First Buzz CRM) | 1     | `leads`, `lead_activities`                                                | 9-stage pipeline; lead scoring; WhatsApp auto-trigger; replaces Vercel CRM                                                        |
 | 3   | Admission & Enrolment Management           | 1     | `students`, `batches`                                                     | Registration → Discovery Flight → Confirmation → Add to Class; sibling concession; seat tracker                                   |
 | 4   | Discovery Flight Screening                 | 1     | `discovery_flights`                                                       | Grade-wise templates; EP/GP/SP/NP/ND coding; Centre Head approval; internal-only                                                  |
 | 5   | Student Lifecycle Management               | 2     | `students` (18-tab profile)                                               | Grade transitions; TC / Graduation Certificate; School Readiness Report                                                           |
@@ -781,11 +782,18 @@ interface WhatsAppTrigger {
 // All comms logged in communication_threads table
 ```
 
-### Calendly
+### Booking link (Calendly removed)
 
-- Unit 2 (Flagship): `calendly.com/bumblebkidz/new-meeting`
-- Unit 3: Own link
-- Central Hub (Admissions): None (handled by receptionist directly)
+Calendly was dropped on the client's instruction, so there is no third-party
+scheduler in the platform. A lead still records that a visit or a discovery
+flight was offered, and the front desk books it by phone:
+
+- Unit 2 (Flagship): reception books on the unit's own number (`units.phone`)
+- Unit 3: reception books on the unit's own number
+- Central Hub (Admissions): receptionist books directly, as before
+
+Two-way Google Calendar sync is a later item — when it is needed, it goes behind
+its own adapter so the desk keeps working if the calendar API is down.
 
 ### Firebase Cloud Messaging (Parent App)
 
@@ -1203,14 +1211,14 @@ jobs:
 
 ### 🔴 Blockers for Phase 1
 
-| Code | Item                                                      | Owner                                      |
-| ---- | --------------------------------------------------------- | ------------------------------------------ |
-| OT1  | Overtime rate multiplier (1x / 1.25x / 1.5x)              | Founder — confirm before first payroll run |
-| INV2 | Reorder quantities per CLS sub-category                   | Lock when Unit 1 class strength confirmed  |
-| PC-1 | Fee reminder schedule (T-5/T-0/T+3/T+7)                   | Founder + Academic Lead review             |
-| NOTE | Unit 1 and Unit 3 contact numbers, emails, Calendly links | Set up and share with the ERP Developer    |
-| NOTE | Central hub admission phone number                        | Procure and share with the ERP Developer   |
-| NOTE | STU/UNI opening stock sizing ratio for Rajkot             | Determine before opening stock procurement |
+| Code | Item                                                  | Owner                                      |
+| ---- | ----------------------------------------------------- | ------------------------------------------ |
+| OT1  | Overtime rate multiplier (1x / 1.25x / 1.5x)          | Founder — confirm before first payroll run |
+| INV2 | Reorder quantities per CLS sub-category               | Lock when Unit 1 class strength confirmed  |
+| PC-1 | Fee reminder schedule (T-5/T-0/T+3/T+7)               | Founder + Academic Lead review             |
+| NOTE | Unit 1 and Unit 3 contact numbers, emails, UPI ids/QR | Set up and share with the ERP Developer    |
+| NOTE | Central hub admission phone number                    | Procure and share with the ERP Developer   |
+| NOTE | STU/UNI opening stock sizing ratio for Rajkot         | Determine before opening stock procurement |
 
 ### 🟡 Blockers for Phase 2
 

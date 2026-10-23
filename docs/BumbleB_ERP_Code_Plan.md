@@ -89,7 +89,7 @@ Each slice ends with a **working preview you click-test** and approve before the
 
 - JWT auth (15-min access / 7-day refresh), password reset, user management screen
 - Role guard + unit-scoping middleware + audit-log interceptor (system-wide)
-- Units & unit_settings screens (petty cash float HO-only, contacts, Calendly links)
+- Units & unit_settings screens (petty cash float HO-only, contacts, UPI VPA/QR, PT switch)
 - Programme & batch masters (timings drive attendance locks later)
 - **You test:** create a Centre Head for U2, confirm they cannot see U1 data
 
@@ -174,7 +174,7 @@ Evening Activity Centre → Analytics dashboard → Franchise layer → AI integ
 | 1   | Each unit's UPI id (no KYC needed once the client supplies the VPA)      | Slice 5                  | B3     |
 | 2   | WhatsApp BSP account (AiSensy / Interakt / Gupshup) + approved templates | Slice 7                  | PC-3   |
 | 3   | Central hub admission phone number                                       | Slice 2                  | NOTE   |
-| 4   | Unit 1 & 3 contacts, emails, Calendly links                              | Slice 1                  | NOTE   |
+| 4   | Unit 1 & 3 contacts, emails, UPI ids/QR                                  | Slice 1                  | NOTE   |
 | 5   | Domain name (e.g. erp.bumblebkidz.com) + VPS account                     | Slice 7                  | —      |
 | 6   | OT1: overtime multiplier (1x / 1.25x / 1.5x)                             | before payroll (Phase 2) | OT1    |
 | 7   | PC-1: confirm fee reminder schedule with the Academic Lead               | Slice 5                  | PC-1   |

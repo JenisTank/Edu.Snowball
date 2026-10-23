@@ -9,6 +9,10 @@ coverage/
 .env.*
 !.env.example
 
+# Database dumps (written by scripts/backup.sh, restored by scripts/restore.sh)
+backups/*
+!backups/.gitkeep
+
 # Logs and OS noise
 *.log
 npm-debug.log*

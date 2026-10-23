@@ -28,7 +28,7 @@ Custom multi-unit preschool ERP for the BumbleB Kidz chain (Rajkot).
 │   ├── public/          manifest, service worker, icons
 │   └── src/             pages/, components/, lib/
 ├── docs/                specification, code plan, architecture, code structure
-├── backups/             latest dev database dump (used by scripts/dev-restore.sh)
+├── backups/             database dumps from scripts/backup.sh (never committed)
 ├── scripts/             dev-restore.sh
 ├── docker-compose.yml   postgres + redis + api + frontend
 └── .env.example         every environment variable, documented
