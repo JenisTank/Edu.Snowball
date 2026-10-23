@@ -103,13 +103,33 @@ rather than trying to delete the demo rows one by one.
 The subdomain's **A record must point at this VPS before** reloading Caddy,
 otherwise ACME fails and Caddy retries in the background.
 
+Hostname: **`edu.snowballconcepts.com`** (A record → this VPS).
+
 ```bash
+dig +short edu.snowballconcepts.com      # must print this VPS's public IP first
 sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak.$(date +%F-%H%M)
-sudo tee -a /etc/caddy/Caddyfile < deploy/Caddyfile.erp.conf   # edit ERP_HOST first
+sudo tee -a /etc/caddy/Caddyfile < deploy/Caddyfile.erp.conf
 sudo caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
-curl -fsS https://ERP_HOST/api/health
+curl -fsS https://edu.snowballconcepts.com/api/health
 ```
+
+### Why the same IP and port can serve two projects
+
+Caddy listens once on `:80`/`:443` and picks the site block by **hostname** —
+the TLS SNI for HTTPS, the `Host` header for HTTP. So the machine needs no extra
+IP address and no extra public port:
+
+```
+snowballconcepts.com       ─(SNI/Host)→ 127.0.0.1:8080  casnowball-web
+edu.snowballconcepts.com   ─(SNI/Host)→ 127.0.0.1:8082  bumbleb-frontend
+```
+
+Each hostname also gets its **own** certificate, issued automatically. The two
+apps never compete for a host port because only Caddy binds `:80`/`:443`; the
+containers expose loopback-only ports (`8080`, `8082`) that nothing else owns.
+Inside each compose project, the API, database and Redis are on private
+networks with unpublished ports, so Postgres/Redis collide nowhere either.
 
 `systemctl reload` (not `restart`) keeps the existing site serving during the
 swap. If anything looks wrong: `sudo cp /etc/caddy/Caddyfile.bak.* /etc/caddy/Caddyfile && sudo systemctl reload caddy`.
@@ -118,7 +138,7 @@ swap. If anything looks wrong: `sudo cp /etc/caddy/Caddyfile.bak.* /etc/caddy/Ca
 
 ```bash
 curl -fsS http://127.0.0.1:8082/api/health          # {"status":"ok",...}
-curl -fsS https://ERP_HOST/api/health/ready         # 503 only if db/redis down
+curl -fsS https://edu.snowballconcepts.com/api/health/ready   # 503 only if db/redis down
 docker compose -p bumbleb ps                        # 4 services, all healthy
 ```
 
