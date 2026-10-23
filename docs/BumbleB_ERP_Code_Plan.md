@@ -17,7 +17,7 @@ Target: Phase 1 live before June 2026 admission drive (Unit 1) — per master sp
 | Parent portal     | React (Vite) + Tailwind CSS, built as installable PWA                         |
 | Theme             | BumbleB brand light theme — white/pastels, #C8922A, #4BAED0, Nunito + DM Sans |
 | PDF generation    | Puppeteer (HTML templates → A4 PDF)                                           |
-| Payments          | Razorpay + UPI (manual cash/cheque fallback)                                  |
+| Payments          | UPI QR to the centre's own VPA (no gateway) + manual cash/cheque              |
 | Messaging         | WhatsApp Business API via BSP + Web Push (PWA) + email (receipts/certs)       |
 | Packaging         | Docker / docker-compose (one command runs everything)                         |
 
@@ -144,7 +144,7 @@ Each slice ends with a **working preview you click-test** and approve before the
 - Installable PWA: branded login (per-child accounts created at "Add to Class")
 - Home (today's attendance, dues, messages) · My Child (parent-visible tabs only —
   Health/Infirmary/IEP/Child Support Log always hidden) · Fees (history + receipts,
-  Razorpay "Pay Now" when keys ready) · Messages (CH-reply model) · Documents vault
+  UPI "Pay by UPI" QR) · Messages (CH-reply model) · Documents vault
 - Web-push notifications (absence, fee reminders, announcements)
 - **You test:** install on your phone, pay a test fee, receive a push
 
@@ -152,7 +152,7 @@ Each slice ends with a **working preview you click-test** and approve before the
 
 - WhatsApp BSP connect + HO Template Management screen (B2) with fallback chain
   (app push → WhatsApp → email) and full comms logging
-- Razorpay live: order → webhook → auto receipt → ledger update
+- UPI live: intent → QR → parent claims UTR → desk confirms → receipt
 - Certificate library: all 7 HO-locked templates (Fee Receipt, Admission Confirmation,
   TC, Graduation, Bonafide, No Dues, Fee Statement) + I-card batch generation
 - DPDP hardening: PII encryption at rest, consent log, retention config
@@ -171,7 +171,7 @@ Evening Activity Centre → Analytics dashboard → Franchise layer → AI integ
 
 | #   | Item                                                                     | Needed by                | Source |
 | --- | ------------------------------------------------------------------------ | ------------------------ | ------ |
-| 1   | Razorpay merchant account (KYC takes days — start early)                 | Slice 5                  | B3     |
+| 1   | Each unit's UPI id (no KYC needed once the client supplies the VPA)      | Slice 5                  | B3     |
 | 2   | WhatsApp BSP account (AiSensy / Interakt / Gupshup) + approved templates | Slice 7                  | PC-3   |
 | 3   | Central hub admission phone number                                       | Slice 2                  | NOTE   |
 | 4   | Unit 1 & 3 contacts, emails, Calendly links                              | Slice 1                  | NOTE   |

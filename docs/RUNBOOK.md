@@ -64,17 +64,18 @@ cp .env.example .env
 
 Fill in `.env` before starting anything:
 
-| Variable                                  | Required | Effect when missing                              |
-| ----------------------------------------- | -------- | ------------------------------------------------ |
-| `DB_PASSWORD`                             | yes      | Compose refuses to start                         |
-| `JWT_SECRET`                              | yes      | Compose refuses to start (32+ random chars)      |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | no       | Sandbox adapter — no online money can move       |
-| `RAZORPAY_WEBHOOK_SECRET`                 | no       | Webhook rejects every call (safe default)        |
-| `WA_BSP_KEY`                              | no       | Comms outbox stays in sandbox mode               |
-| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`  | no       | Push disabled; portal keeps working              |
-| `PII_KEY`                                 | no       | PAN/UAN/bank encryption skipped (logged at boot) |
-| `SENTRY_DSN`                              | no       | Error reporting off                              |
-| `APP_RELEASE`                             | no       | Release tag defaults to the package version      |
+| Variable                                   | Required | Effect when missing                              |
+| ------------------------------------------ | -------- | ------------------------------------------------ |
+| `DB_PASSWORD`                              | yes      | Compose refuses to start                         |
+| `JWT_SECRET`                               | yes      | Compose refuses to start (32+ random chars)      |
+| `EVOLUTION_API_URL` / `_KEY` / `_INSTANCE` | no       | Comms outbox stays in sandbox mode               |
+| `UPI_VPA` / `UPI_PAYEE_NAME`               | no       | Units without their own UPI id cannot take UPI   |
+| `STORAGE_DRIVER` / `STORAGE_DIR`           | no       | Documents default to a local volume              |
+| `STORAGE_S3_*`                             | no       | Only read when `STORAGE_DRIVER=s3`               |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`   | no       | Push disabled; portal keeps working              |
+| `PII_KEY`                                  | no       | PAN/UAN/bank encryption skipped (logged at boot) |
+| `SENTRY_DSN`                               | no       | Error reporting off                              |
+| `APP_RELEASE`                              | no       | Release tag defaults to the package version      |
 
 ```bash
 docker compose up -d --build
@@ -88,8 +89,7 @@ The SPA is then on `http://<host>/`, the API on `http://<host>/api`.
 ### TLS / domain
 
 Terminate TLS at a reverse proxy (Caddy, nginx, or the VPS load balancer) and
-forward to `frontend:80`. Web push, cookies and the Razorpay webhook all require
-HTTPS. The `bb_token` cookie is written with `SameSite=None; Secure`, so it only
+forward to `frontend:80`. Web push and secure cookies require HTTPS. The `bb_token` cookie is written with `SameSite=None; Secure`, so it only
 works over TLS.
 
 ---
@@ -199,14 +199,15 @@ the queue is down nothing runs — `/api/health` says so.
 
 ## 7. Incident playbook
 
-| Symptom                        | First checks                                                   | Likely fix                                                          |
-| ------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Every screen 500s              | `/api/health` → `database`                                     | `docker compose ps`, `docker compose logs db`                       |
-| Login works, pages empty       | `/api/health` → `redis`; queue `failed`                        | `docker compose restart redis`; inspect failed jobs                 |
-| No absence alerts sent         | Redis up? `MessageLog` rows with status `QUEUED`? BSP key set? | Add BSP key, run `POST /api/comms/dispatch/run`                     |
-| Webhook 401                    | `RAZORPAY_WEBHOOK_SECRET` matches the dashboard?               | Fix the secret; Razorpay retries for 24h, receipts are idempotent   |
-| Double receipt for one payment | `online_payments.status` / `transaction_id`                    | Already guarded by `captureDecision` — investigate the manual entry |
-| Restore needed                 | `bash scripts/restore.sh <dump>` (scratch first!)              | Then `--in-place` after confirming                                  |
+| Symptom                                    | First checks                                                                    | Likely fix                                                               |
+| ------------------------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Every screen 500s                          | `/api/health` → `database`                                                      | `docker compose ps`, `docker compose logs db`                            |
+| Login works, pages empty                   | `/api/health` → `redis`; queue `failed`                                         | `docker compose restart redis`; inspect failed jobs                      |
+| No absence alerts sent                     | Redis up? `MessageLog` rows with status `QUEUED`? Evolution instance connected? | Reconnect the instance (scan its QR); run `POST /api/comms/dispatch/run` |
+| UPI QR opens but money is not in the bank  | Unit VPA wrong in Settings → Units                                              | Fix the VPA; regenerate the QR (the old one pays the old id)             |
+| Parent says "I paid" but desk sees nothing | Bank statement has no matching UTR                                              | Use `Not found` on the UPI tab; ask the parent for the reference         |
+| Document upload fails                      | `STORAGE_DRIVER` and `STORAGE_DIR` writable?                                    | Fix the volume, or switch to `s3` with bucket credentials                |
+| Restore needed                             | `bash scripts/restore.sh <dump>` (scratch first!)                               | Then `--in-place` after confirming                                       |
 
 **Data-loss drill:** stop the API, take a fresh dump, restore into scratch,
 compare row counts, then decide. Never point a scratch restore at the live
@@ -218,8 +219,8 @@ database name.
 
 - Rotate `JWT_SECRET` → every session is invalidated (acceptable, and the
   desired response to a leak).
-- Rotate `RAZORPAY_KEY_SECRET` + webhook secret together; old orders stop
-  verifying.
+- Rotate `EVOLUTION_API_KEY` in Evolution → Manager and in `.env` together; the
+  old key stops sending immediately.
 - `PII_KEY` rotation requires re-encrypting existing values — do it with a
   one-off script, not by swapping the key (old rows become unreadable).
 - Backups contain personal data: encrypt the backup volume and restrict access.
@@ -244,13 +245,16 @@ database name.
 - [ ] `bash scripts/backup.sh` succeeds and the dump was copied off-host.
 - [ ] `bash scripts/restore.sh <latest dump>` prints matching row counts.
 - [ ] Sentry receives a deliberate test error (`/api/health/ready` unaffected).
-- [ ] Razorpay keys + webhook secret set, webhook URL registered, ₹1 live test
-      refunded.
-- [ ] WhatsApp BSP templates approved; a real message delivered to a staff phone.
+- [ ] Each unit's UPI id entered in Settings → Units; a ₹1 QR tested end to end
+      (parent scans → desk confirms → receipt printed).
+- [ ] Evolution API instance connected; a real WhatsApp message delivered to a
+      staff phone.
+- [ ] Student document storage mounted (local volume or S3) and one upload +
+      one admin delete tested.
 - [ ] Fee structures for the academic year entered and locked by HO.
 - [ ] Staff accounts created per role; demo data removed (`prisma db seed` skipped).
 - [ ] Parent portal smoke test on a phone: login → attendance → fees → PTM.
 
-Anything still waiting on the client (KYC, BSP keys, domain, brand fonts, fee
-structures) is listed in `PENDING_ITEMS.md` §7 and is stubbed behind adapters so
-it goes live without a code change.
+Anything still waiting on the client (Evolution instance, UPI ids, domain, fee
+structures, policy numbers) is listed in `PENDING_ITEMS.md` §7 and is stubbed
+behind adapters, so it goes live without a code change.

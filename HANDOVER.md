@@ -82,11 +82,13 @@ All tables = ONE shared TanStack DataTable component. ERP must stay programme-ge
 
 ## 🔲 PENDING — remaining build work (Slice 6/7 hardening)
 
-1. **Razorpay live**: order → webhook → auto receipt → ledger update; "Pay Now" button
-   in parent portal (placeholder note is already there). Blocked on merchant KYC.
-2. **WhatsApp BSP connect**: real dispatch via AiSensy/Interakt/Gupshup once keys exist
-   (`WA_BSP_KEY` in .env flips sandbox→live). Plus HO Template Management screen (B2)
-   and fallback chain app-push → WhatsApp → email.
+1. **UPI collections**: built — the parent app builds a `upi://` QR for the exact
+   amount, the parent reports the UTR, the front desk confirms the credit and a
+   receipt is issued. No gateway, no KYC; each unit only needs its UPI id in
+   Settings → Units.
+2. **WhatsApp via Evolution API**: the transport is built (`EVOLUTION_API_URL`,
+   `_KEY`, `_INSTANCE`); it goes live when the instance is linked to the centre's
+   number. Cloud API remains as a second transport for the day a BSP is signed.
 3. **DPDP hardening**: PII encryption at rest, consent-log wiring, retention config.
 4. **Production deploy**: domain + VPS, production docker-compose dress-rehearsal,
    nightly DB backups, Sentry alerts, deploy guide.
@@ -122,8 +124,10 @@ Franchise layer · AI (both explicitly deferred).
 
 ## 👤 Founder's own checklist (only the founder can do)
 
-Razorpay KYC · WhatsApp BSP account + template approval · domain + VPS ·
-logo files · real fee structures per programme/unit · confirm reminder schedule with FA.
+Evolution API instance + the centre's WhatsApp number · each unit's UPI id ·
+domain + VPS · real fee structures per programme/unit · confirm the reminder
+schedule with the Academic Lead · OT multiplier · reorder basis (now: the item's
+own set level).
 
 ## ✅ Snowball UI migration
 

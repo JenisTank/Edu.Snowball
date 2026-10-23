@@ -104,8 +104,8 @@ BumbleB Kidz ERP is a **custom-built, multi-unit school management platform** fo
 | Hosting          | ERP Developer's call (E2 resolved) — recommend **Vercel** (Next.js) + **Railway/Render** (NestJS API) |
 | Database hosting | **Supabase** (managed PostgreSQL) or **Neon** (serverless Postgres)                                   |
 | File storage     | **AWS S3** or **Supabase Storage** — student docs, certificates, gallery                              |
-| Payments         | **Razorpay** (primary) + UPI                                                                          |
-| WhatsApp         | **WhatsApp Business API** via BSP (BSP vs Meta direct — ERP Developer's call, PC-3 deferred)          |
+| Payments         | **UPI QR** — the centre's own VPA, no gateway (client decision: skip Razorpay)                        |
+| WhatsApp         | **Evolution API** (self-hosted, one linked number); Meta Cloud API kept as a second transport         |
 | Email            | **Resend** or **SendGrid** (SMTP) — receipts, certificates only                                       |
 | SMS              | Phase 3 only (PC-6 deferred)                                                                          |
 | CDN              | **Cloudflare** — static assets, brand fonts                                                           |
@@ -117,7 +117,7 @@ BumbleB Kidz ERP is a **custom-built, multi-unit school management platform** fo
 For language selection reasoning, see [Ciphereleven.com](https://www.ciphereleven.com/) — encyclopedia of all programming languages with paradigm and ecosystem comparisons.
 
 - **TypeScript** over plain JavaScript: static types prevent runtime errors in complex financial calculations (payroll engine, fee ledger)
-- **Node.js** over Python/Django: ecosystem depth for WhatsApp BSP SDKs, Razorpay, PDF generation
+- **Node.js** over Python/Django: ecosystem depth for Evolution API clients, QR/PDF generation
 - **PostgreSQL** over MySQL: superior JSON support (programme config, SOP metadata), native full-text search, row-level security for DPDP compliance
 
 ---
@@ -153,7 +153,7 @@ For language selection reasoning, see [Ciphereleven.com](https://www.ciphereleve
                                    └──────────────────────────┘
               ┌────────────────────────────────────────────────┐
               │              EXTERNAL SERVICES                  │
-              │  Razorpay  │  WhatsApp BSP  │  AWS S3          │
+              │  UPI (VPA)  │  Evolution API  │  AWS S3 / local  │
               │  Calendly  │  Firebase FCM  │  Resend (email)  │
               └────────────────────────────────────────────────┘
               ┌────────────────────────────────────────────────┐
@@ -431,8 +431,8 @@ CREATE TABLE fee_transactions (
   unit_id         UUID NOT NULL REFERENCES units(id),
   ledger_type     TEXT NOT NULL,  -- 'preschool' | 'evening'
   amount          NUMERIC(10,2) NOT NULL,
-  payment_mode    TEXT NOT NULL,  -- 'cash' | 'upi' | 'razorpay' | 'neft' | 'cheque'
-  razorpay_id     TEXT,
+  payment_mode    TEXT NOT NULL,  -- 'cash' | 'upi' | 'upi_qr' | 'neft' | 'cheque' | 'pos'
+  upi_ref         TEXT,
   payment_date    DATE NOT NULL,
   instalment_no   INT,
   receipt_no      TEXT UNIQUE NOT NULL,  -- Auto-generated
@@ -582,7 +582,7 @@ CREATE TABLE purchase_requisitions (
 | 4   | Discovery Flight Screening                 | 1     | `discovery_flights`                                                       | Grade-wise templates; EP/GP/SP/NP/ND coding; Centre Head approval; internal-only                                                  |
 | 5   | Student Lifecycle Management               | 2     | `students` (18-tab profile)                                               | Grade transitions; TC / Graduation Certificate; School Readiness Report                                                           |
 | 6   | Student Attendance                         | 1     | `attendance_records`, `attendance_lock_jobs`                              | Default absent; lock = class_start_time + 30 min (dynamic); auto-WhatsApp on absence                                              |
-| 7   | Fee Collection & Management                | 1     | `fee_structures`, `fee_transactions`                                      | 3 instalment plans; joining-window logic; Razorpay/UPI online; receipt → WhatsApp PDF; 14 report types                            |
+| 7   | Fee Collection & Management                | 1     | `fee_structures`, `fee_transactions`                                      | 3 instalment plans; joining-window logic; UPI QR collection; receipt → WhatsApp PDF; 14 report types                              |
 | 8   | HR & Staff Management                      | 2     | `staff`, `shift_master`, `payroll_runs`                                   | Morning salaried + evening hourly engines; leave; OT (pre-approval required); security deposit; guest log                         |
 | 9   | _(Absorbed into Module 10)_                | —     | —                                                                         | Timetable content moved to Academic Module                                                                                        |
 | 10  | Academic Module (4 sub-modules)            | 2     | `yearly_goals`, `big_rocks`, `log_plan_unit_overlay`, `log_plan_activity` | Yearly Goals → Big Rocks → Calendar → Log Plan → Daily Plan (derived view); hierarchical outcome taxonomy                         |
@@ -686,7 +686,7 @@ POST   /attendance/:batchId/lock    # Centre Head override
 
 GET    /fees/ledger/:studentId      # Full fee history
 POST   /fees/collect                # Record payment
-POST   /fees/razorpay/webhook       # Razorpay payment confirmation
+POST   /fees/upi/:id/confirm        # desk confirms a UPI credit → receipt
 
 GET    /hr/payroll/:unitId/:month/:year   # Payroll run
 POST   /hr/payroll/run              # Trigger payroll calculation
@@ -730,25 +730,31 @@ interface APIResponse<T> {
 
 ## 9. Third-Party Integrations
 
-### Razorpay / UPI
+### UPI (no gateway)
 
-```typescript
-// Fee collection flow
-// 1. Create Razorpay order
-const order = await razorpay.orders.create({
-  amount: instalmentAmount * 100, // paise
-  currency: 'INR',
-  receipt: `RCPT-${studentCode}-${Date.now()}`,
-});
+The client chose to skip Razorpay: each centre publishes its own UPI id and the
+money lands in the centre's bank account. That removes merchant KYC, per-transaction
+fees and a vendor — and adds one honest step, because **a UPI credit is invisible to
+this system until somebody looks at the bank statement**.
 
-// 2. Parent pays on portal
-// 3. Webhook confirms payment
-// 4. Auto-generate receipt → WhatsApp PDF to parent
-// 5. Manual collect-and-record remains as fallback
+```text
+parent app            API                         desk
+──────────            ───                         ────
+POST /fees/upi/intent  → build upi://pay?pa=…&am=…
+                       → store OnlinePayment(CREATED) + QR
+scan QR / open app     ← QR (PNG) + upi:// link
+pay in any UPI app     (money → centre bank account, unknown to us)
+POST /fees/upi/:id/claim {payerRef}  → status CLAIMED
+                                                   GET  /fees/upi/pending/list
+                                                   match UTR on the statement
+                                                   POST /fees/upi/:id/confirm → receipt
 ```
 
-- Receipt auto-issued on Razorpay success
-- Manual cash collection uses collect-and-record UI
+- The QR amount is checked against the outstanding balance, so a hand-typed
+  amount cannot overpay; part payments are allowed.
+- `claim` never writes a `FeeTransaction`. Only `confirm` does — the same
+  settlement service a counter receipt uses.
+- An open intent is reused for 48 hours instead of stacking new QRs.
 
 ### WhatsApp Business API
 
@@ -1010,15 +1016,15 @@ tabs: [
 // (Health, Infirmary, Anecdotal Remarks, IEP = staff-only)
 ```
 
-### Razorpay Payment Flow (Parent App)
+### UPI Payment Flow (Parent App)
 
 ```
-1. Parent taps "Pay Now" on fee outstanding
-2. App calls POST /fees/razorpay/create-order
-3. Razorpay checkout opens in-app
-4. On success → webhook fires → receipt auto-generated
-5. Receipt PDF sent via WhatsApp + available in-app
-6. Ledger updates in real-time
+1. Parent taps "Pay by UPI" on the outstanding balance
+2. App calls POST /fees/upi/intent → a upi:// link + QR for that exact amount
+3. Parent scans it (or the counter displays the same QR) and pays
+4. Parent taps "I have paid" and enters the UTR from their app
+5. The desk matches the UTR on the bank statement and confirms
+6. Confirmation writes the receipt: PDF via WhatsApp + visible in-app, ledger updated
 ```
 
 ---
@@ -1185,7 +1191,7 @@ jobs:
 - [ ] Discovery Flight Screening (EP/GP/SP/NP/ND)
 - [ ] Student admission + enrolment to batch
 - [ ] Attendance (default absent, dynamic lock, WhatsApp trigger)
-- [ ] Fee collection (3 instalment plans, Razorpay, receipt PDF → WhatsApp)
+- [ ] Fee collection (3 instalment plans, UPI QR, receipt PDF → WhatsApp)
 - [ ] WhatsApp Business API connected (template management screen)
 - [ ] Parent portal — web login + mobile app (auth, child card, attendance, fees)
 - [ ] BumbleB branded document templates (Bonafide, TC, Receipt, I-Card)

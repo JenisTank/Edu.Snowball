@@ -118,24 +118,25 @@ phone `+91 9100000000` + admission no `BB-U1-2627-0001`.
 
 ## Module map (live)
 
-| Area                | Where                                                                                                     |
-| ------------------- | --------------------------------------------------------------------------------------------------------- |
-| CRM (First Buzz)    | `/leads` — stages, routing, activities                                                                    |
-| Admissions          | `/admissions` — register → discovery → approval → confirm                                                 |
-| Attendance engine   | `/attendance` — default-ABSENT roster, lock +30 min, absence alerts, 3-day escalation                     |
-| Fees & receipts     | `/fees` — locked structures, instalments, sibling concession, receipts + print, reminders T-5/T-0/T+3/T+7 |
-| Parent portal (PWA) | `/parent` — child dashboard, attendance calendar, fee ledger, receipt download, updates feed              |
-| Certificates        | `/certificates` — 7 HO-locked templates, serial numbers, TC gated on cleared fees + No-Dues               |
-| Communication       | `/comms` — single outbox for WhatsApp messages; sandbox mode until `WA_BSP_KEY` is set                    |
-| HR & dual payroll   | `/hr` — employee master, attendance import, leave, OT, morning + evening payroll, statutory               |
-| Analytics           | `/analytics` — capacity, staff, revenue and cross-module founder dashboard                                |
-| PTM                 | `/ptm` — timetable slots, phone booking on a family's behalf, roll-up, teacher notes; parents self-book   |
-| Evening centre      | `/evening` — activities, external (non-student) children, session rosters and attendance                  |
-| Inventory           | `/inventory` — stock, PRF → PO → GRN, vendors, petty cash, student issue billed to fees, 10 reports       |
-| Lifecycle           | `/lifecycle` — per-tab records with validation, grade promotion, K2 readiness report                      |
-| Compliance (DPDP)   | consent register, field encryption, retention purge, parent data export + erasure                         |
-| Online fees         | Razorpay behind an adapter — sandbox until KYC keys land; signed webhook issues the receipt               |
-| My Space            | `/me` — staff self-service: profile, payslips, leave application, own attendance                          |
+| Area                | Where                                                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------------------------- |
+| CRM (First Buzz)    | `/leads` — stages, routing, activities                                                                      |
+| Admissions          | `/admissions` — register → discovery → approval → confirm                                                   |
+| Attendance engine   | `/attendance` — default-ABSENT roster, lock +30 min, absence alerts, 3-day escalation                       |
+| Fees & receipts     | `/fees` — locked structures, instalments, sibling concession, receipts + print, reminders T-5/T-0/T+3/T+7   |
+| Parent portal (PWA) | `/parent` — child dashboard, attendance calendar, fee ledger, receipt download, updates feed                |
+| Certificates        | `/certificates` — 7 HO-locked templates, serial numbers, TC gated on cleared fees + No-Dues                 |
+| Communication       | `/comms` — single outbox for WhatsApp messages; sandbox mode until `WA_BSP_KEY` is set                      |
+| HR & dual payroll   | `/hr` — employee master, attendance import, leave, OT, morning + evening payroll, statutory                 |
+| Analytics           | `/analytics` — capacity, staff, revenue and cross-module founder dashboard                                  |
+| PTM                 | `/ptm` — timetable slots, phone booking on a family's behalf, roll-up, teacher notes; parents self-book     |
+| Evening centre      | `/evening` — activities, external (non-student) children, session rosters and attendance                    |
+| Inventory           | `/inventory` — stock, reorder alerts, PRF → PO → GRN, vendors, petty cash, student issue billed, 10 reports |
+| Front desk          | `/frontdesk` — visitor book (who is inside) and security-deposit register                                   |
+| Lifecycle           | `/lifecycle` — per-tab records with validation, grade promotion, K2 readiness report                        |
+| Compliance (DPDP)   | consent register, field encryption, retention purge, parent data export + erasure                           |
+| Online fees         | UPI QR per amount (no gateway): parent scans, reports the UTR, desk confirms → receipt                      |
+| My Space            | `/me` — staff self-service: profile, payslips, leave application, own attendance                            |
 
 ## Key system rules (enforced from Slice 0)
 

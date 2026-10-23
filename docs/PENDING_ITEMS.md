@@ -33,9 +33,33 @@ validated in PGlite.
 | S5     | PRF → PO → GRN procurement, vendor master, petty-cash ledger, student issue billed to fees, 10 reports, inward/outward register                                                                    | `a68be48`            |
 | S6     | Lifecycle per-tab schemas + validation, parent-visible tabs, grade transitions, K2 readiness report                                                                                                | `3695543`            |
 | S7     | Evening external participants + session attendance, PTM slot booking + batch roll-up, capacity/staff analytics, DTO validation, PTM timetable + booking UI, Gujarati strings for PTM/parent portal | `488ef09`, `4c660b7` |
-| S7b    | Razorpay behind an adapter: order → checkout verify → signed webhook → idempotent receipt; sandbox mode when KYC is pending; parent "Pay now"                                                      | `9fa1daa`            |
+| S7b    | Online fees: UPI QR per amount to the centre's own VPA, parent claims the UTR, desk confirms → receipt (the Razorpay flow this replaced was removed on the client's instruction)                   | `9fa1daa`, this PR   |
 | S8     | `/api/health` + `/api/health/ready` (db, redis, queue depth), Sentry hook, backup + restore-drill scripts, `docs/RUNBOOK.md`, prod compose healthcheck                                             | `53c6381`            |
 | S9     | Waitlist for full batches; employee self-service (profile, payslips, leave, attendance) + My Space page                                                                                            | `7cb2101`            |
+
+### Client answers (23 Oct 2026) — the 16 open items
+
+The founder answered every blocked item. Eleven of the sixteen turned a "blocked"
+into working code, so this is the second delivery after S1–S9.
+
+| #   | Client's answer                                         | What was built in this pass                                                                                                                                              |
+| --- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Skip Razorpay, keep UPI, QR per amount                  | `payments/upi.*` — `upi://` intent per amount, QR (PNG/SVG), parent claim with UTR, desk confirm → receipt. Razorpay adapter, webhook and `RAZORPAY` mode removed        |
+| 2   | Skip the BSP, use Evolution API                         | `comms/providers.ts` speaks Evolution API v2 (`sendText`); Meta Cloud API kept as the second transport; `providerStatus()` names the live transport                      |
+| 3   | Domain/VPS — hold                                       | Nothing to build; `docs/RUNBOOK.md` stays ready                                                                                                                          |
+| 4   | Logo files — supplied                                   | Official lockup in `frontend/public/logo.png`, PWA icons regenerated from it, `BrandLogo` renders the asset untouched (never redrawn)                                    |
+| 5   | Dummy fee structures for now                            | Seed keeps generated structures; nothing hard-coded in the API                                                                                                           |
+| 6   | Reminder schedule — dummy for now                       | Unchanged: T-5 / T-0 / T+3 / T+7, one function to change                                                                                                                 |
+| 7   | OT multiplier = 0 for now                               | Multiplier is optional and defaults to **0** (hours authorised, no premium); `POST /hr/overtime` accepts 0                                                               |
+| 8   | Reorder alerts on the set stock level                   | `inventory/reorder.*` — an alert the moment stock crosses the item's own reorder level, cleared on receipt, daily sweep, acknowledge/dismiss, new Inventory tab          |
+| 9   | Hold                                                    | —                                                                                                                                                                        |
+| 10  | Set PT but allow enable/disable                         | `UnitSettings.ptEnabled` + a checkbox in Settings; `apply-statutory` skips PT for that unit                                                                              |
+| 11  | Hold; add a phone number in settings                    | `UnitSettings.phone` + validation + the field in Settings → Units                                                                                                        |
+| 12  | Security deposit field; guest log for reception         | New `frontdesk` module + `/frontdesk` page: deposits (collect, return, part-forfeit, totals held) and a visitor book (check in/out, who is inside, overdue visits)       |
+| 13  | Hold                                                    | —                                                                                                                                                                        |
+| 14  | Hold                                                    | —                                                                                                                                                                        |
+| 15  | Object storage per student, admin deletes manually      | `storage` module: per-student documents on a local volume or S3, 10 MB / PDF-image caps, admin-only delete with a reason; row kept as the audit trail. Panel on Students |
+| 16  | Remove Calendly, build Google Calendar sync when needed | Calendly link, column and UI removed everywhere; unit `phone` replaces it in Settings                                                                                    |
 
 ### Final pass (22 Oct 2026)
 
@@ -65,32 +89,26 @@ The last audit gaps that were codeable without a client decision are closed:
 Only one bucket needs a decision from you. Everything the team could build
 without a client answer is built and green on PR #2.
 
-| #   | Bucket                                                                                            | Pending  | Who unblocks it              |
-| --- | ------------------------------------------------------------------------------------------------- | -------- | ---------------------------- |
-| A   | Accounts, keys and master data (Razorpay, WhatsApp, VPS, fonts, fee structures, policy numbers)   | 16 items | **You / your CA / your BSP** |
-| B   | Deferred by your instruction (Phase 3 franchisor modules 18–23, Phase 4 AI 24–27, 29-SOP library) | 11 items | A future phase — not a bug   |
-| C   | Polish with no open question: Gujarati long-form prose (help text, validation messages)           | 1 item   | Copywriting pass, any time   |
+| #   | Bucket                                                                                            | Pending  | Who unblocks it            |
+| --- | ------------------------------------------------------------------------------------------------- | -------- | -------------------------- |
+| A   | Accounts, keys and data still outstanding after the 23 Oct answers                                | 5 items  | **You / your CA**          |
+| B   | Deferred by your instruction (Phase 3 franchisor modules 18–23, Phase 4 AI 24–27, 29-SOP library) | 11 items | A future phase — not a bug |
+| C   | Polish with no open question: Gujarati long-form prose (help text, validation messages)           | 1 item   | Copywriting pass, any time |
 
-### A. Waiting on you (cannot be coded around)
+### A. Waiting on you (5 items, all data or accounts)
 
-| #   | What is needed                                        | What it switches on                                              |
-| --- | ----------------------------------------------------- | ---------------------------------------------------------------- |
-| 1   | Razorpay merchant KYC + webhook secret                | Live online fees, auto-receipt, parent "Pay now"                 |
-| 2   | WhatsApp BSP account + approved templates             | Every live send: absence, receipt, welcome, announcements        |
-| 3   | Domain + VPS                                          | Production deployment (`docs/RUNBOOK.md` is ready)               |
-| 4   | Logo files + brand TTF                                | Real branding; rupee glyph in PDFs                               |
-| 5   | Real fee structures for AY 2026-27                    | Go-live fee data                                                 |
-| 6   | PC-1: confirm the reminder schedule                   | Defaults are T-5 / T-0 / T+3 / T+7 until you say otherwise       |
-| 7   | OT1: overtime multiplier                              | First real payroll run                                           |
-| 8   | INV2: reorder-quantity basis                          | Automated reorder alerts                                         |
-| 9   | ACA-LP-1 / CAL-4 / SEED-1,2 / OUT-1                   | Todd Care & PlayHouse curriculum, Saturday hours, Big Rocks      |
-| 10  | CA / Legal: PT applicability for hourly evening staff | Evening payroll statutory                                        |
-| 11  | Central hub admission phone number                    | Hub settings                                                     |
-| 12  | HR policy: security deposit + guest engagement log    | Two entities that cannot be designed without the policy          |
-| 13  | Todd Care evening: programme and fee decision         | The last evening-centre gap                                      |
-| 14  | Grade-wise Discovery Flight form content              | Per-programme DF templates (one generic form today)              |
-| 15  | Object storage (S3 / Spaces) + retention rule         | Uploading the signed PTM form scan (reference URL works now)     |
-| 16  | Calendly token + booking plan                         | Real slot booking from the stored unit link (display-only today) |
+| #   | What is needed                           | What it switches on                                         |
+| --- | ---------------------------------------- | ----------------------------------------------------------- |
+| 1   | Each unit's UPI id (and payee name)      | Live UPI collection — a ₹1 QR proves it end to end          |
+| 2   | Evolution API URL, key and instance name | Live WhatsApp: absence, receipts, welcome, announcements    |
+| 3   | Domain + VPS                             | Production deployment (`docs/RUNBOOK.md` is ready)          |
+| 4   | Real fee structures for AY 2026-27       | Go-live fee data (dummy structures run everything today)    |
+| 5   | OT multiplier for payroll                | Currently 0: hours are authorised and paid at the base rate |
+
+Everything else the client held back is now explicitly **held**, not blocked:
+domain/VPS, Todd Care evening, grade-wise DF templates, ACA curriculum content.
+PTM signed-form scans and student documents no longer need object storage bought
+— they run on the API's volume and switch to S3 by env var.
 
 ### B. Deliberately deferred (your call, not a gap)
 
@@ -118,11 +136,11 @@ which is a documentation deliverable rather than code.
 | Phase 3 (franchisor)      | 16, 17, 18, 19, 20, 21, 22, 23 | 2   | —   | —   | 6   | —   |
 | Phase 4 (AI)              | 24, 25, 26, 27                 | —   | —   | —   | 4   | —   |
 
-Nothing in Phase 1 or Phase 2 is unbuilt. Every remaining 🟡 is a third-party
-account (Calendly, WhatsApp BSP, Razorpay KYC), a policy number (OT1, INV2,
-reminder schedule) or an HR/storage decision — never a missing screen. Phase 3
-is the franchisor layer, deferred by instruction; its two buildable modules
-(16 Inward/Outward, 17 Analytics) are already done.
+Nothing in Phase 1 or Phase 2 is unbuilt. Every remaining 🟡 needs either a
+credential (a unit's UPI id, the Evolution instance) or content the client is
+writing themselves — never a missing screen. Phase 3 is the franchisor layer,
+deferred by instruction; its two buildable modules (16 Inward/Outward, 17
+Analytics) are already done.
 
 ---
 
@@ -130,26 +148,26 @@ is the franchisor layer, deferred by instruction; its two buildable modules
 
 ### Module 1 · Centralised Admission Hub — 🟡
 
-| Spec item                                            | Status | Evidence / gap                                                                   |
-| ---------------------------------------------------- | ------ | -------------------------------------------------------------------------------- |
-| Area master (locality → unit)                        | ✅     | `areas` controller, `AreaMaster` model                                           |
-| Routing: area → availability → preference → confirm  | ✅     | `POST /leads/:id/route`                                                          |
-| Override requires mandatory note                     | ✅     | `Leads.tsx` route modal                                                          |
-| Re-route restricted to CH/receptionist, history kept | ✅     | `LeadActivity` rows on every route                                               |
-| Dedicated hub admission line per unit                | ✅     | `unitSettings.admissionNumber`                                                   |
-| Calendly booking link per unit                       | 🟡     | Stored and editable, but **no booking integration** — it is display-only         |
-| Counsellor auto-notified via WhatsApp + ERP alert    | 🟡     | Alert row written and the dispatch worker sends it; live delivery needs BSP keys |
+| Spec item                                            | Status | Evidence / gap                                                                                                                        |
+| ---------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Area master (locality → unit)                        | ✅     | `areas` controller, `AreaMaster` model                                                                                                |
+| Routing: area → availability → preference → confirm  | ✅     | `POST /leads/:id/route`                                                                                                               |
+| Override requires mandatory note                     | ✅     | `Leads.tsx` route modal                                                                                                               |
+| Re-route restricted to CH/receptionist, history kept | ✅     | `LeadActivity` rows on every route                                                                                                    |
+| Dedicated hub admission line per unit                | ✅     | `unitSettings.admissionNumber`                                                                                                        |
+| Booking link per unit                                | 🚫     | Calendly removed on the client's instruction; Google Calendar sync is a later item, so the hub records interest without a slot picker |
+| Counsellor auto-notified via WhatsApp + ERP alert    | 🟡     | Alert row written and the dispatcher sends it; live delivery needs the Evolution instance                                             |
 
 ### Module 2 · First Buzz CRM — 🟡
 
-| Spec item                                | Status | Evidence / gap                                                                                                                                           |
-| ---------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 9-stage pipeline                         | ✅     | `STAGE_ORDER` in `crm/leads.controller.ts`                                                                                                               |
-| Lead scoring                             | ✅     | `leadScore` computed on create/stage change                                                                                                              |
-| Lead activities timeline                 | ✅     | `LeadActivity`                                                                                                                                           |
-| Form A (hub/remote) vs Form B (walk-in)  | ✅     | `formVersion` branch in `create()`                                                                                                                       |
-| WhatsApp welcome + Calendly auto-trigger | 🔲     | Admission confirmation queues a welcome/receipt message; the lead-stage welcome + Calendly trigger still need a BSP template and a client Calendly token |
-| Source-campaign tagging                  | ✅     | `sourceCampaign` field                                                                                                                                   |
+| Spec item                               | Status | Evidence / gap                                                                                                                                           |
+| --------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 9-stage pipeline                        | ✅     | `STAGE_ORDER` in `crm/leads.controller.ts`                                                                                                               |
+| Lead scoring                            | ✅     | `leadScore` computed on create/stage change                                                                                                              |
+| Lead activities timeline                | ✅     | `LeadActivity`                                                                                                                                           |
+| Form A (hub/remote) vs Form B (walk-in) | ✅     | `formVersion` branch in `create()`                                                                                                                       |
+| WhatsApp welcome trigger                | 🟡     | Welcome and receipt messages are queued and sent through whichever transport is configured; the lead-stage welcome goes live with the Evolution instance |
+| Source-campaign tagging                 | ✅     | `sourceCampaign` field                                                                                                                                   |
 
 ### Module 3 · Admission & Enrolment — ✅
 
@@ -192,20 +210,20 @@ is the franchisor layer, deferred by instruction; its two buildable modules
 
 ### Module 7 · Fees — 🟡 + 🚫
 
-| Spec item                                            | Status | Evidence / gap                                                                                                                                                                                                                                                   |
-| ---------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| HO-locked fee structures per unit/programme/AY       | ✅     | `FeeStructure` + upsert endpoint                                                                                                                                                                                                                                 |
-| Plans A / B / C + joining-window logic               | ✅     | `fees.rules.ts`, tested across all 12 months                                                                                                                                                                                                                     |
-| 10% sibling concession                               | ✅     | Configurable pct, tested                                                                                                                                                                                                                                         |
-| Collection, all payment modes, fine, discount        | ✅     | `POST /fees/pay` (DTO-validated)                                                                                                                                                                                                                                 |
-| Receipt numbering + print + **PDF**                  | ✅     | `BB-U?-RCPT-2627-NNNN`, `/print` and `/pdf`                                                                                                                                                                                                                      |
-| Cancellation with reason + audit                     | ✅     | `POST /fees/receipt/:id/cancel` (DTO + audit)                                                                                                                                                                                                                    |
-| Reminders T-5 / T-0 / T+3 / T+7                      | ✅     | `reminderStage()` tested; `POST /fees/reminders/run`                                                                                                                                                                                                             |
-| Dual ledger (preschool ≠ evening)                    | ✅     | `ledgerType` + tested separation                                                                                                                                                                                                                                 |
-| No-Dues certificate                                  | ✅     | `POST /certificates` with gating + PDF                                                                                                                                                                                                                           |
-| **Razorpay order → webhook → auto receipt → ledger** | 🟡     | Built end-to-end behind `payments/razorpay.adapter.ts`; live mode switches on when KYC keys land                                                                                                                                                                 |
-| "Pay Now" in parent portal                           | ✅     | Parent card shows the gateway only when `/fees/online/config` reports `enabled`                                                                                                                                                                                  |
-| **14 reports**                                       | ✅     | `modules/fees/reports.controller.ts` — daily collection, day book, monthly collection, payment mode, outstanding, fee status, discounts, cancellations, structure master, programme revenue, unit-wise, head-wise, add-ons, Tally CSV; each also exported as CSV |
+| Spec item                                      | Status | Evidence / gap                                                                                                                                                                                                                                                   |
+| ---------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HO-locked fee structures per unit/programme/AY | ✅     | `FeeStructure` + upsert endpoint                                                                                                                                                                                                                                 |
+| Plans A / B / C + joining-window logic         | ✅     | `fees.rules.ts`, tested across all 12 months                                                                                                                                                                                                                     |
+| 10% sibling concession                         | ✅     | Configurable pct, tested                                                                                                                                                                                                                                         |
+| Collection, all payment modes, fine, discount  | ✅     | `POST /fees/pay` (DTO-validated)                                                                                                                                                                                                                                 |
+| Receipt numbering + print + **PDF**            | ✅     | `BB-U?-RCPT-2627-NNNN`, `/print` and `/pdf`                                                                                                                                                                                                                      |
+| Cancellation with reason + audit               | ✅     | `POST /fees/receipt/:id/cancel` (DTO + audit)                                                                                                                                                                                                                    |
+| Reminders T-5 / T-0 / T+3 / T+7                | ✅     | `reminderStage()` tested; `POST /fees/reminders/run`                                                                                                                                                                                                             |
+| Dual ledger (preschool ≠ evening)              | ✅     | `ledgerType` + tested separation                                                                                                                                                                                                                                 |
+| No-Dues certificate                            | ✅     | `POST /certificates` with gating + PDF                                                                                                                                                                                                                           |
+| **UPI collection → receipt → ledger**          | ✅     | `POST /fees/upi/intent` builds a `upi://` QR for the exact amount; the parent claims with the UTR; `POST /fees/upi/:id/confirm` books the receipt through the same settlement service as the counter                                                             |
+| "Pay by UPI" in parent portal                  | ✅     | QR + `upi://` deep link + UTR claim; the card says the centre confirms before a receipt exists                                                                                                                                                                   |
+| **14 reports**                                 | ✅     | `modules/fees/reports.controller.ts` — daily collection, day book, monthly collection, payment mode, outstanding, fee status, discounts, cancellations, structure master, programme revenue, unit-wise, head-wise, add-ons, Tally CSV; each also exported as CSV |
 
 ---
 
@@ -232,12 +250,12 @@ is the franchisor layer, deferred by instruction; its two buildable modules
 | LWP from approved leave                                | ✅     | `StaffLeave.isLwp`                                                                                                                                                                  |
 | Evening hourly engine (separate)                       | ✅     | `payroll/evening/calculate`, minute rates                                                                                                                                           |
 | OT pre-approval only (OT2)                             | ✅     | `OvertimeAuthorisation`, APPROVED-only matching                                                                                                                                     |
-| OT multiplier (OT1)                                    | 🚫     | Placeholder multiplier on the authorisation row; business value still open                                                                                                          |
+| OT multiplier (OT1)                                    | 🟡     | Client set a temporary **0**: overtime is authorised and recorded, no premium is added. One default changes when the number lands                                                   |
 | PT / PF / ESIC statutory                               | ✅     | `StatutoryScheme` + slabs, `apply-statutory`                                                                                                                                        |
 | Maker-checker / lock / reversal                        | ✅     | Enforced + unit tested                                                                                                                                                              |
 | Payslips + CSV export                                  | ✅     | HTML payslips, `export.csv`                                                                                                                                                         |
-| Security deposit (morning staff)                       | 🔲     | No entity, no holding/return/forfeit tracking                                                                                                                                       |
-| Guest engagement log                                   | 🔲     | No entity                                                                                                                                                                           |
+| Security deposit (morning staff)                       | ✅     | `security_deposits` + `/frontdesk`: collect per employee or child, one open deposit per holder, return or part-forfeit with a reason, totals held                                   |
+| Guest engagement log                                   | ✅     | `guest_logs` + visitor book: check in/out, purpose, host, badge, who is inside, visits over 4 hours flagged                                                                         |
 | AB penalty + auto-LWP at cutoff                        | ✅     | `runLeaveCutoffTick()` in the daily scheduler: a leave nobody decided by its last day flips to `AUTO_LWP` with `isLwp`, once per IST day; `POST /hr/leave/cutoff` runs it on demand |
 | Employee self-service (my payslips / apply leave)      | ✅     | `/me/profile`, `/me/payslips`, `/me/leaves` (+ apply), `/me/attendance`                                                                                                             |
 
@@ -254,43 +272,44 @@ is the franchisor layer, deferred by instruction; its two buildable modules
 
 ### Module 11 · Inventory — ✅
 
-| Spec item                                      | Status | Evidence / gap                                                                                                        |
-| ---------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------- |
-| 8 categories + SKU coding                      | ✅     | `CATS`, `InventoryItem.sku`                                                                                           |
-| Stock ledger / movements                       | ✅     | `InventoryMovement`, add/issue endpoint                                                                               |
-| Reorder level + low-stock flag                 | ✅     | Used by analytics                                                                                                     |
-| ₹5,000 petty cash float per unit (HO-editable) | ✅     | `unitSettings.pettyCashFloat`                                                                                         |
-| **PRF → PO → GRN flow**                        | ✅     | `procurement` module + UI                                                                                             |
-| Vendor master + pre-approved item list         | ✅     | `vendors` endpoints                                                                                                   |
-| Student issue linked to fee                    | ✅     | `POST /inventory/:id/issue-to-student`                                                                                |
-| Opening stock per new unit                     | ✅     | `POST /inventory/opening-stock` — one `ADJUSTMENT_IN` per line, refused if the item already has movements in the unit |
-| **10 inventory reports**                       | ✅     | `/procurement/reports/*` + UI runner                                                                                  |
+| Spec item                                      | Status | Evidence / gap                                                                                                                                                                 |
+| ---------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 8 categories + SKU coding                      | ✅     | `CATS`, `InventoryItem.sku`                                                                                                                                                    |
+| Stock ledger / movements                       | ✅     | `InventoryMovement`, add/issue endpoint                                                                                                                                        |
+| Reorder level + low-stock flag                 | ✅     | Used by analytics                                                                                                                                                              |
+| ₹5,000 petty cash float per unit (HO-editable) | ✅     | `unitSettings.pettyCashFloat`                                                                                                                                                  |
+| **PRF → PO → GRN flow**                        | ✅     | `procurement` module + UI                                                                                                                                                      |
+| Vendor master + pre-approved item list         | ✅     | `vendors` endpoints                                                                                                                                                            |
+| Student issue linked to fee                    | ✅     | `POST /inventory/:id/issue-to-student`                                                                                                                                         |
+| Opening stock per new unit                     | ✅     | `POST /inventory/opening-stock` — one `ADJUSTMENT_IN` per line, refused if the item already has movements in the unit                                                          |
+| **10 inventory reports**                       | ✅     | `/procurement/reports/*` + UI runner                                                                                                                                           |
+| **Reorder alerts on the set level**            | ✅     | `reorder_alerts` raised the moment stock crosses an item's own `reorderLevel`, cleared by the receipt that fixes it, daily sweep, acknowledge/dismiss; Inventory → Reorder tab |
 
 ### Module 12 · Parent Communication — 🟡 + 🚫
 
-| Spec item                                    | Status       | Evidence / gap                           |
-| -------------------------------------------- | ------------ | ---------------------------------------- |
-| Parent portal (PWA), installable             | ✅           | `/parent`, manifest + service worker     |
-| Web push (absence, fees, announcements)      | ✅           | `PushService` + `PushSubscription`       |
-| CH-owned reply model                         | ✅           | Parent ↔ CH conversation thread          |
-| Announcements fan-out per family             | ✅           | `POST /comms/announce`                   |
-| Single outbox + dispatch                     | ✅ (sandbox) | `POST /comms/dispatch`                   |
-| Real WhatsApp dispatch                       | 🚫           | Needs BSP account + approved templates   |
-| Channel rules (app-first → WhatsApp → email) | ✅           | `comms.rules.ts` + dispatch service      |
-| AD escalation for unanswered parent messages | ✅           | `parent-reply-sla` job                   |
-| HO template management screen (B2)           | ✅           | `/comms/templates`, editable in Settings |
-| Email receipts/certificates                  | ✅           | SMTP provider in `comms/providers.ts`    |
+| Spec item                                    | Status       | Evidence / gap                                                                   |
+| -------------------------------------------- | ------------ | -------------------------------------------------------------------------------- |
+| Parent portal (PWA), installable             | ✅           | `/parent`, manifest + service worker                                             |
+| Web push (absence, fees, announcements)      | ✅           | `PushService` + `PushSubscription`                                               |
+| CH-owned reply model                         | ✅           | Parent ↔ CH conversation thread                                                  |
+| Announcements fan-out per family             | ✅           | `POST /comms/announce`                                                           |
+| Single outbox + dispatch                     | ✅ (sandbox) | `POST /comms/dispatch`                                                           |
+| Real WhatsApp dispatch                       | 🟡           | Evolution API transport built; goes live with `EVOLUTION_API_URL/_KEY/_INSTANCE` |
+| Channel rules (app-first → WhatsApp → email) | ✅           | `comms.rules.ts` + dispatch service                                              |
+| AD escalation for unanswered parent messages | ✅           | `parent-reply-sla` job                                                           |
+| HO template management screen (B2)           | ✅           | `/comms/templates`, editable in Settings                                         |
+| Email receipts/certificates                  | ✅           | SMTP provider in `comms/providers.ts`                                            |
 
 ### Module 13 · PTM — 🟡
 
-| Spec item                         | Status | Evidence / gap                                                                                                |
-| --------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------- |
-| Session scheduling                | ✅     | `PtmSession`                                                                                                  |
-| Parent attendance + teacher notes | ✅     | `PtmRecord`                                                                                                   |
-| Physical form reference           | 🟡     | `signedFormUrl` keeps the reference; uploading the scan needs object storage (S3/Spaces) and a retention rule |
-| Student-wise view                 | ✅     | `GET /ptm/student/:id` + the history modal on the PTM page (meetings, attendance, booked slot, teacher notes) |
-| Class-wise (batch) view           | ✅     | `GET /ptm/session/:id/summary`                                                                                |
-| Per-parent slot booking           | ✅     | `/ptm/:id/slots`, `/ptm/slots/:id/book`, parent PTM card                                                      |
+| Spec item                         | Status | Evidence / gap                                                                                                                             |
+| --------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Session scheduling                | ✅     | `PtmSession`                                                                                                                               |
+| Parent attendance + teacher notes | ✅     | `PtmRecord`                                                                                                                                |
+| Physical form reference           | ✅     | `signedFormUrl` keeps the reference, and the scan uploads to the per-student document store (local volume or S3) with manual deletion only |
+| Student-wise view                 | ✅     | `GET /ptm/student/:id` + the history modal on the PTM page (meetings, attendance, booked slot, teacher notes)                              |
+| Class-wise (batch) view           | ✅     | `GET /ptm/session/:id/summary`                                                                                                             |
+| Per-parent slot booking           | ✅     | `/ptm/:id/slots`, `/ptm/slots/:id/book`, parent PTM card                                                                                   |
 
 ### Module 14 · Certificates & Documents — ✅
 
@@ -310,7 +329,7 @@ is the franchisor layer, deferred by instruction; its two buildable modules
 | Ledger kept out of school fees                | ✅     | Tested in `fees.rules.spec.ts`          |
 | **External (non-student) registration**       | ✅     | `evening_participants` + enrol-external |
 | **Session-level attendance**                  | ✅     | `evening_sessions` + roster/attendance  |
-| Todd Care evening                             | 🔲     | Pending business decision               |
+| Todd Care evening                             | ⏸      | Held by the client ("hold" on 23 Oct)   |
 
 ### Module 17 · Analytics & Founder Dashboard — ✅
 
@@ -371,46 +390,56 @@ is the franchisor layer, deferred by instruction; its two buildable modules
 
 ---
 
-## 7. Blocked on the founder (cannot be coded around)
+## 7. What is still open, owner by owner
 
-| #   | Item                                                   | Blocks                                                                      |
-| --- | ------------------------------------------------------ | --------------------------------------------------------------------------- |
-| 1   | Razorpay merchant KYC                                  | Online fee payment, auto-receipt, parent "Pay Now"                          |
-| 2   | WhatsApp BSP account + template approval               | All live messaging, welcome/absence/receipt sends, template screen          |
-| 3   | Domain + VPS                                           | Production deployment                                                       |
-| 4   | Logo files (light/dark, high-res) + brand TTF          | Real branding; rupee glyph in PDFs needs an embedded font                   |
-| 5   | Real fee structures per programme/unit for AY 2026-27  | Go-live data                                                                |
-| 6   | PC-1: confirm reminder schedule with the Academic Lead | Reminder defaults (currently T-5/T-0/T+3/T+7)                               |
-| 7   | OT1: overtime multiplier                               | First real payroll run                                                      |
-| 8   | INV2: reorder-quantity basis                           | Automated reorder alerts                                                    |
-| 9   | ACA-LP-1, ACA-CAL-4, ACA-SEED-1/2, ACA-OUT-1           | Todd Care/PlayHouse curriculum, Saturday hours, Big Rocks content, taxonomy |
-| 10  | CA / Legal: PT applicability for hourly evening staff  | Evening payroll statutory                                                   |
-| 11  | Central hub admission phone number                     | Hub settings                                                                |
-| 12  | HR policy: security deposit + guest engagement log     | Two HR entities that cannot be designed without the policy                  |
-| 13  | Todd Care evening: programme and fee decision          | The last Evening Activity Centre gap                                        |
-| 14  | Grade-wise Discovery Flight form content               | Per-programme DF templates (one generic form today)                         |
-| 15  | Object storage (S3 / Spaces) + retention rule          | Uploading the signed PTM form scan (the reference URL works today)          |
-| 16  | Calendly token + booking plan                          | Real slot booking from the stored unit link (display-only today)            |
+The 23 Oct answers closed most of this list. What is left, split by who acts:
+
+**The client supplies (5)**
+
+| #   | Item                                  | Blocks                                       |
+| --- | ------------------------------------- | -------------------------------------------- |
+| 1   | Each unit's UPI id + payee name       | Live UPI collection (a ₹1 QR proves it)      |
+| 2   | Evolution API URL, key, instance name | Every live WhatsApp send                     |
+| 3   | Domain + VPS                          | Production deployment                        |
+| 4   | Real fee structures for AY 2026-27    | Go-live fee data                             |
+| 5   | OT multiplier                         | Premium on authorised overtime (currently 0) |
+
+**Explicitly held by the client (4)** — decided later, not blocked on us
+
+| Item                                        | Answer given |
+| ------------------------------------------- | ------------ |
+| Domain / VPS                                | "hold"       |
+| Todd Care evening                           | "hold"       |
+| Grade-wise Discovery Flight templates       | "hold"       |
+| ACA-LP-1 / CAL-4 / SEED-1,2 / OUT-1 content | "hold"       |
+
+**Built instead of waiting (7)** — delivered in this pass, listed so nobody
+re-opens them: UPI QR collection, Evolution API transport, security deposits,
+guest log, per-student document storage, reorder alerts at the item's own level,
+switchable Professional Tax.
+
+**Documentation only (1)** — the 29-SOP library, owned by the founder.
 
 ---
 
 ## 8. Where the plan landed
 
-Sprints S1–S8 from the original plan are **done** (see the delivery table at the
-top for commits and scope). What remains is either blocked on the client or a
-documentation deliverable:
+Sprints S1–S9 are **done** (see the delivery table at the top for commits and
+scope), and the 23 Oct answers added a second delivery on top. What remains is
+five items of client data, four deliberate holds, and one document:
 
-| Item                                        | Status | Note                                                                         |
-| ------------------------------------------- | ------ | ---------------------------------------------------------------------------- |
-| Razorpay live mode                          | 🚫     | Code complete behind the adapter; needs merchant KYC + webhook secret        |
-| WhatsApp live delivery                      | 🚫     | Adapter complete; needs BSP account and approved templates                   |
-| Domain / VPS / TLS                          | 🚫     | `docs/RUNBOOK.md` is written for the deploy the moment a host exists         |
-| Brand TTFs + logo files                     | 🚫     | PDFs use WinAnsi (no rupee glyph) until the font arrives                     |
-| Real fee structures, OT multiplier, INV2    | 🚫     | Business data/decisions, not code                                            |
-| 29 SOPs library                             | 🔲     | Documentation deliverable owned by the founder                               |
-| Scheduled email/PDF digest                  | ✅     | Built: Monday 08:00 IST, weekly per-student email + PDF                      |
-| Grade-wise Discovery Flight templates       | 🟡     | One generic form; per-programme variants need the programme content (§7 #14) |
-| Faculty guest-engagement / security deposit | 🟡     | Not built — needs HR policy confirmation                                     |
+| Item                                  | Status | Note                                                                 |
+| ------------------------------------- | ------ | -------------------------------------------------------------------- |
+| UPI live collection                   | 🟡     | Built; each unit needs its UPI id in Settings → Units                |
+| Evolution API live delivery           | 🟡     | Built; needs the instance URL, key and instance name                 |
+| Domain / VPS / TLS                    | ⏸      | Held by the client; `docs/RUNBOOK.md` is written and waiting         |
+| Brand TTFs                            | 🚫     | Logo files have arrived and are in use; PDFs still use WinAnsi for ₹ |
+| Real fee structures                   | 🟡     | Dummy structures run every flow; real ones are data entry            |
+| OT multiplier                         | 🟡     | Set to 0 on the client's instruction; hours still recorded           |
+| 29 SOPs library                       | 🔲     | Documentation deliverable owned by the founder                       |
+| Scheduled email/PDF digest            | ✅     | Monday 08:00 IST, weekly per-student email + PDF                     |
+| Grade-wise Discovery Flight templates | ⏸      | Held by the client                                                   |
+| Security deposit / guest log          | ✅     | Built in this pass                                                   |
 
 **Verification for this state:** `npm test` 261/261 across 28 suites,
 `tsc --noEmit` clean, prettier clean, frontend production build clean, and all
