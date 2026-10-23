@@ -63,6 +63,14 @@ export class CloseSecurityDepositDto {
 }
 
 export class CreateGuestLogDto {
+  /**
+   * Only needed by a Head Office account, which has no unit of its own: the
+   * desk must say which building the visitor walked into.
+   */
+  @IsOptional()
+  @IsUUID('4')
+  unitId?: string;
+
   @IsString()
   @MaxLength(120)
   guestName!: string;

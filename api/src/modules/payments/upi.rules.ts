@@ -110,7 +110,9 @@ export function claimDecision(
   now: Date = new Date(),
   expiresHours = 48,
 ): ClaimDecision {
-  if (!payerRef.trim()) return 'REJECT';
+  // The reference is the only thing the desk can match against the bank
+  // statement, so it must at least look like one — "paid" is not a UTR.
+  if (!isValidPayerRef(payerRef)) return 'REJECT';
   if (intent.status === 'PAID') return 'REPLAY';
   if (intent.status === 'CLAIMED') return 'REPLAY';
   if (intent.status !== 'CREATED') return 'REJECT';

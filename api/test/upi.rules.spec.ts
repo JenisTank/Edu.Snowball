@@ -100,8 +100,10 @@ describe('claim state machine', () => {
     expect(claimDecision({ status: 'PAID' }, 'ABC12345')).toBe('REPLAY');
   });
 
-  it('rejects a blank reference, a failed intent and an expired QR', () => {
+  it('rejects a blank or malformed reference, a failed intent and an expired QR', () => {
     expect(claimDecision(fresh, '   ')).toBe('REJECT');
+    expect(claimDecision(fresh, 'paid')).toBe('REJECT');
+    expect(claimDecision(fresh, 'abc-123-xyz')).toBe('REJECT');
     expect(claimDecision({ status: 'FAILED' }, 'ABC12345')).toBe('REJECT');
     const stale = { status: 'CREATED', createdAt: new Date(Date.now() - 72 * 3600_000) };
     expect(claimDecision(stale, 'ABC12345')).toBe('REJECT');

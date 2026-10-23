@@ -6,6 +6,7 @@ import { PageHeader } from '../components/layout/AppLayout';
 import { DataTable } from '../components/ui/DataTable';
 import { Modal, Field, ErrorNote } from '../components/ui/Modal';
 import { useI18n, useLabels } from '../lib/i18n';
+import { useAuth, HO_ROLES } from '../lib/auth';
 import { inr } from '../lib/utils';
 
 const PURPOSES = ['PARENT_VISIT', 'ADMISSION_ENQUIRY', 'VENDOR', 'INTERVIEW', 'OFFICIAL', 'OTHER'];
@@ -21,19 +22,29 @@ export default function FrontDesk() {
   const { t } = useI18n();
   const L = useLabels();
   const qc = useQueryClient();
+  const { user } = useAuth();
+  // A Head Office account has no unit of its own, so the desk has to pick one.
+  const isHO = HO_ROLES.includes(user?.role ?? '');
+  const [unitId, setUnitId] = useState(user?.unitId ?? '');
   const [tab, setTab] = useState<'guests' | 'deposits'>('guests');
   const [guestOpen, setGuestOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [closeId, setCloseId] = useState<string | null>(null);
   const [err, setErr] = useState('');
 
+  const { data: units = [] } = useQuery({
+    queryKey: ['fd-units'],
+    queryFn: () => api('/units'),
+    enabled: isHO,
+  });
+  const scope = isHO && unitId ? `?unitId=${unitId}` : '';
   const { data: guests } = useQuery({
-    queryKey: ['fd-guests'],
-    queryFn: () => api('/frontdesk/guests'),
+    queryKey: ['fd-guests', unitId],
+    queryFn: () => api(`/frontdesk/guests${scope}`),
   });
   const { data: deposits } = useQuery({
-    queryKey: ['fd-deposits'],
-    queryFn: () => api('/frontdesk/deposits'),
+    queryKey: ['fd-deposits', unitId],
+    queryFn: () => api(`/frontdesk/deposits${scope}`),
   });
   const { data: employees = [] } = useQuery({
     queryKey: ['fd-employees'],
@@ -59,8 +70,8 @@ export default function FrontDesk() {
   const [closing, setClosing] = useState<any>({ outcome: 'RETURNED', reason: '', amount: '' });
 
   const refresh = () => {
-    qc.invalidateQueries({ queryKey: ['fd-guests'] });
-    qc.invalidateQueries({ queryKey: ['fd-deposits'] });
+    qc.invalidateQueries({ queryKey: ['fd-guests', unitId] });
+    qc.invalidateQueries({ queryKey: ['fd-deposits', unitId] });
   };
 
   const checkIn = useMutation({
@@ -69,6 +80,7 @@ export default function FrontDesk() {
         method: 'POST',
         body: JSON.stringify({
           ...guest,
+          ...(isHO && unitId ? { unitId } : {}),
           phone: guest.phone || undefined,
           organisation: guest.organisation || undefined,
           hostName: guest.hostName || undefined,
@@ -147,7 +159,21 @@ export default function FrontDesk() {
         title={t('fd.title')}
         subtitle={t('fd.subtitle')}
         action={
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {isHO && (
+              <select
+                className="input h-9 w-auto"
+                value={unitId}
+                onChange={(e) => setUnitId(e.target.value)}
+              >
+                <option value="">{t('fd.allUnits')}</option>
+                {(units as any[]).map((u: any) => (
+                  <option key={u.id} value={u.id}>
+                    {u.code}
+                  </option>
+                ))}
+              </select>
+            )}
             <button className="btn-secondary" onClick={() => setDepositOpen(true)}>
               <ShieldCheck className="mr-1 inline h-4 w-4" />
               {t('fd.newDeposit')}

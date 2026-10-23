@@ -237,6 +237,7 @@ const en = {
   'docs.empty': 'No documents yet',
   'docs.deleteHint': 'Delete this document',
   'docs.deleteReason': 'Why is this document being deleted? (goes to the audit log)',
+  'fd.allUnits': 'All units',
   'fd.title': 'Front desk',
   'fd.subtitle': 'Visitor book and security deposits — who is inside, and money the centre holds.',
   'fd.checkIn': 'Check in a guest',
@@ -513,6 +514,7 @@ const gu: Partial<Record<TKey, string>> = {
   'docs.empty': 'હજુ કોઈ દસ્તાવેજ નથી',
   'docs.deleteHint': 'આ દસ્તાવેજ ડિલીટ કરો',
   'docs.deleteReason': 'આ દસ્તાવેજ કેમ ડિલીટ થાય છે? (ઓડિટ લોગમાં જશે)',
+  'fd.allUnits': 'બધા યુનિટ',
   'fd.title': 'ફ્રન્ટ ડેસ્ક',
   'fd.subtitle':
     'મુલાકાતી નોંધ અને સિક્યોરિટી ડિપોઝિટ — કોણ અંદર છે અને કેન્દ્ર પાસે કેટલી રકમ છે.',

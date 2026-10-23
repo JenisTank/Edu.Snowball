@@ -56,8 +56,10 @@ export class UpiPaymentsController {
   ) {}
 
   /** Where the money should go for a unit: unit VPA, else the HO default. */
-  private async vpaFor(unitId: string) {
-    const unit = await this.prisma.unitSettings.findUnique({ where: { unitId } });
+  private async vpaFor(unitId: string | null | undefined) {
+    // A Head-Office account has no unit of its own: fall straight through to the
+    // HO default rather than querying settings with an empty uuid.
+    const unit = unitId ? await this.prisma.unitSettings.findUnique({ where: { unitId } }) : null;
     const fallback = await this.prisma.appSetting.findUnique({ where: { key: 'payments.upi' } });
     const ho = (fallback?.value as any) ?? {};
     // Unit VPA wins; then an HO row set in Settings; then the env fallback.
@@ -70,9 +72,12 @@ export class UpiPaymentsController {
   @Get('config')
   async config(@Req() req: any, @Query('unitId') unitId?: string) {
     const unit = HO_ROLES.includes(req.user.role) ? (unitId ?? req.user.unitId) : req.user.unitId;
-    const target = await this.vpaFor(unit ?? '');
+    // A Head Office account has no unit of its own: it sees the HO fallback and
+    // is told the unit has not published one yet.
+    const target = await this.vpaFor(unit);
     return {
       enabled: isValidVpa(target.vpa),
+      unitConfigured: target.source === 'UNIT',
       provider: 'UPI',
       mode: 'QR',
       vpa: target.vpa,

@@ -198,9 +198,8 @@ export class FrontDeskController {
 
   @Post('guests')
   async checkIn(@Req() req: any, @Body() b: CreateGuestLogDto) {
-    const unitId = req.user.unitId ?? '';
-    if (!unitId && !HO_ROLES.includes(req.user.role))
-      throw new BadRequestException('No unit on this account');
+    const unitId = this.unitFor(req, b.unitId);
+    if (!unitId) throw new BadRequestException('Select the unit the visitor is in');
 
     if (b.studentId) {
       const child = await this.prisma.student.findUnique({
@@ -208,8 +207,7 @@ export class FrontDeskController {
         select: { id: true, unitId: true },
       });
       if (!child) throw new NotFoundException('Student not found');
-      if (child.unitId !== (HO_ROLES.includes(req.user.role) ? child.unitId : unitId))
-        throw new BadRequestException('Child is outside your unit');
+      if (child.unitId !== unitId) throw new BadRequestException('Child is outside this unit');
     }
 
     const row = await this.prisma.guestLog.create({
